@@ -1,6 +1,6 @@
 # Container development environment
 
-Status: rootless workspace implementation and runtime verification in progress for
+Status: rootless CLI/runtime verification passed independently for
 [M1 issue #2](https://github.com/DavidVFitzGerald/LCA-diff/issues/2). No application
 code or host package installation is part of this change. Actual editor attachment
 is a separate gate; Compose checks alone cannot prove VS Code reopened successfully.
@@ -156,8 +156,24 @@ Both interactive and noninteractive supported Bash shells report umask 0022.
 | CPython / uv | 3.14.2 / 0.9.30 |
 | Git / GNU Make / ripgrep | 2.39.5 / 4.3 / 13.0.0 |
 
-Independent clean-checkout QA against the committed candidate is pending; the
-engineering results above do not replace that check. No application tests exist.
+Independent QA repeated the checks against candidate
+`a9399aab06a21b9c1acd9d99dcaf64c9514741a3` from a clean local clone at
+`/tmp/lca-m1-qa-checkout.3vVGMF`, using Compose project `lca-diff-m1-qa` and port
+5174. The build reused pinned cached layers; this was not a second uncached
+dependency download. No host runtime or secrets were used.
+
+| Check | Independent result |
+| --- | --- |
+| `./dev config`, `./dev build`, `./dev up` | PASS in isolated clean checkout |
+| `./dev shell`, `uv lock --check`, `uv sync --frozen`, `make dev-check` | PASS; eight guard regressions passed |
+| Effective namespace/capability settings | UID/GID 0 maps to parent 1000; CapEff 0, NoNewPrivs 1, CapDrop ALL, Privileged false |
+| Bind mount and probe | Only checkout mounted; no socket/credential mounts. Container 0:0/mode0644 maps to host 1000:1000/mode0644; host append succeeds |
+| Down/up/check | PASS after isolated recreation; frozen sync and all eight regressions pass again |
+| Cleanup/source integrity | Only isolated project removed; main workspace left running; reviewed source unchanged |
+
+Engineering logs are in `/tmp/lca-m1/`; independent QA logs are in
+`/tmp/lca-m1-qa/`. These are local execution artifacts, not new runtime dependencies.
+The committed scripts reproduce the checks. No application tests exist.
 Actual VS Code Remote SSH/Reopen remains **BLOCKED** until editor interaction is
 verified. Do not declare full M1 completion or close issue #2 based on CLI-only
 results. Main approval/merge and F1 readiness remain separate gates.
