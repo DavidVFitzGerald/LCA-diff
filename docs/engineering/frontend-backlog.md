@@ -7,6 +7,10 @@ Read [the roadmap](roadmap.md) and [AGENTS.md](../../AGENTS.md) for requirements
 precedence, containers, role handoffs and completion gates. GitHub issue bodies
 are the actionable plans; this index does not replace their criteria.
 
+Review/publish baseline: [PR #35](https://github.com/DavidVFitzGerald/LCA-diff/pull/35).
+The branch is pushed; forms require approved merge into `main` before GitHub's
+issue chooser can use them. M2 final activation remains open in issue #3.
+
 ## Preparation and blockers
 
 | Tracking issue | Current action |
