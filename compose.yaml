@@ -1,0 +1,22 @@
+name: lca-diff-dev
+services:
+  workspace:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    init: true
+    # Rootless Docker maps namespace UID/GID 0 to the unprivileged daemon owner.
+    # Supported startup paths verify the daemon before any mounted code executes.
+    user: "0:0"
+    working_dir: /workspaces/lca-diff
+    command: ["sleep", "infinity"]
+    volumes:
+      - type: bind
+        source: .
+        target: /workspaces/lca-diff
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-5173}:5173"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true

@@ -1,0 +1,84 @@
+# Canonical source; copy to .github/ISSUE_TEMPLATE/ during issue setup.
+# Keep the active copy synchronized. CLI/API bodies must use these sections too.
+name: Task
+description: One session-sized outcome, normally one issue and one PR
+title: "[Task] "
+labels: ["task"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use for features, docs, tooling, infrastructure, refactoring or investigations.
+        Follow AGENTS.md and docs/team/product-manager.md. Split work that cannot fit
+        one session including checks and handoff. Reference documents by path/section.
+        PM grooms, Engineer implements, QA verifies; the coordinator closes after merge.
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Delivery phase
+      options:
+        - Workflow / roadmap / environment bootstrap
+        - Phase 1 - frontend with mock services
+        - Phase 2 - backend and real integration
+        - MVP release / operations
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What verifiable outcome should exist, and why? Keep it session-sized.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and authority
+      description: Current specification/PRD sections, accepted ADRs, roadmap milestone and files to read/change. Exclude archive/reference folders. Deviations require an ADR and updates to both current documents in the same PR. Mark new paths as planned.
+    validations:
+      required: true
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements and constraints
+      description: Interfaces, mock versus real behavior, data semantics, security, container tooling and scope boundaries. Write None if no additional constraints.
+      placeholder: All backend calls use the typed services layer; Phase 1 uses deterministic synthetic mocks. Run tooling only inside containers.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Numbered objective criteria. Specify observable behavior or artifact/command evidence, including relevant edge cases. Do not override the specification.
+      value: |
+        - [ ] AC1 -
+        - [ ] AC2 -
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope and follow-ups
+      description: Exclusions; link deferred required work to follow-up issues. Future features can reference the roadmap/spec. Write None if appropriate.
+    validations:
+      required: true
+  - type: textarea
+    id: test-plan
+    attributes:
+      label: Verification plan
+      description: Exact container commands, fixtures, expected evidence and applicable quality gates. Identify commands this task must create. Docs may use inspection; distinguish mock checks from real integration.
+    validations:
+      required: true
+  - type: textarea
+    id: depends-on
+    attributes:
+      label: Dependencies and readiness
+      description: Blocking issue/PR links and required decisions; write None if independent. PM must resolve dependencies before marking ready.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        Handoff comments: PM READY/BLOCKED; Engineering READY FOR QA with branch/SHA
+        and commands/results; QA PASS/FAIL/BLOCKED for every criterion at that SHA.
+        Keep the issue open until required checks, QA and approved merge are complete.

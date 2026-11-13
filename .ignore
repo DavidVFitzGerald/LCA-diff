@@ -1,0 +1,4 @@
+# Historical documents remain tracked but are excluded from default rg discovery.
+/docs/product/archive/
+/docs/engineering/archive/
+/docs/reference/

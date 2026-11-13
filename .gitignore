@@ -1,0 +1,45 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*service-account*.json
+*credentials*.json
+
+# Container-created development artifacts
+.venv/
+**/node_modules/
+**/dist/
+**/build/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage*
+coverage/
+htmlcov/
+playwright-report/
+test-results/
+*.tsbuildinfo
+.lca-dev-writecheck.*
+
+# Private provider inputs, audit output and local infrastructure state
+/data/
+/private/
+/reports/
+/artifacts/
+*.xlsx
+*.xls
+*.zip
+*.tar
+*.tar.gz
+*.tfstate
+*.tfstate.*
+**/.terraform/
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+crash.log
+.DS_Store

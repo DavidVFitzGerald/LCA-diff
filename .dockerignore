@@ -1,0 +1,4 @@
+# The tooling image never needs application source, history, secrets or raw data.
+**
+!.devcontainer/
+!.devcontainer/Dockerfile

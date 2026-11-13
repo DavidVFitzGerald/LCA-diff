@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Host-side Docker lifecycle only; no host runtimes or package managers.
+set -euo pipefail
+repo_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "$repo_dir"
+if [[ "${LCA_DEV_CONTAINER:-}" == 1 ]]; then
+    echo 'Run ./dev on the Docker host. Use the container terminal for development.' >&2
+    exit 1
+fi
+compose=(docker compose --project-directory "$repo_dir" --file "$repo_dir/compose.yaml")
+case "${1:-help}" in
+    build|up|down|shell|check|logs)
+        bash "$repo_dir/.devcontainer/check-docker.sh" ;;
+    config|help) ;;
+    *) echo "Unknown command: $1" >&2; exit 2 ;;
+esac
+case "${1:-help}" in
+    build) "${compose[@]}" build workspace ;;
+    up) "${compose[@]}" up --detach --build workspace ;;
+    down) "${compose[@]}" down ;;
+    shell) "${compose[@]}" exec workspace bash ;;
+    check) "${compose[@]}" exec -T workspace bash .devcontainer/check-env.sh ;;
+    logs) "${compose[@]}" logs --tail=100 workspace ;;
+    config) "${compose[@]}" config --quiet ;;
+    help)
+        echo 'Usage: ./dev {build|up|shell|check|down|logs|config}'
+        echo 'Requires a rootless Docker daemon; run development tools inside its workspace.' ;;
+esac
