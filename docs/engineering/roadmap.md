@@ -1,7 +1,7 @@
 # LCA diff implementation roadmap
 
-Status: initial planning baseline, 13 November 2026. No application implementation
-has begun. Milestone status means verified delivery, not merely written plans.
+Status: frontend foundation implementation, issue #5. Milestone status means
+verified delivery, not merely written plans.
 
 ## Authority and delivery policy
 
@@ -43,8 +43,8 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 | --- | --- | --- |
 | M0 — workflow and roadmap | Baseline merged in PR #35 | None |
 | M1 — container development environment | QA passed; runtime/editor evidence merged in PR #35 | M0 baseline merged |
-| M2 — GitHub execution setup | Forms/PR guidance merged; maintainer verified both chooser forms; gate-record reconciliation in review for #3 | M0/M1 delivered |
-| F1–F5 — Phase 1, frontend with mocks | 30 tasks published; no implementation started | M2, then gates below |
+| M2 — GitHub execution setup | Forms/PR guidance and QA-passed activation record merged in PRs #35/#36 | M0/M1 delivered |
+| F1–F5 — Phase 1, frontend with mocks | #5 technical scaffold in progress; later tasks retain predecessor gates | M2 delivered, then gates below |
 | B1–B4 — Phase 2, backend and ingestion | Not started | Phase 1 gate, then gates below |
 | I1 — real frontend integration | Not started | B2 and validated synthetic publication from B4 |
 | R1–R2 — production readiness and release | Not started | Dependencies below |

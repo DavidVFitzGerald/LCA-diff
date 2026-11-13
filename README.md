@@ -1,8 +1,8 @@
 # LCA diff
 
 Read-only comparison of harmonized unit-process inventories and provider-supplied
-LCIA scores. Application development has not started; this checkout currently
-contains requirements, agent workflows and the development environment.
+LCIA scores. The frontend currently contains a technical React mount scaffold;
+product journeys arrive in subsequent issues.
 
 - [Current product requirements](docs/product/LCA_diff_PRD.md)
 - [Current implementation specification](docs/engineering/LCA_diff_Implementation_Specification.md)
@@ -38,16 +38,40 @@ unprivileged host account; all capabilities are dropped. No host UID/GID build
 overrides are needed. See ADR 0003 for the rootless-only development boundary.
 
 Inside the container, run all development tools, package installs and checks.
-There is no application server yet. Port 5173 is reserved on host loopback for
-the later Vite server; after F1 it must listen on `0.0.0.0` inside its container.
-Use VS Code/SSH forwarding to reach the remote host's loopback port.
+The following commands run inside `./dev shell` (or the editor's container terminal):
+
+```sh
+npm --prefix apps/frontend ci
+npm --prefix apps/frontend run dev
+```
+
+Vite listens on `0.0.0.0:5173` inside the container, published on host loopback.
+Use VS Code/SSH forwarding to reach http://localhost:5173. The page is a technical
+mount target, without product shell, authentication or service calls.
+
+For reproducible, noninteractive checks inside the container:
+
+```sh
+npm --prefix apps/frontend run format:check
+npm --prefix apps/frontend run lint
+npm --prefix apps/frontend run typecheck
+npm --prefix apps/frontend run test:unit
+npm --prefix apps/frontend run build
+```
+
+`make format` rewrites formatting; `make lint`, `make typecheck`, `make test-unit`
+(`make test`) and `make frontend-build` wrap the corresponding frontend commands.
+These targets refuse host execution. Dependencies and `dist/` are ignored
+container-created artifacts; the committed lockfile pins installation. Frontend
+CI runs the same locked install and checks in the digest-pinned Node container.
+Browser smoke checks arrive in #10; real integration remains Phase 2 work.
 
 To stop and remove the workspace container, run `./dev down` on the Docker host.
 The source checkout is retained. Container-home caches are disposable. If Make
 already exists on the host, `make dev-up`, `make dev-shell`, `make dev-check` and
 `make dev-down` provide equivalent commands. Do not install host Make just for
-these aliases. Inside the container only `make dev-check` is needed for the
-current environment smoke check; lifecycle commands belong on the Docker host.
+these aliases. `make dev-check` verifies the environment; frontend checks above
+verify the application scaffold. Lifecycle commands belong on the Docker host.
 
 ## Delivery boundaries
 

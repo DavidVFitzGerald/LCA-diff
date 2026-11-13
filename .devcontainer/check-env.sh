@@ -54,4 +54,4 @@ bash .devcontainer/test-preflight.sh
 uv lock --check
 uv sync --frozen
 printf 'PASS: rootless host identity, restricted capabilities, toolchain, frozen lock and workspace writes.\n'
-printf 'No application tests exist yet; this is environment verification only.\n'
+printf 'This checks the environment only; run frontend quality scripts separately.\n'
