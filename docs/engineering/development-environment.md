@@ -1,9 +1,10 @@
 # Container development environment
 
-Status: rootless CLI/runtime verification passed independently for
+Status: M1 environment QA passed; review/merge remains pending for
 [M1 issue #2](https://github.com/DavidVFitzGerald/LCA-diff/issues/2). No application
-code or host package installation is part of this change. Actual editor attachment
-is a separate gate; Compose checks alone cannot prove VS Code reopened successfully.
+code or host package installation is part of this change. CLI/runtime checks were
+independent; the maintainer supplied the successful output in response to the
+requested editor-reopen check. This attribution is distinct from agent-observed GUI evidence.
 
 ## Topology and identity
 
@@ -174,9 +175,13 @@ dependency download. No host runtime or secrets were used.
 Engineering logs are in `/tmp/lca-m1/`; independent QA logs are in
 `/tmp/lca-m1-qa/`. These are local execution artifacts, not new runtime dependencies.
 The committed scripts reproduce the checks. No application tests exist.
-Actual VS Code Remote SSH/Reopen remains **BLOCKED** until editor interaction is
-verified. Do not declare full M1 completion or close issue #2 based on CLI-only
-results. Main approval/merge and F1 readiness remain separate gates.
+The maintainer supplied successful `make dev-check` output in response to the
+requested VS Code Remote SSH/Reopen-in-Container check: all eight preflight cases,
+rootless identity/configuration, frozen lock/sync and workspace writes passed.
+This is maintainer-reported editor evidence, not an independently observed GUI
+session. No runtime source changed after candidate `a9399aa`; later changes record
+documentation evidence. M1 is QA-passed and ready for review; issue #2 remains open
+until approved merge. Main approval/merge and F1 readiness remain separate gates.
 
 ## Primary references
 

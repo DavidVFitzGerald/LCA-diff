@@ -40,7 +40,7 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 | Milestone | Status | Dependency |
 | --- | --- | --- |
 | M0 — workflow and roadmap | Documentation prepared; review/merge pending | None |
-| M1 — container development environment | Rootless CLI, lock, ownership, restart and clean-checkout checks independently passed; actual editor gate pending | M0 review/merge remains open; scoped M1 work authorized |
+| M1 — container development environment | QA passed: independent CLI/runtime checks plus maintainer-reported editor check; ready for review/merge | M0 review/merge remains open; scoped M1 work authorized |
 | M2 — GitHub execution setup | 34 issues and six milestones published; forms/PR guidance pending approved merge and gate verification | Final readiness requires M0/M1 |
 | F1–F5 — Phase 1, frontend with mocks | 30 tasks published; no implementation started | M2, then gates below |
 | B1–B4 — Phase 2, backend and ingestion | Not started | Phase 1 gate, then gates below |
@@ -98,8 +98,9 @@ Bootstrap evidence and commands are tracked in
 validation passed, and rootless Docker is now accessible. The workspace uses
 namespace UID 0 mapped to the unprivileged host account under the guards in ADR
 0003; runtime, lock, ownership, restart and clean-checkout checks passed against
-committed candidate `a9399aa`. Actual editor reopen is still a separate pending
-gate. M1 is not yet fully complete. M2
+committed candidate `a9399aa`. The maintainer supplied successful output in response
+to the requested editor-reopen check; this is attributed user evidence rather than
+agent-observed GUI interaction. M1 is QA-passed and awaiting approved merge. M2
 planning/publication is authorized, but frontend implementation must wait for M1.
 
 ### M2 — GitHub execution setup

@@ -16,7 +16,7 @@ issue chooser can use them. M2 final activation remains open in issue #3.
 | Tracking issue | Current action |
 | --- | --- |
 | [#1](https://github.com/DavidVFitzGerald/LCA-diff/issues/1) — M0 baseline | Review/approve/merge the prepared documentation and Proposed ADRs; do not infer acceptance from issue creation. |
-| [#2](https://github.com/DavidVFitzGerald/LCA-diff/issues/2) — M1 runtime gate | Rootless CLI, frozen lock, clean-checkout/restart/ownership checks independently passed; actual editor reopen confirmation and final review/merge remain pending. |
+| [#2](https://github.com/DavidVFitzGerald/LCA-diff/issues/2) — M1 runtime gate | QA passed: independent rootless/lock/restart/ownership checks plus maintainer-reported editor check. Final review/merge remains pending. |
 | [#3](https://github.com/DavidVFitzGerald/LCA-diff/issues/3) — GitHub execution setup | Labels/milestones/issues published; forms and PR guidance activate only after approved default-branch merge and chooser verification. |
 | [#4](https://github.com/DavidVFitzGerald/LCA-diff/issues/4) — Review protection | GitHub API returns HTTP 403 requiring GitHub Pro or public visibility for this private repo. Maintainer decides; no billing/visibility change was made. Add real CI contexts once available. |
 
