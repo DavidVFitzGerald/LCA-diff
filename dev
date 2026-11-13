@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Host-side Docker lifecycle only; no host runtimes or package managers.
+set -euo pipefail
+repo_dir="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "$repo_dir"
+if [[ "${LCA_DEV_CONTAINER:-}" == 1 ]]; then
+    echo 'Run ./dev on the Docker host. Use the container terminal for development.' >&2
+    exit 1
+fi
+export LOCAL_UID="${LOCAL_UID:-$(id -u)}"
+export LOCAL_GID="${LOCAL_GID:-$(id -g)}"
+if [[ "$LOCAL_UID" == 0 ]]; then
+    echo 'Use a non-root Docker host account for the development workspace.' >&2
+    exit 1
+fi
+compose=(docker compose --project-directory "$repo_dir" --file "$repo_dir/compose.yaml")
+case "${1:-help}" in
+    build) "${compose[@]}" build workspace ;;
+    up) "${compose[@]}" up --detach --build workspace ;;
+    down) "${compose[@]}" down ;;
+    shell) "${compose[@]}" exec workspace bash ;;
+    check) "${compose[@]}" exec -T workspace bash .devcontainer/check-env.sh ;;
+    logs) "${compose[@]}" logs --tail=100 workspace ;;
+    config) "${compose[@]}" config --quiet ;;
+    help)
+        echo 'Usage: ./dev {build|up|shell|check|down|logs|config}'
+        echo 'All development commands run inside the workspace container.' ;;
+    *) echo "Unknown command: $1" >&2; exit 2 ;;
+esac

@@ -38,7 +38,7 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 | Milestone | Status | Dependency |
 | --- | --- | --- |
 | M0 — workflow and roadmap | Documentation prepared; review/merge pending | None |
-| M1 — container development environment | Next; not started | M0 baseline |
+| M1 — container development environment | Configuration prepared; runtime verification blocked by Docker socket access | M0 baseline |
 | M2 — GitHub execution setup | Not started | M1 |
 | F1–F5 — Phase 1, frontend with mocks | Not started | M2, then gates below |
 | B1–B4 — Phase 2, backend and ingestion | Not started | Phase 1 gate, then gates below |
@@ -89,6 +89,11 @@ prove the required tool versions and container lifecycle work, bind mounted file
 have usable permissions, shutdown/restart works, and no dependencies landed on
 the host. Record unavailable checks as blockers. Frontend tooling must be ready
 before F1; later profiles can be added in their own issues.
+
+Bootstrap evidence and commands are tracked in
+[development-environment.md](development-environment.md). Compose configuration
+validation passed; image build, runtime/ownership checks and lock generation await
+Docker access for the current SSH user. M1 is not complete and M2 has not started.
 
 ### M2 — GitHub execution setup
 

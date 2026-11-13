@@ -1,0 +1,28 @@
+{
+  "name": "LCA diff development",
+  "dockerComposeFile": "../compose.yaml",
+  "service": "workspace",
+  "runServices": ["workspace"],
+  "workspaceFolder": "/workspaces/lca-diff",
+  "remoteUser": "vscode",
+  "updateRemoteUserUID": true,
+  "overrideCommand": false,
+  "shutdownAction": "stopCompose",
+  "postCreateCommand": "bash .devcontainer/check-env.sh",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "files.watcherExclude": {
+          "**/node_modules/**": true,
+          "**/.venv/**": true
+        },
+        "search.exclude": {
+          "docs/product/archive/**": true,
+          "docs/engineering/archive/**": true,
+          "docs/reference/**": true
+        }
+      }
+    }
+  }
+}
