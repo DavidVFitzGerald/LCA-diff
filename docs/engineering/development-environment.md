@@ -67,6 +67,17 @@ change host groups, socket modes, services or packages. Group/context changes ma
 require a new SSH login and a restarted editor/agent session. Do not make the
 socket world-writable or pass passwords/tokens into repository commands.
 
+The maintainer prefers a solution without adding `david` to the Docker group.
+Read-only inspection found the rootless setup tools and subordinate UID/GID ranges
+already present, but `newuidmap`/`newgidmap` absent. Docker's documented rootless
+route requires the host `uidmap` package, then user-owned daemon setup and selection
+of the `rootless` context. No package or host configuration change is authorized
+by this note or was performed by the agent. Keep the existing daemon intact;
+the setup tool's `--force` option permits coexistence when explicitly requested.
+Rootless user namespaces map bind-mount ownership differently: verify/adapt the
+current non-root `vscode` user strategy before claiming the workspace is usable
+with that daemon. Simply selecting a context does not prove write access.
+
 VS Code Remote SSH and Dev Containers are prerequisites for the graphical flow;
 the agent cannot verify clicking **Reopen in Container**. Do not auto-install host
 extensions. The CLI flow below exercises the same Dockerfile, Compose service and

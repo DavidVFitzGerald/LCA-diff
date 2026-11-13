@@ -7,6 +7,7 @@ contains requirements, agent workflows and the development environment.
 - [Current product requirements](docs/product/LCA_diff_PRD.md)
 - [Current implementation specification](docs/engineering/LCA_diff_Implementation_Specification.md)
 - [Roadmap and milestone gates](docs/engineering/roadmap.md)
+- [Published frontend issues and dependencies](docs/engineering/frontend-backlog.md)
 - [Agent working instructions](AGENTS.md)
 - [Architecture decision records](docs/adr/README.md)
 - [Development environment details and verification](docs/engineering/development-environment.md)

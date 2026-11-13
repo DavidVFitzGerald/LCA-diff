@@ -25,8 +25,9 @@ All tools, installs, builds and tests run in containers. Nothing is installed on
 the host without permission. Use the stack and repository layout in §3; choose
 compatible pinned versions during environment setup, not by guessing here.
 
-Milestones are larger than issues. Open only the next small dependency-ready
-batch, using Task and Bug forms. Every implementation/fix after bootstrap needs
+Milestones are larger than issues. The maintainer has explicitly requested all
+F1–F5 issues now; keep later phases at roadmap level. Use Task and Bug forms and
+recheck readiness before each task starts. Every implementation/fix after bootstrap needs
 an issue before starting. Each issue must fit one session including checks,
 commits and handoff; normally it produces one PR. Split by an independently
 verifiable outcome rather than by arbitrary file count. A milestone is complete
@@ -39,8 +40,8 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 | --- | --- | --- |
 | M0 — workflow and roadmap | Documentation prepared; review/merge pending | None |
 | M1 — container development environment | Configuration prepared; runtime verification blocked by Docker socket access | M0 baseline |
-| M2 — GitHub execution setup | Not started | M1 |
-| F1–F5 — Phase 1, frontend with mocks | Not started | M2, then gates below |
+| M2 — GitHub execution setup | 34 issues and six milestones published; forms/PR guidance pending approved merge and gate verification | Final readiness requires M0/M1 |
+| F1–F5 — Phase 1, frontend with mocks | 30 tasks published; no implementation started | M2, then gates below |
 | B1–B4 — Phase 2, backend and ingestion | Not started | Phase 1 gate, then gates below |
 | I1 — real frontend integration | Not started | B2 and validated synthetic publication from B4 |
 | R1–R2 — production readiness and release | Not started | Dependencies below |
@@ -48,8 +49,9 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 M0–M2 are the explicitly authorized documentation/environment bootstrap exception
 to issue-first execution. When M2 opens initial issues, record roadmap/environment
 work already performed as such; do not fabricate earlier issue or QA history.
-Role agents are used for implementation tasks after bootstrap, not for this
-roadmap preparation. This file creates no GitHub issues or milestones itself.
+Role agents were not used for the original roadmap preparation. For M2, the PM
+role agents groom the requested frontend backlog and QA reviews the plans. This
+does not constitute application QA or make dependency-blocked issues ready.
 
 ## Preparation
 
@@ -93,7 +95,8 @@ before F1; later profiles can be added in their own issues.
 Bootstrap evidence and commands are tracked in
 [development-environment.md](development-environment.md). Compose configuration
 validation passed; image build, runtime/ownership checks and lock generation await
-Docker access for the current SSH user. M1 is not complete and M2 has not started.
+Docker access for the current SSH user. M1 is not complete. M2 planning/publication
+is explicitly authorized in parallel, but implementation must wait for M1.
 
 ### M2 — GitHub execution setup
 
@@ -105,10 +108,11 @@ review/CI protection when permissions and working checks permit; report any
 admin-access blocker. Do not declare nonexistent checks required or successful.
 
 Gate: forms work in GitHub, programmatic bodies contain their required sections,
-bootstrap work is recorded honestly, and the first small implementation batch is
-groomed with dependencies, criteria, container verification and role handoffs.
-No product implementation precedes this gate. Do not expand all later milestones
-into issues now.
+bootstrap work is recorded honestly, and the requested F1–F5 backlog is groomed
+with dependencies, criteria, container verification and role handoffs. Form
+activation requires approved default-branch merge; issue publication alone does
+not satisfy it. No product implementation precedes the applicable M1/M2 gates.
+Do not expand backend or post-MVP milestones into issues yet.
 
 ## Phase 1 — complete frontend using mock services
 
@@ -317,21 +321,28 @@ scope loss; test numbers refer to the 19 mandatory behaviors in §9.2.
 | Future insertion points without future features (§10) | F1/B1/B3/B2 as applicable; inspect at I1 | Review against DESIGN-NOW scope |
 | Conservative defaults and external verification (§11) | B3/R2 data gates; R1 licensing/operations | Relevant failure/gating cases |
 
-## Progressive issue creation and session handoffs
+## Published frontend issues and session handoffs
 
-At M2, inspect GitHub first and create only bootstrap records plus the next small
-F1 batch. Candidate slices, to groom into Task issues rather than treat as issued:
+The maintainer requested the full F1–F5 backlog at M2. The
+[frontend issue index](frontend-backlog.md) links all 30 session-sized tasks and
+their implementation dependencies: F1 has 6, F2 has 5, F3 has 4, F4 has 7, and F5
+has 8. Four additional bootstrap issues track baseline review, unfinished runtime
+verification, GitHub setup and the private-repository branch-protection limitation.
+No backend or post-MVP issues were created.
 
-1. Container-runnable frontend scaffold with typecheck/build and unit-test CI.
-2. Typed service/auth interfaces and synthetic precision/missingness fixtures.
-3. Asynchronous mock adapter with windows, errors, cancellation and revision tests.
-4. Mock-mode browser smoke harness and applicable PR gate.
+Task/Bug forms are copied to `.github/ISSUE_TEMPLATE/` and a PR handoff template
+is prepared. The `task`, `bug`, `frontend`, `bootstrap`, and `blocked` labels are
+available. GitHub form activation still needs approved merge into `main` and
+chooser verification. GitHub reports HTTP 403 for native branch protection under
+the current private-repository plan; no visibility/billing change was made and no
+nonexistent CI contexts were configured. M1 runtime verification remains blocked.
 
-Keep the first batch small; create remaining F1/F2 slices when prerequisites are
-clear. The scaffold may include a minimal technical mount target but leaves the
-product shell/auth UX to F2. Each candidate still needs the full template, explicit
-dependencies and a session-sized QA plan. If any candidate is too large, split it.
-Later milestone headings are not ready-to-implement issue bodies.
+PM role agents groomed the frontend bodies and independent QA reviewed their
+documentation coverage and dependency graph. All implementation issues remain
+blocked on their stated predecessors/environment gates; recheck the scope and
+interfaces before starting, and split further if a slice will exceed a session.
+The first scaffold leaves product shell/auth UX to F2. Later backend milestone
+headings are not ready-to-implement issue bodies.
 
 PM grooms using [product-manager.md](../team/product-manager.md); Engineering
 implements one issue and commits regularly; QA checks the delivered SHA and

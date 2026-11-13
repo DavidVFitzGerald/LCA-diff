@@ -73,13 +73,17 @@ DESIGN-NOW interfaces without implementing POST-MVP features.
 2. **Roadmap:** create `docs/engineering/roadmap.md` with milestones, dependencies,
    completion gates, and specification coverage, including testing, security,
    ETL, publication and deployment. Keep distant work at milestone level; groom
-   only the next small batch of tasks.
+   only the next small batch by default. The maintainer has now explicitly
+   requested the complete Phase 1 backlog (F1–F5); keep later phases at milestone
+   level and recheck each frontend issue before starting it.
 3. **Dev environment:** prepare and verify pinned Dev Container/Compose tooling
    and documented container commands. No product implementation during setup.
    Track roadmap/environment bootstrap work as initial Task issues when issue
    setup begins, accurately recording any work already completed.
-4. **Issue setup:** activate forms, verify labels, and open/groom an initial small
-   dependency-ordered batch. Every subsequent implementation or fix needs a
+4. **Issue setup:** activate forms, verify labels, and open/groom the requested
+   dependency-ordered F1–F5 backlog. Planning/publication may proceed while M1 is
+   blocked, but frontend implementation still requires verified M1 and merged
+   bootstrap configuration. Every subsequent implementation or fix needs a
    GitHub issue before work starts. This ends the documentation/bootstrap
    exception; do not create the entire MVP backlog in advance.
 5. **Phase 1 — frontend with mocks:** build all MVP UI journeys using React,
