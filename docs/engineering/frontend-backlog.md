@@ -1,7 +1,8 @@
 # Frontend GitHub backlog
 
 Status: published planning baseline, 13 November 2026. All 30 frontend tasks are
-open and dependency-blocked; no application implementation or test PASS is claimed.
+open; bootstrap delivery is merged and chooser activation is maintainer-verified.
+No application implementation or test PASS is claimed.
 
 Read [the roadmap](roadmap.md) and [AGENTS.md](../../AGENTS.md) for requirements
 precedence, containers, role handoffs and completion gates. GitHub issue bodies
@@ -9,7 +10,8 @@ are the actionable plans; this index does not replace their criteria.
 
 Review/publish baseline: [PR #35](https://github.com/DavidVFitzGerald/LCA-diff/pull/35).
 Merged into `main` at `f809b179c5c54f47be32ec7b24a9abce36b64982`.
-M2 final chooser verification remains open in issue #3.
+The maintainer confirmed both Task and Bug visible in GitHub's rendered chooser
+on 2026-11-13. See [M2 verification](m2-verification.md) for the handoff.
 
 ## Preparation and blockers
 
@@ -17,7 +19,7 @@ M2 final chooser verification remains open in issue #3.
 | --- | --- |
 | [#1](https://github.com/DavidVFitzGerald/LCA-diff/issues/1) — M0 baseline | Baseline and ADRs merged in PR #35; merge evidence is recorded in the ADR index. |
 | [#2](https://github.com/DavidVFitzGerald/LCA-diff/issues/2) — M1 runtime gate | QA passed: independent rootless/lock/restart/ownership checks plus maintainer-reported editor check; merged in PR #35. |
-| [#3](https://github.com/DavidVFitzGerald/LCA-diff/issues/3) — GitHub execution setup | Labels/milestones/issues published; forms and PR guidance merged; final chooser verification pending. |
+| [#3](https://github.com/DavidVFitzGerald/LCA-diff/issues/3) — GitHub execution setup | Labels/milestones/issues published; forms and PR guidance merged; maintainer confirmed Task and Bug in chooser. |
 | [#4](https://github.com/DavidVFitzGerald/LCA-diff/issues/4) — Review protection | Originally HTTP 403 on the private plan; repository now reports public, but main protection returns HTTP 404 (not protected). This session changed no visibility/billing settings. Add real CI contexts once available. |
 
 Planning/publication was authorized despite the pending M1 verification. Frontend
