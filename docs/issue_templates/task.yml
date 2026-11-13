@@ -9,7 +9,7 @@ body:
     attributes:
       value: |
         Use for features, docs, tooling, infrastructure, refactoring or investigations.
-        Follow AGENTS.md and docs/team/product_manager.md. Split work that cannot fit
+        Follow AGENTS.md and docs/team/product-manager.md. Split work that cannot fit
         one session including checks and handoff. Reference documents by path/section.
         PM grooms, Engineer implements, QA verifies; the coordinator closes after merge.
   - type: dropdown

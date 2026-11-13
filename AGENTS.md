@@ -32,7 +32,7 @@ DESIGN-NOW interfaces without implementing POST-MVP features.
 
 ## Delivery sequence and gates
 
-1. **Workflow documentation (current step):** establish this file, roles, and
+1. **Workflow documentation:** establish this file, roles, and
    templates. No application implementation or role-agent runs yet.
 2. **Roadmap:** create `docs/engineering/roadmap.md` with milestones, dependencies,
    completion gates, and specification coverage, including testing, security,
@@ -80,7 +80,7 @@ Use these role agents once implementation begins:
 
 | Role | Instructions | Responsibility |
 | --- | --- | --- |
-| Product Manager | `docs/team/product_manager.md` | Groom tasks/bugs, scope, dependencies, criteria |
+| Product Manager | `docs/team/product-manager.md` | Groom tasks/bugs, scope, dependencies, criteria |
 | Software Engineer | `docs/team/software-engineer.md` | Implement one ready issue, validate, commit, hand off |
 | QA Engineer | `docs/team/qa-engineer.md` | Independently verify the delivered commit and report |
 
