@@ -114,9 +114,10 @@ do not switch the maintainer's Docker contexts. Run them separately with
 
 The smoke check validates rootless identity evidence, runtime restrictions, pinned
 major/minor runtimes, JSON/TOML configuration, file write/ownership, the single
-lockfile and frozen sync. It reports no application tests exist. Future `format`,
-`lint`, `typecheck`, `test`, `test-unit`, `test-integration`, `test-e2e` and `import`
-Make targets arrive with real runnable components, not no-op success placeholders.
+lockfile and frozen sync; application checks run separately. Frontend `format`,
+`lint`, `typecheck`, `test`, `test-unit` and `frontend-build` Make targets now wrap
+the npm scripts documented in README. `test-integration`, `test-e2e` and `import`
+arrive with their components, rather than no-op success placeholders.
 
 Port 5173 is published on host loopback. F1's Vite
 server binds `0.0.0.0:5173` inside the container; use SSH/VS Code forwarding to
