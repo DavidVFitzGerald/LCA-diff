@@ -1,8 +1,8 @@
 # Container development environment
 
-Status: M1 environment QA passed; review/merge remains pending for
-[M1 issue #2](https://github.com/DavidVFitzGerald/LCA-diff/issues/2). No application
-code or host package installation is part of this change. CLI/runtime checks were
+Status: M1 environment QA passed and merged in PR #35; M2 activation records
+merged in PR #36. Frontend scaffold commands now live in the root README.
+No host package installation is part of this change. CLI/runtime checks were
 independent; the maintainer supplied the successful output in response to the
 requested editor-reopen check. This attribution is distinct from agent-observed GUI evidence.
 
@@ -118,8 +118,8 @@ lockfile and frozen sync. It reports no application tests exist. Future `format`
 `lint`, `typecheck`, `test`, `test-unit`, `test-integration`, `test-e2e` and `import`
 Make targets arrive with real runnable components, not no-op success placeholders.
 
-Port 5173 is reserved on host loopback, with no application server yet. F1's Vite
-server must bind `0.0.0.0:5173` inside the container; use SSH/VS Code forwarding to
+Port 5173 is published on host loopback. F1's Vite
+server binds `0.0.0.0:5173` inside the container; use SSH/VS Code forwarding to
 reach the host loopback publication. Later Compose profiles introduce backend
 services without making them prerequisites for the mock frontend.
 
