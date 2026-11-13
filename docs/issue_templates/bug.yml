@@ -1,0 +1,97 @@
+# Canonical source; copy to .github/ISSUE_TEMPLATE/ during issue setup.
+# Keep the active copy synchronized. CLI/API bodies must use these sections too.
+name: Bug
+description: A reproducible defect in existing behavior, scoped to one session
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Follow AGENTS.md and the team role documents. PM grooms, Engineer fixes,
+        QA verifies. Report in-scope unfinished work on its existing issue rather
+        than creating duplicates. Do not paste secrets, licensed raw rows or full logs.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary and impact
+      description: What is broken, who is affected and whether this blocks a milestone or release.
+    validations:
+      required: true
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Delivery phase
+      options:
+        - Workflow / roadmap / environment bootstrap
+        - Phase 1 - frontend with mock services
+        - Phase 2 - backend and real integration
+        - MVP release / operations
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact numbered steps or container commands, synthetic fixture/input, preconditions and auth state. State frequency and any investigation needed if not yet reproducible.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior and authority
+      description: Expected outcome with specification section, accepted ADR or original issue criterion.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Observed result with minimal safe error text or screenshots.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and version
+      description: Commit SHA, container image/tool versions, browser if relevant, mock/real adapter, synthetic release/revision and configuration. Mark unknowns explicitly.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and dependencies
+      description: Suspected files or unknown; related issue/PR/roadmap links, blocking dependencies or None. Define the bounded fix scope before marking ready.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Objective criteria; regression test fails before and passes after where feasible. Explain exceptions with reproducible alternative evidence.
+      value: |
+        - [ ] AC1 - The reproduction produces the specified expected behavior.
+        - [ ] AC2 - A regression test demonstrates failure before the fix and passes after, or a justified alternative check is documented.
+        - [ ] AC3 - Applicable checks pass and affected existing behavior remains correct.
+    validations:
+      required: true
+  - type: textarea
+    id: test-plan
+    attributes:
+      label: Regression and verification plan
+      description: Exact container commands, fixtures, expected results and relevant existing checks; distinguish mock-only from real integration evidence.
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope and follow-ups
+      description: No unrelated fixes/refactors; link deferred required work to issues. Write None if appropriate.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: |
+        Engineer records branch/SHA and before/after checks, leaving this issue open.
+        QA reports PASS/FAIL/BLOCKED with evidence per criterion at that SHA.
+        Coordinator closes only after required checks, QA and approved merge.
