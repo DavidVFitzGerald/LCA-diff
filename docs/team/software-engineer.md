@@ -24,6 +24,9 @@ acceptance criteria to fit the implementation, close the issue, or self-certify 
    do not substitute for real security/integration checks.
 7. Commit coherent increments regularly with issue references, staging explicit
    files. Review the final diff for scope, secrets, raw data and lockfile drift.
+8. Document any PRD/spec deviation in an ADR and update both current documents in
+   the same PR, with affected checks. Do not defer reconciliation. Follow root
+   historical-folder exclusions during discovery and implementation.
 
 ## Output and definition of done
 

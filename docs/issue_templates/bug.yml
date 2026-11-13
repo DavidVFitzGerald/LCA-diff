@@ -40,7 +40,7 @@ body:
     id: expected
     attributes:
       label: Expected behavior and authority
-      description: Expected outcome with specification section, accepted ADR or original issue criterion.
+      description: Expected outcome with current specification/PRD section, accepted ADR or original issue criterion. Exclude archive/reference folders. Any deviation requires an ADR and updates to both current documents in the same PR.
     validations:
       required: true
   - type: textarea

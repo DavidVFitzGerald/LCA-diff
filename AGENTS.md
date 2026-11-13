@@ -18,11 +18,47 @@ until implemented. Do not claim to run missing tools or complete unverified work
 ## Authority and scope
 
 Follow specification §0.2: approved-and-merged accepted ADRs on `main` → current
-specification on `main` → PRD → historical references/discovery notes → incidental
+specification on `main` → current PRD → incidental
 issue text. Raw inputs govern their actual contents. Code, tests, draft ADRs,
 and acceptance criteria cannot silently change product/scientific meaning.
 Resolve conflicting accepted ADRs by explicit supersession; raise a blocker if
 precedence is unclear. Preserve historical reference files.
+
+Every decision that deviates from the current PRD or specification requires a
+numbered ADR in `docs/adr/` and updates to **both current documents in the same
+PR**. Follow `docs/adr/README.md`; do not defer reconciliation to a later issue.
+Record affected sections, rationale, alternatives, consequences, and test/migration
+impacts. Approval/merge authority is unchanged: a proposed ADR is not accepted
+merely because its author or an agent changes its status. Ordinary choices within
+the existing contracts need no ADR. PM checks this before readiness; Engineering
+includes the documents with the change; QA verifies consistency before PASS.
+
+## Historical material excluded from agent context
+
+Do not read, cite, summarize, or use the following folders for planning,
+implementation, decisions, tests, or role-agent context unless the maintainer
+explicitly requests a historical investigation:
+
+- `docs/product/archive/`
+- `docs/engineering/archive/`
+- `docs/reference/`
+
+These files remain tracked for human reference but have no implementation
+authority. Do not follow links into them, including historical source lists in
+the specification. Do not include them in broad reads or delegate them to agents.
+Use exact current paths. For repository-wide searches/listings, exclude them:
+
+```sh
+rg --glob '!docs/product/archive/**' --glob '!docs/engineering/archive/**' --glob '!docs/reference/**' <pattern> .
+rg --files --glob '!docs/product/archive/**' --glob '!docs/engineering/archive/**' --glob '!docs/reference/**'
+```
+
+Root `.ignore` also excludes them from default ripgrep searches; do not bypass it
+with unrestricted `find`, recursive `cat`, `rg --no-ignore`, or similar discovery.
+Nested `AGENTS.md` files provide a reminder if a folder is entered explicitly.
+These are workflow/search guardrails, not filesystem access controls. If required
+information is absent from current docs, report the gap rather than mining old
+versions. Explicit historical access does not restore their normative authority.
 
 The maintainer requests the frontend-first delivery sequence below instead of
 specification §12's suggested order. This changes scheduling, not MVP scope.

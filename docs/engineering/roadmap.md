@@ -10,6 +10,12 @@ Read [AGENTS.md](../../AGENTS.md), the [PRD](../product/LCA_diff_PRD.md), and th
 working. Specification references below use its section numbers. Approved,
 merged ADRs on `main` take precedence as described in §0.2.
 
+Every deviation requires an ADR and synchronized updates to both current PRD and
+specification in the same PR; follow [the ADR workflow](../adr/README.md).
+Historical archive/reference folders are excluded from agent context and searches
+under root `AGENTS.md`. The initial ADRs record this governance and the previously
+requested frontend-first order; they are Proposed until approved and merged.
+
 This roadmap follows the maintainer's requested order instead of §12's suggested
 sequence: workflow → roadmap → dev environment → GitHub issues → complete mock
 frontend → backend → real frontend integration → production readiness. It does
@@ -88,7 +94,7 @@ before F1; later profiles can be added in their own issues.
 
 Scope: inspect existing repository issues/labels/settings; activate synchronized
 copies of the two source forms in `.github/ISSUE_TEMPLATE/`; verify/create Task
-and Bug labels. Establish ADR index/workflow, PR handoff guidance and roadmap
+and Bug labels. Verify the existing ADR index/workflow; establish PR handoff guidance and roadmap
 links as small documentation tasks if not already present. Configure relevant
 review/CI protection when permissions and working checks permit; report any
 admin-access blocker. Do not declare nonexistent checks required or successful.

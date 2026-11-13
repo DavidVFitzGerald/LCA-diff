@@ -25,6 +25,9 @@ application code. Follow the frontend-first, backend-second delivery sequence.
    features may reference roadmap/spec sections without opening new issues.
 8. Mark ready only when dependencies are complete and decisions are unambiguous.
    Criteria cannot override the spec or grant authority to an unmerged ADR.
+9. For any deviation from the current PRD/spec, require an ADR and updates to
+   both current documents in the same PR; follow `docs/adr/README.md`. Exclude
+   archive/reference folders from reading, searches and delegated context.
 
 ## Output and definition of done
 

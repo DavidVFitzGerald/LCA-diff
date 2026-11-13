@@ -20,6 +20,9 @@ criteria to get a pass. Do not close issues.
 5. Report in-scope failures on the original issue. Use
    `docs/issue_templates/bug.yml` for separate defects and link them. Avoid
    duplicate Bug issues for unfinished work already tracked by the active issue.
+6. Verify PRD/spec deviations have an ADR and consistent updates to both current
+   documents in the same PR. Missing reconciliation blocks PASS. Check historical
+   folders were not used as authority; follow root context/search exclusions.
 
 ## Verdict and definition of done
 

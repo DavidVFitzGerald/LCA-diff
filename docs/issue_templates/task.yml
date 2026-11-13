@@ -34,7 +34,7 @@ body:
     id: context
     attributes:
       label: Context and authority
-      description: Specification sections, accepted ADRs, roadmap milestone, files to read/change and existing patterns. Mark new paths as planned.
+      description: Current specification/PRD sections, accepted ADRs, roadmap milestone and files to read/change. Exclude archive/reference folders. Deviations require an ADR and updates to both current documents in the same PR. Mark new paths as planned.
     validations:
       required: true
   - type: textarea

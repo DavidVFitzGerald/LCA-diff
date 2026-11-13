@@ -37,7 +37,11 @@ Use a **single uv workspace** for Python packages; **Ruff**, **MyPy**, **Pydanti
 
 ## 6. Governance and post-MVP
 
-Keep the original description as **historical reference** and the PRD/specification as **living GitHub Markdown documents**. Record material changes through **Architecture Decision Records (ADRs)**. An ADR becomes authoritative **only after its PR is approved and merged into `main`**; accepted ADRs override conflicting specification text until that text is updated. GitHub Issues track implementation rather than changing architectural authority.
+Keep this PRD and the current specification as **living GitHub Markdown documents**. Every decision deviating from either requires a numbered **Architecture Decision Record (ADR)** in `docs/adr/` and updates to **both current documents in the same PR**; do not defer reconciliation. An ADR becomes authoritative **only after its PR is approved and merged into `main`**. Accepted ADRs govern if an unexpected inconsistency remains, which must be corrected. GitHub Issues track implementation rather than changing architectural authority. See `docs/adr/README.md` for the workflow.
+
+The old documents in `docs/product/archive/` and `docs/engineering/archive/`, and all of `docs/reference/`, remain for human historical reference. Agents must exclude them from routine reading, searching, citations and delegated context unless explicitly asked to investigate history; they are not sources of implementation requirements.
+
+**Delivery sequence:** establish workflow/roadmap, then container tooling and initial issues. Phase 1 builds the complete frontend against a centralized typed services layer with deterministic mock data and simulated authentication, runnable without a real backend or Firebase project. Phase 2 implements the backend/ingestion and connects a real adapter, replacing provisional types with generated OpenAPI DTOs. Mock mode must be explicit and cannot silently substitute for production failures. All real authentication, ingestion, publication, deployment and quality requirements remain MVP gates; a mock demo is not a completed MVP. See `docs/engineering/roadmap.md` for milestone gates.
 
 Post-MVP: curated cross-release/database flow and indicator mappings; assisted one-to-many/many-to-many process matching; multiple source adapters; multi-output processes; user uploads and licensing entitlements; metadata tab; detailed exchange inspection; named cloud-saved comparisons; exports; zoom, rearrangeable rows and fuzzy search; common-method LCIA recalculation.
 
