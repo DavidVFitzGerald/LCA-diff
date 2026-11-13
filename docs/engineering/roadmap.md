@@ -15,7 +15,9 @@ specification in the same PR; follow [the ADR workflow](../adr/README.md).
 Historical archive/reference folders are excluded from agent context and searches
 under root `AGENTS.md`. The initial ADRs record this governance and the previously
 requested frontend-first order; ADR 0003 records the rootless workspace identity.
-All remain Proposed until approved and merged.
+All three were accepted through the maintainer's merge of
+[PR #35](https://github.com/DavidVFitzGerald/LCA-diff/pull/35), commit
+`f809b179c5c54f47be32ec7b24a9abce36b64982`; see the ADR index for attribution.
 
 This roadmap follows the maintainer's requested order instead of §12's suggested
 sequence: workflow → roadmap → dev environment → GitHub issues → complete mock
@@ -39,9 +41,9 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 
 | Milestone | Status | Dependency |
 | --- | --- | --- |
-| M0 — workflow and roadmap | Documentation prepared; review/merge pending | None |
-| M1 — container development environment | QA passed: independent CLI/runtime checks plus maintainer-reported editor check; ready for review/merge | M0 review/merge remains open; scoped M1 work authorized |
-| M2 — GitHub execution setup | 34 issues and six milestones published; forms/PR guidance pending approved merge and gate verification | Final readiness requires M0/M1 |
+| M0 — workflow and roadmap | Baseline merged in PR #35 | None |
+| M1 — container development environment | QA passed; runtime/editor evidence merged in PR #35 | M0 baseline merged |
+| M2 — GitHub execution setup | 34 issues and six milestones published; forms/PR guidance merged; chooser verification pending in #3 | M0/M1 delivered; final activation check remains |
 | F1–F5 — Phase 1, frontend with mocks | 30 tasks published; no implementation started | M2, then gates below |
 | B1–B4 — Phase 2, backend and ingestion | Not started | Phase 1 gate, then gates below |
 | I1 — real frontend integration | Not started | B2 and validated synthetic publication from B4 |
@@ -100,8 +102,8 @@ namespace UID 0 mapped to the unprivileged host account under the guards in ADR
 0003; runtime, lock, ownership, restart and clean-checkout checks passed against
 committed candidate `a9399aa`. The maintainer supplied successful output in response
 to the requested editor-reopen check; this is attributed user evidence rather than
-agent-observed GUI interaction. M1 is QA-passed and awaiting approved merge. M2
-planning/publication is authorized, but frontend implementation must wait for M1.
+agent-observed GUI interaction. M1's QA-passed delivery is merged in PR #35.
+Frontend implementation still requires M2 activation verification in #3.
 
 ### M2 — GitHub execution setup
 
@@ -337,11 +339,12 @@ No backend or post-MVP issues were created.
 
 Task/Bug forms are copied to `.github/ISSUE_TEMPLATE/` and a PR handoff template
 is prepared. The `task`, `bug`, `frontend`, `bootstrap`, and `blocked` labels are
-available. GitHub form activation still needs approved merge into `main` and
-chooser verification. GitHub reports HTTP 403 for native branch protection under
-the current private-repository plan; no visibility/billing change was made and no
-nonexistent CI contexts were configured. M1's former socket-access blocker is
-resolved; its runtime/editor acceptance remains tracked independently in issue #2.
+available. Forms and PR guidance are merged into `main`; chooser verification
+remains in #3. The original private-repository protection probe returned HTTP 403.
+On this follow-up, GitHub reports the repository public and main protection returns
+HTTP 404, "Branch not protected". This session changed neither visibility nor
+billing. Effective protection remains tracked in #4; no nonexistent CI contexts
+were configured. M1's runtime/editor evidence in #2 is merged in PR #35.
 
 PM role agents groomed the frontend bodies and independent QA reviewed their
 documentation coverage and dependency graph. All implementation issues remain

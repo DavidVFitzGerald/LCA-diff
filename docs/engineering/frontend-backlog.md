@@ -8,17 +8,17 @@ precedence, containers, role handoffs and completion gates. GitHub issue bodies
 are the actionable plans; this index does not replace their criteria.
 
 Review/publish baseline: [PR #35](https://github.com/DavidVFitzGerald/LCA-diff/pull/35).
-The branch is pushed; forms require approved merge into `main` before GitHub's
-issue chooser can use them. M2 final activation remains open in issue #3.
+Merged into `main` at `f809b179c5c54f47be32ec7b24a9abce36b64982`.
+M2 final chooser verification remains open in issue #3.
 
 ## Preparation and blockers
 
 | Tracking issue | Current action |
 | --- | --- |
-| [#1](https://github.com/DavidVFitzGerald/LCA-diff/issues/1) — M0 baseline | Review/approve/merge the prepared documentation and Proposed ADRs; do not infer acceptance from issue creation. |
-| [#2](https://github.com/DavidVFitzGerald/LCA-diff/issues/2) — M1 runtime gate | QA passed: independent rootless/lock/restart/ownership checks plus maintainer-reported editor check. Final review/merge remains pending. |
-| [#3](https://github.com/DavidVFitzGerald/LCA-diff/issues/3) — GitHub execution setup | Labels/milestones/issues published; forms and PR guidance activate only after approved default-branch merge and chooser verification. |
-| [#4](https://github.com/DavidVFitzGerald/LCA-diff/issues/4) — Review protection | GitHub API returns HTTP 403 requiring GitHub Pro or public visibility for this private repo. Maintainer decides; no billing/visibility change was made. Add real CI contexts once available. |
+| [#1](https://github.com/DavidVFitzGerald/LCA-diff/issues/1) — M0 baseline | Baseline and ADRs merged in PR #35; merge evidence is recorded in the ADR index. |
+| [#2](https://github.com/DavidVFitzGerald/LCA-diff/issues/2) — M1 runtime gate | QA passed: independent rootless/lock/restart/ownership checks plus maintainer-reported editor check; merged in PR #35. |
+| [#3](https://github.com/DavidVFitzGerald/LCA-diff/issues/3) — GitHub execution setup | Labels/milestones/issues published; forms and PR guidance merged; final chooser verification pending. |
+| [#4](https://github.com/DavidVFitzGerald/LCA-diff/issues/4) — Review protection | Originally HTTP 403 on the private plan; repository now reports public, but main protection returns HTTP 404 (not protected). This session changed no visibility/billing settings. Add real CI contexts once available. |
 
 Planning/publication was authorized despite the pending M1 verification. Frontend
 implementation starts at [#5](https://github.com/DavidVFitzGerald/LCA-diff/issues/5) only after [#2](https://github.com/DavidVFitzGerald/LCA-diff/issues/2) and [#3](https://github.com/DavidVFitzGerald/LCA-diff/issues/3)

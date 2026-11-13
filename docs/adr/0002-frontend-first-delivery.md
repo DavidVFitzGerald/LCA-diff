@@ -1,6 +1,8 @@
 # 0002 — Frontend-first delivery through a services boundary
 
-Status: **Proposed** (not approved and merged into `main`).
+Status: **Accepted** through the maintainer's merge of
+[PR #35](https://github.com/DavidVFitzGerald/LCA-diff/pull/35) into `main`,
+commit `f809b179c5c54f47be32ec7b24a9abce36b64982` (2026-11-13).
 Date: 2026-11-13.
 Scope: MVP delivery order; product scope and technology choices unchanged.
 Supersedes: no previous ADR; revises specification §12's suggested sequencing.
@@ -51,5 +53,5 @@ omit any backend requirement or install tools on the host.
 
 No runtime change or migration in this documentation PR. Future verification:
 Phase 1 container-only mock UI/component/E2E checks, then Phase 2 real auth/API,
-generated-contract parity and E2E checks per the roadmap and §9.2. Approval/merge
-evidence is pending; no issue ID is invented during bootstrap.
+generated-contract parity and E2E checks per the roadmap and §9.2. Merge evidence
+is linked above; the original preparation preceded issue setup (now tracked in #1).
