@@ -43,7 +43,7 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 | --- | --- | --- |
 | M0 — workflow and roadmap | Baseline merged in PR #35 | None |
 | M1 — container development environment | QA passed; runtime/editor evidence merged in PR #35 | M0 baseline merged |
-| M2 — GitHub execution setup | 34 issues and six milestones published; forms/PR guidance merged; chooser verification pending in #3 | M0/M1 delivered; final activation check remains |
+| M2 — GitHub execution setup | Forms/PR guidance merged; maintainer verified both chooser forms; gate-record reconciliation in review for #3 | M0/M1 delivered |
 | F1–F5 — Phase 1, frontend with mocks | 30 tasks published; no implementation started | M2, then gates below |
 | B1–B4 — Phase 2, backend and ingestion | Not started | Phase 1 gate, then gates below |
 | I1 — real frontend integration | Not started | B2 and validated synthetic publication from B4 |
@@ -103,7 +103,7 @@ namespace UID 0 mapped to the unprivileged host account under the guards in ADR
 committed candidate `a9399aa`. The maintainer supplied successful output in response
 to the requested editor-reopen check; this is attributed user evidence rather than
 agent-observed GUI interaction. M1's QA-passed delivery is merged in PR #35.
-Frontend implementation still requires M2 activation verification in #3.
+M2 chooser activation is now maintainer-verified; #3 records the final handoff.
 
 ### M2 — GitHub execution setup
 
@@ -339,8 +339,9 @@ No backend or post-MVP issues were created.
 
 Task/Bug forms are copied to `.github/ISSUE_TEMPLATE/` and a PR handoff template
 is prepared. The `task`, `bug`, `frontend`, `bootstrap`, and `blocked` labels are
-available. Forms and PR guidance are merged into `main`; chooser verification
-remains in #3. The original private-repository protection probe returned HTTP 403.
+available. Forms and PR guidance are merged into `main`; the maintainer confirmed
+both forms visible in the rendered chooser. See [M2 verification](m2-verification.md).
+The original private-repository protection probe returned HTTP 403.
 On this follow-up, GitHub reports the repository public and main protection returns
 HTTP 404, "Branch not protected". This session changed neither visibility nor
 billing. Effective protection remains tracked in #4; no nonexistent CI contexts
