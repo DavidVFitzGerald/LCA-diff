@@ -33,6 +33,8 @@ Conservatively match workbook rows to XML processes without assuming row order o
 
 Use a **single uv workspace** for Python packages; **Ruff**, **MyPy**, **Pydantic**, **Loguru**, and **python-dotenv** for development configuration. Backend: **FastAPI + SQLAlchemy/Alembic + PostgreSQL**; frontend: React/TypeScript. Use Docker/Dev Containers locally; deploy frontend and backend as separate **Cloud Run** services and PostgreSQL on **Cloud SQL**; Terraform provisions cloud resources. Airflow/PySpark remain local initially. Cloud secrets use Secret Manager, not deployed `.env` files.
 
+The local workspace uses **rootless Docker** without host Docker-group membership. Its namespace UID 0 maps to the unprivileged host user for writable source mounts, with all capabilities dropped and no-new-privileges enabled. Supported launch paths reject rootful daemons; tools run inside containers and host installs require permission. This development identity does not relax unprivileged production-runtime requirements. See ADR 0003 and the development-environment guide.
+
 **Unit, integration and browser end-to-end testing are MVP requirements:** pytest and database/Spark/Airflow integration tests, Vitest, and Playwright. GitHub Actions runs Ruff/MyPy, unit, targeted integration and E2E smoke tests on every PR; full suites run on demand and before release.
 
 ## 6. Governance and post-MVP

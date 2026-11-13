@@ -165,6 +165,13 @@ Docker/Dev Container lifecycle commands are permitted without host installation.
 CI tools run in containers too. Documentation-only inspection/editing can proceed
 before the environment exists without bootstrapping a host toolchain.
 
+For the local workspace, use rootless Docker and the guarded `./dev`/Dev Containers
+entry points. Namespace UID 0 maps to the unprivileged daemon-owner host account;
+it is intentional for writable host-owned bind mounts, not host-root permission.
+Require rootless preflight, all capabilities dropped and no-new-privileges. Do not
+substitute a rootful daemon or copy the workspace identity policy into production.
+See ADR 0003 and the development-environment guide for validation and boundaries.
+
 Follow specification §3's stack and layout: React/TypeScript/Vite, TanStack Query;
 Python FastAPI, Pydantic v2/Settings; SQLAlchemy 2.x, Alembic, PostgreSQL; Airflow,
 PySpark; Ruff, MyPy, Loguru, python-dotenv; pytest/pytest-cov, Vitest/React Testing

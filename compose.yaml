@@ -4,19 +4,19 @@ services:
     build:
       context: .
       dockerfile: .devcontainer/Dockerfile
-      args:
-        LOCAL_UID: ${LOCAL_UID:-1000}
-        LOCAL_GID: ${LOCAL_GID:-1000}
     init: true
-    user: vscode
+    # Rootless Docker maps namespace UID/GID 0 to the unprivileged daemon owner.
+    # Supported startup paths verify the daemon before any mounted code executes.
+    user: "0:0"
     working_dir: /workspaces/lca-diff
     command: ["sleep", "infinity"]
     volumes:
       - type: bind
         source: .
         target: /workspaces/lca-diff
-    # Reserved for the later Vite server; currently no application listens here.
     ports:
       - "127.0.0.1:${FRONTEND_PORT:-5173}:5173"
+    cap_drop:
+      - ALL
     security_opt:
       - no-new-privileges:true

@@ -1,18 +1,45 @@
 # Container development environment
 
-Status: configuration prepared; Docker runtime verification is currently blocked
-by host socket access. See the verification record below. No application code is
-included in this bootstrap.
+Status: rootless workspace implementation and runtime verification in progress for
+[M1 issue #2](https://github.com/DavidVFitzGerald/LCA-diff/issues/2). No application
+code or host package installation is part of this change. Actual editor attachment
+is a separate gate; Compose checks alone cannot prove VS Code reopened successfully.
 
-## Topology and reproducibility
+## Topology and identity
 
-`compose.yaml` defines one non-root `workspace`, used by both VS Code Dev Containers
-and the `./dev` shell wrapper. No backend services start. No Docker socket, host
-credentials directory, privileged mode or sudo capability is mounted into the
-workspace. Host Docker lifecycle commands are deliberately separate from commands
-run inside the workspace; container terminals cannot start sibling services.
+`compose.yaml` defines one workspace shared by the `./dev` wrapper and VS Code Dev
+Containers. It requires a **rootless** Docker daemon. The maintainer has configured
+that daemon without adding `david` to the host Docker group. Supported launch paths
+check the effective daemon's security options, not merely the context name.
 
-The tooling image combines these immutable multi-platform image references:
+The development shell uses namespace UID/GID 0. Under rootless Docker this maps
+to the unprivileged daemon owner, enabling normal bind-mount writes with host-user
+ownership. The former container `vscode` UID1000 would map to a subordinate host
+identity and cannot normally write this checkout. Do not compensate with broad
+host permission changes, ACLs, chown to subordinate IDs, or a rootful Docker socket.
+
+All capabilities are dropped and no-new-privileges is enabled. No Docker socket,
+privileged mode, sudo service, or host credential directory is mounted. Production
+application images must still use unprivileged runtime users; the namespace-root
+workspace setting is development-only. See [ADR 0003](../adr/0003-rootless-development-workspace.md)
+and current PRD §5/specification §3.1 for the same boundary.
+
+`./dev` checks the rootless daemon before runtime commands; Dev Containers runs the
+same host guard through `initializeCommand`. An unavailable or rootful daemon is
+rejected before supported launch paths execute bind-mounted development code.
+Direct ad hoc Compose/Docker commands bypass project guards and are unsupported.
+The in-container smoke check also verifies user mappings, effective capabilities,
+no-new-privileges and writable sources. Mapping files may describe an intermediate
+namespace; verify them together with daemon status and host ownership of a created
+file rather than treating a UID-map line alone as complete host-identity proof.
+
+Supported Bash terminals and noninteractive Bash commands set `umask 022` through
+the image's shell configuration; the smoke check also sets it explicitly. The
+rootless daemon was observed starting processes with umask 000, so this prevents
+world-writable checkout artifacts without changing host daemon settings. Use the
+documented Bash workspace terminal rather than raw `docker exec` package commands.
+
+## Reproducible toolchain
 
 | Component | Pinned source |
 | --- | --- |
@@ -20,158 +47,125 @@ The tooling image combines these immutable multi-platform image references:
 | CPython 3.14 and uv | `ghcr.io/astral-sh/uv:python3.14-bookworm-slim@sha256:7cf77f594be8042dab6daa9fe326f90962252268b4f120a7f5dccce4d947e6c1` |
 | OS utilities | Debian Bookworm repositories frozen at `20261112T000000Z` |
 
-Tags describe the sources; digests, not moving tags, select their bytes. Registry
-manifests were resolved on 13 November 2026. Exact installed patch versions are
-reported by `./dev check` after a successful build. Both base images offer amd64
-and arm64; runtime verification here targets the actual amd64 Docker host, not
-an untested cross-platform claim. Bookworm sources match the Python and Node bases.
-Only image builds install OS tools; nothing is installed on the host.
+Tags describe sources; digests select immutable bytes. Both image manifests offer
+amd64 and arm64, but verification here targets the actual amd64 host. Image builds
+install packages only into image layers. Build logs record exact package versions;
+`./dev check` reports actual runtime versions. Updating the pins/snapshot is a
+reviewed change, not an implicit moving-tag update.
 
-Use the bundled npm for frontend work and commit its project lockfile with F1;
-there is no `package.json` or frontend lock before the application scaffold.
-The root `pyproject.toml` is a non-packaged, dependency-free uv workspace, without
-placeholder application members. Generate its single `uv.lock` **in the container**
-and commit it before the frozen-lock check can pass. Future Python members declare
-their own dependencies under that same workspace; no second lock is introduced.
-Ruff/MyPy defaults are configured, but their tooling dependencies and real checks
-are introduced in B1. Empty application test suites are not represented as passed.
+The root project is a dependency-free, non-packaged uv workspace with no fake app
+members. Generate `uv.lock` **inside the container**, commit it, and use
+`uv lock --check` / `uv sync --frozen` for subsequent checks. Future Python packages
+share that one lock; their dependencies are declared in their member projects.
+Ruff/MyPy defaults exist, but real tooling dependencies/checks arrive with B1.
+No empty application suite is represented as passed. Use bundled npm and commit
+its frontend lock when F1 creates the actual frontend package.
 
-Python 3.14 is within the documented supported ranges for Airflow and PySpark;
-this is only a runtime baseline, not proof that future dependency sets resolve.
-Python 3.15 was considered at the maintainer's request. Airflow 3.4.0 documents
-testing only through 3.14 and provides `constraints-3.14.txt`, while the equivalent
-3.15 constraint URL returns 404 (checked 13 November 2026). Use 3.14 rather than
-an unsupported Airflow combination. Revisit 3.15 when Airflow supplies support and
-the full workspace dependency set passes resolution and integration checks.
-This version selection stays within specification §3.3's supported-runtime rule;
-it does not change the PRD/specification contract or require a deviation ADR.
-At B1/B3 select exact FastAPI/Airflow/PySpark/provider versions, honor Airflow's
-tested constraints, and resolve them in the single uv workspace. Add a compatible
-Java runtime to the ETL image then (current PySpark requires Java 17 or later).
-If dependency sets conflict, document the conflict and propose an ADR before
-splitting projects/locks. Neither Java nor Airflow/Spark is required for Phase 1.
+Python 3.14 is the supported runtime baseline. Airflow 3.4.0 documents support
+through 3.14 and publishes its constraints; the 3.15 constraints URL returned 404
+when checked on 13 November 2026. Revisit 3.15 once Airflow support and full-workspace
+resolution/integration checks succeed. At B1/B3 select exact backend/ETL/provider
+versions, honoring Airflow constraints, and add the compatible Spark/Java runtime
+in its ETL image. A common Python range alone does not prove dependency resolution;
+propose an ADR before introducing separate projects/locks if conflicts arise.
 
-Playwright is introduced with F1's pinned frontend dependency/lockfile. Install its
-matching browsers and OS dependencies in the development/test image, never on the
-host; use matching versions in CI. Until then no browser smoke suite is claimed.
-Do not install packages dynamically through `npx latest` or unpinned image features.
+F1 introduces pinned Playwright tooling, matching container browsers/OS dependencies
+and the frontend package lock. Neither browsers, Java, application packages nor
+backend services are needed for this bootstrap. Do not install them on the host.
 
-## Host access and editor setup
+## Open and use the workspace
 
-Docker Engine and Compose must already be installed and usable by the SSH user.
-On this host they are present, but user `david` currently cannot access the
-root-owned, docker-group-writable socket and is not in that group. Noninteractive
-sudo also requires authentication. An administrator must arrange approved Docker
-access (or an existing approved rootless Docker context); this setup does not
-change host groups, socket modes, services or packages. Group/context changes may
-require a new SSH login and a restarted editor/agent session. Do not make the
-socket world-writable or pass passwords/tokens into repository commands.
-
-The maintainer prefers a solution without adding `david` to the Docker group.
-Read-only inspection found the rootless setup tools and subordinate UID/GID ranges
-already present, but `newuidmap`/`newgidmap` absent. Docker's documented rootless
-route requires the host `uidmap` package, then user-owned daemon setup and selection
-of the `rootless` context. No package or host configuration change is authorized
-by this note or was performed by the agent. Keep the existing daemon intact;
-the setup tool's `--force` option permits coexistence when explicitly requested.
-Rootless user namespaces map bind-mount ownership differently: verify/adapt the
-current non-root `vscode` user strategy before claiming the workspace is usable
-with that daemon. Simply selecting a context does not prove write access.
-
-VS Code Remote SSH and Dev Containers are prerequisites for the graphical flow;
-the agent cannot verify clicking **Reopen in Container**. Do not auto-install host
-extensions. The CLI flow below exercises the same Dockerfile, Compose service and
-verification script without requiring an additional host Dev Containers CLI.
-
-For a host UID/GID other than 1000, `./dev` exports the invoking IDs as build args.
-For VS Code startup, set matching `LOCAL_UID` and `LOCAL_GID` in optional `.env`
-using `.env.example` as a guide, then rebuild. Dev Containers also updates the
-remote user's UID. Keep both aligned to avoid root-owned bind-mount artifacts.
-Do not run the wrapper as root. The repo is mounted at `/workspaces/lca-diff`.
-
-## Commands
-
-Run on the Docker host, from any directory using the wrapper's actual path:
+On the Docker host, ensure `docker info` reports rootless, then:
 
 ```sh
-./dev config   # Compose syntax/interpolation validation; does not use daemon
-./dev build    # Build toolchain; requires registry/snapshot network access
-./dev up       # Build/start workspace, no application server
-./dev shell    # Enter non-root development shell
-./dev check    # Run checks inside the running container
-./dev logs
-./dev down     # Remove workspace; retain checkout and image cache
+./dev config
+./dev build
+./dev up
+./dev check
+./dev shell
 ```
 
-Optional host Make aliases: `dev-build`, `dev-up`, `dev-shell`, `dev-check`,
-`dev-logs`, `dev-down`. The wrapper invokes only Docker/Compose and basic shell
-utilities. It does not resolve/install application dependencies on the host.
-All Node, Python, uv, lint, build and browser commands run inside the container.
+`config` validates Compose without requiring a daemon. Runtime operations perform
+the rootless preflight. `./dev logs` shows workspace logs; `./dev down` removes
+this project's container without deleting source files. Do not prune unrelated
+containers/images/volumes. `COMPOSE_PROJECT_NAME` and `FRONTEND_PORT` allow isolated
+parallel checkouts (see `.env.example`); no host UID/GID build overrides are needed.
 
-During initial bootstrap only, create the missing lock from the container shell:
+If host Make already exists, `make dev-build`, `dev-up`, `dev-shell`, `dev-check`,
+`dev-logs` and `dev-down` wrap the same commands. Do not install host Make for these
+aliases. Inside the container, `make dev-check` runs the environment smoke check.
+All dependency resolution, format/lint/type/build/test commands belong inside the
+workspace. No Docker socket is exposed there; lifecycle commands stay on the host.
 
-```sh
-uv lock
-uv sync --frozen
-make dev-check
-```
+For VS Code: connect using Remote SSH, open this repository on the Docker host,
+and choose **Dev Containers: Reopen in Container**. Required editor extensions are
+maintainer-managed; do not auto-install host extensions. The initialization guard
+runs on the Docker host, and the post-create command runs the same smoke check in
+the container. The `root` prompt is expected for the remapped namespace identity.
+Successful attach requires seeing `/workspaces/lca-diff` and running `make dev-check`
+in the editor's container terminal, not merely running CLI Compose checks.
 
-Once the lock is committed, both fresh clones and VS Code's post-create command
-use `uv lock --check` and `uv sync --frozen`, not an implicit lock update.
-When deliberately changing dependencies later, resolve in the container and
-review/commit the changed lock. Frozen sync may create `.venv` in the bind-mounted
-checkout; it is a container-created ignored artifact, not a host installation.
-Keep project installs and commands in containers even if files live in the mount.
+The smoke check includes eight retained preflight regression scenarios covering
+CLI/editor initialization against rootful, unreachable and rootless responses,
+plus refusal of host-root invocations. Mocks run only inside the container; they
+do not switch the maintainer's Docker contexts. Run them separately with
+`bash .devcontainer/test-preflight.sh` inside the workspace if diagnosing a guard.
 
-The current smoke check verifies non-root identity, Node major/Python minor,
-tool versions, JSON/TOML parsing, workspace write/ownership, and frozen lock/sync.
-It prints that application tests do not yet exist. Planned `format`, `lint`,
-`typecheck`, `test`, `test-unit`, `test-integration`, `test-e2e` and `import` Make
-flows will arrive with runnable components, rather than no-op success targets.
+The smoke check validates rootless identity evidence, runtime restrictions, pinned
+major/minor runtimes, JSON/TOML configuration, file write/ownership, the single
+lockfile and frozen sync. It reports no application tests exist. Future `format`,
+`lint`, `typecheck`, `test`, `test-unit`, `test-integration`, `test-e2e` and `import`
+Make targets arrive with real runnable components, not no-op success placeholders.
 
-For future Vite, bind to `0.0.0.0:5173` inside the container. Compose publishes
-only `127.0.0.1:5173` by default; forward it over SSH. `FRONTEND_PORT` may override
-the host port. No port is claimed to serve application content during bootstrap.
+Port 5173 is reserved on host loopback, with no application server yet. F1's Vite
+server must bind `0.0.0.0:5173` inside the container; use SSH/VS Code forwarding to
+reach the host loopback publication. Later Compose profiles introduce backend
+services without making them prerequisites for the mock frontend.
 
-## Data, credentials and cleanup
+## Sources, credentials and cleanup
 
-`.gitignore` excludes local env/secrets, container dependency/build outputs,
-root private data/report/artifact directories and common workbook/archive formats.
-`.env.example` contains placeholders only. Keep proprietary inputs outside the
-checkout where possible; ignore rules are not a security or licensing guarantee.
-The tooling build context is deny-by-default in `.dockerignore` and contains only
-its Dockerfile, so history/source/raw data/secrets are not sent to the builder.
-Only the workspace mount exposes the checkout to the running container.
+The checkout is mounted at `/workspaces/lca-diff`. Container-created `.venv` and
+future dependency outputs in that bind mount are ignored artifacts, not host
+installations. Tools must still run inside containers. Home caches are disposable
+when the workspace is recreated.
 
-Historical folders remain tracked but excluded from routine agent/editor searches.
-Do not treat their inclusion in the bind mount as permission to read them.
+`.gitignore` excludes local secrets, dependency/build outputs, private data/report
+folders and common provider workbook/archive formats. Keep licensed data outside
+the checkout where possible. `.env.example` has no secrets. `.dockerignore` denies
+the tooling build context except the Dockerfile, excluding source, history, data
+and credentials from the builder. Historical documents remain tracked but excluded
+from agent context even though the checkout mount makes them accessible.
 
-`./dev down` removes the workspace but not project files. Recreating the container
-loses its home caches; committed image/dependency pins rebuild the environment.
-No Postgres volumes or application resources are created at this step. Do not run
-broad Docker prune/volume-removal commands as part of ordinary cleanup.
+No application database, volumes, API, Firebase project, Airflow/Spark services,
+cloud resources or licensed inputs are created during M1.
 
-## Verification record — 13 November 2026
+## Verification record
 
-- Host inspection: Docker client 29.9.3 and Compose v5.7.0 available, linux/amd64.
-- `./dev config`: passed (Compose schema/interpolation, no daemon required).
-- Registry inspection: both pinned image digests exist and advertise amd64/arm64.
-- Docker server/build/start/stop: **BLOCKED**, permission denied on
-  `/var/run/docker.sock`; `sudo -n docker version` requires interactive auth.
-- Non-root runtime, bind ownership, patch versions, uv lock generation/frozen sync,
-  clean-checkout rebuild and restart: **NOT RUN**, depend on Docker access.
-- VS Code Remote SSH/Reopen in Container: **NOT RUN**, requires editor interaction.
-- Application tests: not applicable; application implementation has not started.
+Rootless daemon access is confirmed; the prior system-socket denial is resolved
+through the maintainer's rootless setup. Engineering verification on the prepared
+checkout passed: build/up, interactive shell, container-generated lock/frozen sync,
+eight preflight regression scenarios, recreated workspace, and `make dev-check`.
+The runtime reports UID/GID 0 mapping to parent 1000, all capabilities dropped and
+no-new-privileges; host `uv.lock` is 1000:1000 mode 0644 and `.venv` mode 0755.
+Both interactive and noninteractive supported Bash shells report umask 0022.
 
-After access is available: build/up, generate/commit the bootstrap lock in the
-container, run `./dev check`, down/up/check to verify restart, and repeat against
-a clean source checkout to check reproducibility. Replace this blocked record
-with exact results. M1 remains blocked until runtime evidence is recorded.
+| Tool | Observed version |
+| --- | --- |
+| Docker server / Compose | 29.9.3 / v5.7.0 |
+| Node.js / npm | v24.22.3 / 11.19.1 |
+| CPython / uv | 3.14.2 / 0.9.30 |
+| Git / GNU Make / ripgrep | 2.39.5 / 4.3 / 13.0.0 |
+
+Independent clean-checkout QA against the committed candidate is pending; the
+engineering results above do not replace that check. No application tests exist.
+Actual VS Code Remote SSH/Reopen remains **BLOCKED** until editor interaction is
+verified. Do not declare full M1 completion or close issue #2 based on CLI-only
+results. Main approval/merge and F1 readiness remain separate gates.
 
 ## Primary references
 
+- [Docker rootless mode](https://docs.docker.com/engine/security/rootless/)
 - [uv Docker integration and digest pinning](https://docs.astral.sh/uv/guides/integration/docker/)
-- [Node.js release support](https://nodejs.org/en/about/previous-releases)
 - [Airflow prerequisites](https://airflow.apache.org/docs/apache-airflow/stable/installation/prerequisites.html)
-- [PySpark installation/runtime requirements](https://spark.apache.org/docs/latest/api/python/getting_started/install.html)
-- [Dev Container configuration reference](https://containers.dev/implementors/json_reference/)
+- [PySpark runtime requirements](https://spark.apache.org/docs/latest/api/python/getting_started/install.html)
+- [Dev Container configuration](https://containers.dev/implementors/json_reference/)

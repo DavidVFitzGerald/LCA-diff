@@ -117,6 +117,8 @@ The reported input contains ~11,947 XML files; do not assume that count is alway
 
 Use one Dev Container workspace attached via VS Code Remote SSH. `docker compose` profiles start:
 
+**Development identity:** use the maintainer-managed rootless Docker daemon, without adding the development account to the host Docker group. Run this local workspace as namespace UID/GID 0 mapped to the daemon owner's unprivileged host identity so bind-mounted source remains host-user-owned. Drop all capabilities and enable `no-new-privileges`; mount neither Docker sockets nor host credentials. Both the host wrapper and Dev Containers initialization must reject rootful/unreachable daemons before executing bind-mounted code. Verify namespace mappings together with a host-side created-file ownership check, frozen dependency sync, restart and clean-checkout behavior. The shell's namespace `root` identity does not authorize host-root access, host package installation or privileged production containers; production application runtime users remain unprivileged. See ADR 0003 and `docs/engineering/development-environment.md`.
+
 - `frontend` (Vite dev server in development; production image serves compiled SPA)
 - `api` (FastAPI; hot reload locally)
 - `postgres` (application/source data, with named volume)

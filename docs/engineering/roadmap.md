@@ -14,7 +14,8 @@ Every deviation requires an ADR and synchronized updates to both current PRD and
 specification in the same PR; follow [the ADR workflow](../adr/README.md).
 Historical archive/reference folders are excluded from agent context and searches
 under root `AGENTS.md`. The initial ADRs record this governance and the previously
-requested frontend-first order; they are Proposed until approved and merged.
+requested frontend-first order; ADR 0003 records the rootless workspace identity.
+All remain Proposed until approved and merged.
 
 This roadmap follows the maintainer's requested order instead of §12's suggested
 sequence: workflow → roadmap → dev environment → GitHub issues → complete mock
@@ -39,7 +40,7 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 | Milestone | Status | Dependency |
 | --- | --- | --- |
 | M0 — workflow and roadmap | Documentation prepared; review/merge pending | None |
-| M1 — container development environment | Configuration prepared; runtime verification blocked by Docker socket access | M0 baseline |
+| M1 — container development environment | Rootless access resolved; runtime/clean-checkout verification underway; editor gate pending | M0 review/merge remains open; scoped M1 work authorized |
 | M2 — GitHub execution setup | 34 issues and six milestones published; forms/PR guidance pending approved merge and gate verification | Final readiness requires M0/M1 |
 | F1–F5 — Phase 1, frontend with mocks | 30 tasks published; no implementation started | M2, then gates below |
 | B1–B4 — Phase 2, backend and ingestion | Not started | Phase 1 gate, then gates below |
@@ -94,9 +95,11 @@ before F1; later profiles can be added in their own issues.
 
 Bootstrap evidence and commands are tracked in
 [development-environment.md](development-environment.md). Compose configuration
-validation passed; image build, runtime/ownership checks and lock generation await
-Docker access for the current SSH user. M1 is not complete. M2 planning/publication
-is explicitly authorized in parallel, but implementation must wait for M1.
+validation passed, and rootless Docker is now accessible. The workspace uses
+namespace UID 0 mapped to the unprivileged host account under the guards in ADR
+0003; runtime, lock, ownership, restart and clean-checkout evidence are being
+recorded. Actual editor reopen is a separate gate. M1 is not yet complete. M2
+planning/publication is authorized, but frontend implementation must wait for M1.
 
 ### M2 — GitHub execution setup
 
@@ -335,7 +338,8 @@ is prepared. The `task`, `bug`, `frontend`, `bootstrap`, and `blocked` labels ar
 available. GitHub form activation still needs approved merge into `main` and
 chooser verification. GitHub reports HTTP 403 for native branch protection under
 the current private-repository plan; no visibility/billing change was made and no
-nonexistent CI contexts were configured. M1 runtime verification remains blocked.
+nonexistent CI contexts were configured. M1's former socket-access blocker is
+resolved; its runtime/editor acceptance remains tracked independently in issue #2.
 
 PM role agents groomed the frontend bodies and independent QA reviewed their
 documentation coverage and dependency graph. All implementation issues remain

@@ -16,20 +16,18 @@ COPY --from=node /usr/local/lib/node_modules/ /usr/local/lib/node_modules/
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
-ARG LOCAL_UID=1000
-ARG LOCAL_GID=1000
-RUN groupadd --gid "$LOCAL_GID" vscode \
-    && useradd --uid "$LOCAL_UID" --gid "$LOCAL_GID" --create-home --shell /bin/bash vscode \
-    && mkdir -p /workspaces/lca-diff \
-    && chown vscode:vscode /workspaces/lca-diff
+RUN mkdir -p /workspaces/lca-diff \
+    && printf 'umask 022\n' > /etc/lca-dev-shell.sh \
+    && printf '\n. /etc/lca-dev-shell.sh\n' >> /root/.bashrc
 
 ENV LCA_DEV_CONTAINER=1 \
+    BASH_ENV=/etc/lca-dev-shell.sh \
     UV_PYTHON_DOWNLOADS=never \
     UV_LINK_MODE=copy \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     NPM_CONFIG_UPDATE_NOTIFIER=false
 WORKDIR /workspaces/lca-diff
-USER vscode
+USER root
 RUN git config --global --add safe.directory /workspaces/lca-diff
 CMD ["sleep", "infinity"]

@@ -14,15 +14,15 @@ contains requirements, agent workflows and the development environment.
 
 ## Open the development workspace
 
-Host prerequisites: an accessible Docker Engine with Docker Compose, and an
+Host prerequisites: an accessible rootless Docker Engine with Docker Compose, and an
 existing VS Code Remote SSH/Dev Containers setup if using the editor workflow.
 Install no host runtimes or package managers. Ask before installing a missing
 host prerequisite. Docker commands below run on the remote Docker host, inside
 the repository checkout.
 
-First confirm `docker version` shows both client and server. A permission error
-for `/var/run/docker.sock` is a host access issue, not a container build failure;
-see the development environment document. Do not change socket permissions.
+First confirm `docker context show` selects your intended rootless daemon and
+`docker info` reports rootless security. Supported launch paths refuse a rootful
+daemon. Do not change socket permissions or add yourself to the Docker group.
 
 ```sh
 ./dev config
@@ -33,9 +33,9 @@ see the development environment document. Do not change socket permissions.
 
 Or connect through VS Code Remote SSH, open this repository on the Docker host,
 and choose **Dev Containers: Reopen in Container**. The post-create check runs
-inside the workspace. UID/GID defaults are 1000; for other Linux users set
-`LOCAL_UID`/`LOCAL_GID` in an optional `.env` before reopening (see `.env.example`).
-The `./dev` wrapper normally derives them automatically from the invoking user.
+inside the workspace. The development shell uses namespace UID 0, mapped to your
+unprivileged host account; all capabilities are dropped. No host UID/GID build
+overrides are needed. See ADR 0003 for the rootless-only development boundary.
 
 Inside the container, run all development tools, package installs and checks.
 There is no application server yet. Port 5173 is reserved on host loopback for

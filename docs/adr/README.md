@@ -29,12 +29,13 @@ not require an ADR. Historical folders are not decision inputs; follow root
 
 ## Index
 
-Status below reflects this branch; neither record has been approved and merged.
+Status below reflects this branch; these records have not been approved and merged.
 
 | ID | Decision | Status |
 | --- | --- | --- |
 | [0001](0001-current-document-governance.md) | Synchronized decision documentation and historical-context exclusion | Proposed |
 | [0002](0002-frontend-first-delivery.md) | Frontend-first delivery through mock and real service adapters | Proposed |
+| [0003](0003-rootless-development-workspace.md) | Rootless development identity with host-owned bind mounts | Proposed |
 
 ## PR consistency checklist
 
