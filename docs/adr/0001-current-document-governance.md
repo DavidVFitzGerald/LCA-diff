@@ -1,6 +1,8 @@
 # 0001 — Current-document governance and historical-context exclusion
 
-Status: **Proposed** (not approved and merged into `main`).
+Status: **Accepted** through the maintainer's merge of
+[PR #35](https://github.com/DavidVFitzGerald/LCA-diff/pull/35) into `main`,
+commit `f809b179c5c54f47be32ec7b24a9abce36b64982` (2026-11-13).
 Date: 2026-11-13.
 Scope: MVP development governance and subsequent maintenance.
 Supersedes: no previous ADR.
@@ -50,5 +52,5 @@ the written rule. No security/access-control guarantee is claimed.
 
 Validate active-document consistency, default search exclusions, continued Git
 tracking and unchanged historical file contents. No runtime tests or data/schema
-migrations: this is a documentation/workflow change. Approval/merge evidence is
-pending; no issue ID is invented during bootstrap.
+migrations: this is a documentation/workflow change. Merge evidence is linked
+above; the original preparation preceded issue setup (now tracked in #1).
