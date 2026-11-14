@@ -42,12 +42,17 @@ The following commands run inside `./dev shell` (or the editor's container termi
 
 ```sh
 npm --prefix apps/frontend ci
-npm --prefix apps/frontend run dev
+VITE_SERVICE_MODE=mock npm --prefix apps/frontend run dev
 ```
 
 Vite listens on `0.0.0.0:5173` inside the container, published on host loopback.
 Use VS Code/SSH forwarding to reach http://localhost:5173. The page is a technical
-mount target, without product shell, authentication or service calls.
+mount target identifying local demo mode and the placeholder authentication state.
+The placeholder resolves to unauthenticated and makes no protected dataset reads.
+Product login/account journeys follow in F2. Missing, invalid or unsupported
+service modes (including `real` until I1) show a safe startup error; there is no
+implicit mock fallback. A mock bundle also requires explicitly setting
+`VITE_SERVICE_MODE=mock` when running the build command below.
 
 For reproducible, noninteractive checks inside the container:
 
