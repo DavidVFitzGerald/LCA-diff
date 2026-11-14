@@ -1,0 +1,80 @@
+.process-tree {
+  position: relative;
+  height: calc(100dvh - 260px);
+  min-height: 12rem;
+  overflow: auto;
+  border: 1px solid #d4ded7;
+  border-radius: 6px;
+  background: #fff;
+}
+.process-tree-sizer {
+  position: relative;
+  width: 100%;
+}
+.tree-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding-inline-end: 0.4rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tree-row:hover {
+  background: #eef3ef;
+}
+.tree-row:focus-visible {
+  outline-offset: -3px;
+}
+.tree-chevron {
+  flex: 0 0 0.9rem;
+  color: #52675b;
+}
+.tree-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+.tree-meta {
+  color: #52675b;
+}
+.tree-count {
+  color: #52675b;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.tree-more .tree-action,
+.tree-error .tree-action {
+  text-decoration: underline;
+  color: #166a4a;
+}
+.tree-loading,
+.tree-empty {
+  color: #52675b;
+  font-style: italic;
+}
+.tree-error {
+  color: #a32b1d;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tree-status {
+  font-size: 0.85rem;
+  color: #52675b;
+}
+.tree-status.error {
+  color: #a32b1d;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

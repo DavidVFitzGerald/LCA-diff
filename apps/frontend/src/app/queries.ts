@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import type {
   ComparisonRowsRequest,
   DataService,
@@ -6,8 +6,10 @@ import type {
   HeadersRequest,
   ScoreCellsRequest,
   ScoreRowsRequest,
+  SearchNode,
   SearchRequest,
   ResolveSelectionRequest,
+  Page,
   ServiceResult,
   ServiceError,
   SnapshotRequest,
@@ -32,6 +34,13 @@ function capture<T>(input: T): T {
   return input === undefined ? input : (JSON.parse(JSON.stringify(input)) as T);
 }
 export function createServiceQueries(data: DataService, scope: QueryScope) {
+  const denied = () =>
+    new ServiceQueryError({
+      code: "AUTH_REQUIRED",
+      message: "Verified authentication is required",
+      request_id: "query-auth-guard",
+      retryable: false,
+    });
   function options<T>(
     operation: keyof DataService,
     input: unknown,
@@ -48,13 +57,7 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
       ] as const,
       enabled: scope.uid !== null,
       queryFn: async ({ signal }) => {
-        if (scope.uid === null)
-          throw new ServiceQueryError({
-            code: "AUTH_REQUIRED",
-            message: "Verified authentication is required",
-            request_id: "query-auth-guard",
-            retryable: false,
-          });
+        if (scope.uid === null) throw denied();
         const result = await read(signal);
         if (!result.ok) throw new ServiceQueryError(result.error);
         return result.data;
@@ -69,6 +72,33 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
     search: (input: SearchRequest) => {
       const dto = capture(input);
       return options("search", dto, (signal) => data.search(dto, { signal }));
+    },
+    /** Cursor-paged search; the key omits the cursor, which is the page param. */
+    searchPages: (input: Omit<SearchRequest, "cursor">) => {
+      const dto: SearchRequest = capture(input);
+      return infiniteQueryOptions({
+        queryKey: [
+          "lca-services",
+          1,
+          scope.namespace,
+          scope.uid,
+          "searchPages",
+          dto,
+        ] as const,
+        enabled: scope.uid !== null,
+        initialPageParam: undefined as string | undefined,
+        getNextPageParam: (last: Page<SearchNode>) =>
+          last.next_cursor ?? undefined,
+        queryFn: async ({ signal, pageParam }) => {
+          if (scope.uid === null) throw denied();
+          const result = await data.search(
+            pageParam === undefined ? dto : { ...dto, cursor: pageParam },
+            { signal },
+          );
+          if (!result.ok) throw new ServiceQueryError(result.error);
+          return result.data;
+        },
+      });
     },
     resolveSelection: (input: ResolveSelectionRequest) => {
       const dto = capture(input);
