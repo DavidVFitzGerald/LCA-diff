@@ -159,6 +159,7 @@ export function guardDataService(
     "indicatorTree",
     "flowRows",
     "flowCells",
+    "flowSummaries",
     "scoreRows",
     "scoreCells",
     "health",

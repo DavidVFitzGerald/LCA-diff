@@ -1,8 +1,12 @@
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import type {
+  ComparisonPage,
   ComparisonRowsRequest,
   DataService,
+  FlowCell,
   FlowCellsRequest,
+  FlowRow,
+  FlowSummariesRequest,
   HeadersRequest,
   ScoreCellsRequest,
   ScoreRowsRequest,
@@ -13,10 +17,12 @@ import type {
   ProcessHeader,
   ProcessId,
   RevisionRef,
+  RevisionSnapshot,
   ServiceResult,
   ServiceError,
   SnapshotRequest,
 } from "../services/contracts";
+import { cellBatches } from "./cell-batches";
 import {
   useAuthState,
   useServiceContext,
@@ -35,6 +41,8 @@ export interface QueryScope {
 }
 /** Per-request item window for paged reads; never a total limit. */
 export const SERVICE_WINDOW = 100;
+/** Per-request cell budget (rows × processes); never a selection limit. */
+export const SERVICE_CELL_WINDOW = 1000;
 function capture<T>(input: T): T {
   return input === undefined ? input : (JSON.parse(JSON.stringify(input)) as T);
 }
@@ -173,6 +181,89 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
       return options("flowCells", dto, (signal) =>
         data.flowCells(dto, { signal }),
       );
+    },
+    /** Cursor-paged flow rows (#20); the token and snapshot key every page. */
+    flowRowPages: (input: Omit<ComparisonRowsRequest, "cursor">) => {
+      const dto: ComparisonRowsRequest = capture(input);
+      return infiniteQueryOptions({
+        queryKey: [
+          "lca-services",
+          1,
+          scope.namespace,
+          scope.uid,
+          "flowRowPages",
+          dto,
+        ] as const,
+        enabled: scope.uid !== null,
+        initialPageParam: undefined as string | undefined,
+        getNextPageParam: (last: ComparisonPage<FlowRow>) =>
+          last.next_cursor ?? undefined,
+        queryFn: async ({ signal, pageParam }) => {
+          if (scope.uid === null) throw denied();
+          const result = await data.flowRows(
+            pageParam === undefined ? dto : { ...dto, cursor: pageParam },
+            { signal },
+          );
+          if (!result.ok) throw new ServiceQueryError(result.error);
+          return result.data;
+        },
+      });
+    },
+    /** Whole-selection chart extrema for one row window (#20). */
+    flowSummaries: (input: FlowSummariesRequest) => {
+      const dto = capture(input);
+      return options("flowSummaries", dto, (signal) =>
+        data.flowSummaries(dto, { signal }),
+      );
+    },
+    /**
+     * Cells for one visible window of any size, split into transport batches
+     * that share one abort signal (#20). Every batch must answer with the
+     * request's token and snapshot, so revisions are never mixed.
+     */
+    flowCellWindow: (input: FlowCellsRequest) => {
+      const dto = capture(input);
+      return options("flowCells", ["window", dto], async (signal) => {
+        const batches = cellBatches(dto.row_keys, dto.process_ids, {
+          window: SERVICE_WINDOW,
+          cells: SERVICE_CELL_WINDOW,
+        });
+        const results = await Promise.all(
+          batches.map((batch) =>
+            data.flowCells({ ...dto, ...batch }, { signal }),
+          ),
+        );
+        const cells: FlowCell[] = [];
+        let snapshot: RevisionSnapshot | undefined;
+        for (const result of results) {
+          if (!result.ok) return result;
+          if (
+            result.data.comparison_token !== dto.comparison_token ||
+            (snapshot !== undefined &&
+              JSON.stringify(snapshot) !==
+                JSON.stringify(result.data.revision_snapshot))
+          )
+            return {
+              ok: false,
+              error: {
+                code: "STALE_SNAPSHOT",
+                message: "Cell batches answered from different revisions",
+                request_id: result.data.request_id,
+                retryable: false,
+              },
+            } as const;
+          snapshot = result.data.revision_snapshot;
+          cells.push(...result.data.cells);
+        }
+        return {
+          ok: true,
+          data: {
+            cells,
+            revision_snapshot: snapshot ?? dto.revision_snapshot,
+            comparison_token: dto.comparison_token,
+          },
+        } as const;
+      });
     },
     scoreRows: (input: ScoreRowsRequest) => {
       const dto = capture(input);
