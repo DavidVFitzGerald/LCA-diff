@@ -83,10 +83,13 @@ describe("signed value cells (#22)", () => {
 
   it("leaves absent flows completely blank", () => {
     const element = cell({ kind: "absent" });
-    expect(element).toHaveTextContent("");
-    expect(element.childElementCount).toBe(0);
+    // Nothing visible: no chart, bar, axis or label; only screen-reader text.
+    expect(element.querySelector(".signed-chart")).toBeNull();
+    expect(element.children).toHaveLength(1);
+    expect(element.firstElementChild).toHaveClass("signed-sr-only");
+    expect(element).toHaveTextContent(/^No flow$/);
     expect(element).not.toHaveAttribute("tabindex");
-    expect(element).toHaveAccessibleName("No flow");
+    expect(element).not.toHaveAttribute("aria-label");
   });
 
   it("shows N/A for unavailable scores, never a bar or zero", () => {

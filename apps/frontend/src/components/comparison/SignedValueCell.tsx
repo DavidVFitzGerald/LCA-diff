@@ -41,8 +41,11 @@ export const SignedValueCell = memo(function SignedValueCell({
         className="signed-cell"
         data-state="absent"
         style={{ height: row.rowHeight }}
-        aria-label="No flow"
-      />
+      >
+        {/* Visually blank; announced as text, since a role-less div's
+            aria-label may be ignored by assistive technology. */}
+        <span className="signed-sr-only">No flow</span>
+      </div>
     );
   const present = value.kind === "present";
   const sign = present ? decimalSign(value.amount) : 0;

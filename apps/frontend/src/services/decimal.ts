@@ -76,8 +76,8 @@ export function decimalMagnitude(value: DecimalString): DecimalString {
  * |a| / |b| as a finite float for chart pixels only (#22, spec §6.6). Both
  * operands keep their own exponents, so `1e-300 / 1e300` or `1e999 / 1e998`
  * neither overflow nor flush to an invalid value; the result is 0 for a zero
- * numerator and +Infinity only when b is zero and a is not. Never use it for
- * equality or display.
+ * numerator and +Infinity when b is zero or |a| / |b| exceeds float range.
+ * Never use it for equality, ordering or display.
  */
 export function decimalRatio(a: DecimalString, b: DecimalString): number {
   const top = parse(a);
