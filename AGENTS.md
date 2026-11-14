@@ -68,6 +68,22 @@ DESIGN-NOW interfaces without implementing POST-MVP features.
 
 ## Delivery sequence and gates
 
+**Maintainer-requested revision (2026-11-14; proposed ADR 0005, #55):** after
+approval and merge of ADR 0005, B1–B4 may overlap F3–F5. This overrides the
+frontend-completion prerequisite below only for backend implementation; I1 still
+requires Phase 1, B2 and B4. B1 precedes B2/B3; B3 precedes B4; B4's API visibility
+gate requires B2. Use exactly one implementation issue and one PR per B milestone,
+even across sessions, with internal checklists and incremental commits. This is
+an explicit exception to session-sized issue/splitting rules, including role and
+template guidance. Preserve meaningful scientific/security/publication checks
+under §9.2; keep tests focused and avoid redundant coverage. Use isolated
+worktrees and distinct container projects/ports/volumes. Frontend retains
+`apps/frontend/`; backend owns Python/API/schema/ETL/ops paths. Coordinate shared
+root tooling, locks, CI and documents. Keep provisional frontend contracts/mocks
+intact until I1. No backend implementation is authorized by this documentation
+change alone; the maintainer requested recording first. Until accepted, ADR 0002
+and the existing gates remain authoritative.
+
 1. **Workflow documentation:** establish this file, roles, and
    templates. No application implementation or role-agent runs yet.
 2. **Roadmap:** create `docs/engineering/roadmap.md` with milestones, dependencies,

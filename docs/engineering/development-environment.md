@@ -147,6 +147,27 @@ cloud resources or licensed inputs are created during M1.
 
 ## Verification record
 
+### Private MVP input intake
+
+Place the three unchanged ZIP files in the **primary checkout** (not a temporary
+backend worktree), preserving original filenames:
+
+```text
+/home/david/projects/LCA-diff/data/private/bafu-2026-v1/incoming/
+  xml/       # ZIP containing the XML folder
+  scores/    # ZIP containing the impact-score Excel workbook
+  schema/    # ZIP containing the XML schema description
+```
+
+These paths are already excluded by `/data/` in `.gitignore`; archives/workbooks
+also have format-level ignore rules. Do not commit or extract them for intake.
+They are accessible in the current workspace container under
+`/workspaces/lca-diff/data/private/bafu-2026-v1/incoming/`. Other worktrees will
+need an explicitly configured read-only source mount, not a Git copy. During B3,
+inventory/hash the archives and inspect actual formats/schema before extraction,
+preserving original bytes and full provenance. Do not infer successful full-data
+validation or redistribution permission from receiving the files.
+
 Rootless daemon access is confirmed; the prior system-socket denial is resolved
 through the maintainer's rootless setup. Engineering verification on the prepared
 checkout passed: build/up, interactive shell, container-generated lock/frozen sync,
