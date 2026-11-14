@@ -16,6 +16,16 @@ COPY --from=node /usr/local/lib/node_modules/ /usr/local/lib/node_modules/
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
 
+# Resolve the browser CLI from the same frozen lock used by local tools and CI.
+# Browser revisions follow this exact Playwright package; OS packages use the
+# snapshot above. Only manifests enter the image, never licensed data or source.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+COPY apps/frontend/package.json apps/frontend/package-lock.json /tmp/lca-frontend-tools/
+COPY .devcontainer/install-browsers.sh /usr/local/bin/lca-install-browsers
+RUN npm --prefix /tmp/lca-frontend-tools ci --ignore-scripts --no-audit --no-fund \
+    && LCA_BROWSER_IMAGE_BUILD=1 DEBIAN_SNAPSHOT="$DEBIAN_SNAPSHOT" bash /usr/local/bin/lca-install-browsers /tmp/lca-frontend-tools/node_modules/.bin/playwright \
+    && rm -rf /tmp/lca-frontend-tools /root/.npm
+
 RUN mkdir -p /workspaces/lca-diff \
     && printf 'umask 022\n' > /etc/lca-dev-shell.sh \
     && printf '\n. /etc/lca-dev-shell.sh\n' >> /root/.bashrc

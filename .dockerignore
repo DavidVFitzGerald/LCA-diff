@@ -2,3 +2,8 @@
 **
 !.devcontainer/
 !.devcontainer/Dockerfile
+!.devcontainer/install-browsers.sh
+!apps/
+!apps/frontend/
+!apps/frontend/package.json
+!apps/frontend/package-lock.json
