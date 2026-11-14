@@ -280,3 +280,53 @@ describe("clearing the search", () => {
     expect(input).toHaveFocus();
   });
 });
+
+describe("repeated and collapsed filters", () => {
+  it("renders a filter reused from the query cache", async () => {
+    const app = mount({ catalog: searchable() });
+    await tree();
+    type("Process Name", "ship");
+    await waitFor(() => expect(item("Ship transport — CH")).toBeVisible());
+    type("Process Name", "rail");
+    await waitFor(() => expect(item("Rail transport — CH")).toBeVisible());
+    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    await waitFor(() =>
+      expect(labels()).toEqual(["Alpha catalog v1", "Beta catalog v2"]),
+    );
+    const calls = filteredCalls(app.search).length;
+    for (const [value, leaf] of [
+      ["ship", "Ship transport — CH"],
+      ["rail", "Rail transport — CH"],
+    ] as const) {
+      type("Process Name", value);
+      await waitFor(() => expect(item(leaf)).toBeVisible());
+      expect(screen.queryByRole("treeitem", { name: /^Loading/ })).toBeNull();
+      expect(
+        screen.getByText(/^1 process matches your search\.$/),
+      ).toBeInTheDocument();
+    }
+    // Fresh cache entries answered without new requests.
+    expect(filteredCalls(app.search)).toHaveLength(calls);
+  });
+
+  it("keeps a collapsed filtered release's count and the summary", async () => {
+    mount({ catalog: searchable() });
+    await tree();
+    type("Process Name", "transport");
+    await waitFor(() => expect(item("Ship transport — CH")).toBeVisible());
+    expect(
+      screen.getByText("4 processes match your search."),
+    ).toBeInTheDocument();
+    act(() => item(/^Beta catalog/).focus());
+    key("ArrowLeft");
+    expect(item("Beta catalog v2, 1 process")).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(
+      screen.getByText("4 processes match your search."),
+    ).toBeInTheDocument();
+    key("ArrowRight");
+    await waitFor(() => expect(item("Ship transport — CH")).toBeVisible());
+  });
+});
