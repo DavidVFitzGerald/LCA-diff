@@ -37,7 +37,10 @@ revision data; shared published flow and release metadata cannot be changed.
 Approved resolution rules and any draft rules referenced by published audit or
 measurement/provenance rows are immutable; create a new version instead. Revision,
 release-parent and shared-rule/flow row locks serialize writes against publication.
-Guard functions pin their search path with temporary schemas explicitly last, so
+The publisher uses a narrowly granted SECURITY DEFINER lock-only helper rather
+than receiving catalog UPDATE privileges for row locks; authorization checks stay
+in the invoker trigger. The actual publisher role's freeze and catalog-write denial
+are exercised by the role scenario. Guard functions pin their search path with temporary schemas explicitly last, so
 an importer cannot bypass them using temporary table names or a caller search path.
 Truncation of domain tables is
 prohibited. B4 remains responsible for complete readiness validation before a

@@ -7,6 +7,16 @@ from lca_shared.db.schema_v1 import metadata
 
 def install_security(connection: Connection) -> None:
     connection.exec_driver_sql("""
+    CREATE FUNCTION lca_lock_publication_dependencies(owner_id uuid, release_id uuid) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
+    BEGIN
+      -- Lock-only helper: publisher need not receive UPDATE privileges on catalog
+      -- values merely to serialize their writers. No data or role state is changed.
+      PERFORM id FROM database_release WHERE id=release_id FOR UPDATE;
+      PERFORM id FROM resolution_rule WHERE database_release_id=release_id ORDER BY id FOR UPDATE;
+      PERFORM f.id FROM flow f JOIN process_flows pf ON pf.flow_id=f.id
+        WHERE pf.revision_id=owner_id ORDER BY f.id FOR UPDATE OF f;
+    END $$;
     CREATE FUNCTION lca_assert_mutable(owner_id uuid) RETURNS void
     LANGUAGE plpgsql SET search_path = pg_catalog, public, pg_temp AS $$
     DECLARE frozen timestamptz;
@@ -50,15 +60,7 @@ def install_security(connection: Connection) -> None:
         IF current_user NOT IN ('lca_publisher','lca_migrator') THEN
           RAISE EXCEPTION 'only publisher may freeze revisions' USING ERRCODE = '42501';
         END IF;
-        -- Release metadata updates already lock this parent row. Publication must
-        -- share that lock so a metadata transaction cannot commit after freezing.
-        PERFORM id FROM database_release WHERE id=NEW.database_release_id FOR UPDATE;
-        -- Serialize shared rule evidence against publication of audit references.
-        PERFORM id FROM resolution_rule WHERE database_release_id=NEW.database_release_id
-          ORDER BY id FOR UPDATE;
-        -- Serialize freezing against concurrent changes of shared flow descriptions.
-        PERFORM f.id FROM flow f JOIN process_flows pf ON pf.flow_id = f.id
-          WHERE pf.revision_id = NEW.id ORDER BY f.id FOR UPDATE OF f;
+        PERFORM lca_lock_publication_dependencies(NEW.id, NEW.database_release_id);
       END IF;
       RETURN NEW;
     END $$;
@@ -184,6 +186,7 @@ def install_security(connection: Connection) -> None:
       GRANT UPDATE ON release_revision TO lca_publisher;
       GRANT INSERT, UPDATE ON release_publication TO lca_publisher;
       GRANT EXECUTE ON FUNCTION lca_assert_mutable(uuid) TO lca_import, lca_publisher;
+      GRANT EXECUTE ON FUNCTION lca_lock_publication_dependencies(uuid, uuid) TO lca_publisher;
       GRANT USAGE ON SCHEMA api TO lca_api;
     """)
     views = {

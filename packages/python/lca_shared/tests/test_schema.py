@@ -469,3 +469,19 @@ def test_api_and_import_roles(engine: Engine) -> None:
             .values(name="temporary-shadow attack"),
         )
     importer.dispose()
+    publisher = create_engine(
+        engine.url.set(username="lca_publisher", password="local-publisher-only")
+    )
+    with publisher.begin() as connection:
+        connection.execute(
+            update(s.release_revision)
+            .where(s.release_revision.c.id == private)
+            .values(status="published", published_at=datetime.now(UTC))
+        )
+        rejected(
+            connection,
+            update(s.process)
+            .where(s.process.c.id == private_pid)
+            .values(name="publisher cannot edit catalog"),
+        )
+    publisher.dispose()
