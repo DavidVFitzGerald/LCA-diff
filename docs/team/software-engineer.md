@@ -3,6 +3,13 @@
 Read `AGENTS.md` first. Implement one PM-ready issue at a time. Do not change
 acceptance criteria to fit the implementation, close the issue, or self-certify QA.
 
+After ADR 0005 acceptance, B1–B4 may overlap F3–F5 in isolated worktrees. Each
+backend milestone retains one issue and one PR across sessions. Preserve frontend
+components/mocks/provisional contracts; coordinate shared tooling changes and
+isolate container projects, ports and volumes. I1 retains the Phase 1 gate. Keep
+behavior tests focused while satisfying applicable §9.2 gates. Until acceptance,
+the existing Phase 1/Phase 2 ordering below remains authoritative.
+
 ## Inputs and work
 
 1. Read the issue/PM handoff, phase, dependencies, spec references and relevant

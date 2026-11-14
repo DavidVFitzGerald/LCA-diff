@@ -39,6 +39,18 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 
 ## Current position
 
+**Pending sequencing revision:** proposed [ADR 0005](../adr/0005-parallel-backend-delivery.md)
+([#55](https://github.com/DavidVFitzGerald/LCA-diff/issues/55)) records the
+maintainer's request to overlap B1–B4 with F3–F5, using exactly one issue and one
+PR per backend milestone. After approved merge, this replaces the Phase 1 start
+gate and session-sized splitting policy for those four milestones only. Work may
+span sessions with incremental commits and criterion checklists. The existing
+frontend backlog is unchanged. Keep tests focused on meaningful MVP behavior
+under §9.2; no scientific, security, publication or release gate is waived.
+Use isolated worktrees and container projects/ports/volumes, preserve frontend
+files/contracts and coordinate shared root tooling/locks/CI/documentation.
+Backend implementation and creation of its four issues have not started.
+
 | Milestone | Status | Dependency |
 | --- | --- | --- |
 | M0 — workflow and roadmap | Baseline merged in PR #35 | None |
@@ -47,8 +59,8 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 | F1 — frontend foundation | Complete: #5–#10 merged; final PR #44 at `9612943`, independent QA and hosted CI passed | M2 activation delivered; protection tracked separately in #4 |
 | F2 — shell and simulated authentication | Complete: #11–#15 merged after independent QA and hosted CI (final PR #49 at `1f82774`) | F1 complete; each task's issue dependencies |
 | F3–F5 — remaining mock frontend journeys | F3: #16 (paged process tree) merged (PR #50); #18 (ordered selection) in progress, then #17 (search) at the maintainer's request; later F3–F5 tasks not started; predecessor gates retained | F2 completion and each task's issue dependencies |
-| B1–B4 — Phase 2, backend and ingestion | Not started | Phase 1 gate, then gates below |
-| I1 — real frontend integration | Not started | B2 and validated synthetic publication from B4 |
+| B1–B4 — Phase 2, backend and ingestion | Not started | Until ADR 0005 acceptance: Phase 1 gate; afterward M1/M2 and milestone gates below |
+| I1 — real frontend integration | Not started | Phase 1 gate, B2 and validated synthetic publication from B4 |
 | R1–R2 — production readiness and release | Not started | Dependencies below |
 
 M0–M2 are the explicitly authorized documentation/environment bootstrap exception
@@ -210,14 +222,17 @@ Phase 1 gate: every MVP UI journey works with deterministic synthetic mocks;
 Vitest, typecheck/build and Playwright pass in containers. Check Chromium and
 Firefox, Safari as practicable, large grids and account isolation. Record a
 UI/spec coverage checklist and remaining real-integration checks. A mock demo is
-not a published BAFU release or a completed MVP. Begin backend implementation only
-after this gate; performance and full integration are rechecked later.
+not a published BAFU release or a completed MVP. Until ADR 0005 is accepted,
+backend implementation waits for this gate. After acceptance B1–B4 may overlap;
+I1 still waits for this gate. Performance and integration are rechecked later.
 
 ## Phase 2 — backend, ingestion and connection
 
 ### B1 — Python domain, schema and release contracts
 
-Depends on Phase 1 gate. Implement the single uv workspace packages, shared
+Depends on Phase 1 gate until ADR 0005 acceptance; afterward depends on verified
+M1/M2 and the accepted sequencing revision. One issue and one PR for all B1.
+Implement the single uv workspace packages, shared
 Pydantic boundaries/config, SQLAlchemy schema and Alembic migrations under §4.
 Use exact decimals, deterministic versioned flow keys, immutable revisions,
 release-scoped staging and self-contained provenance. Enforce publication-pointer
@@ -231,7 +246,7 @@ quality checks pass. Data model readiness does not assert actual import success.
 
 ### B2 — read API and real authorization
 
-Depends on B1. Implement §7 endpoints with validated DTOs and safe error envelopes,
+Depends on B1. One issue and one PR for all B2. Implement §7 endpoints with validated DTOs and safe error envelopes,
 indexed/batched reads, cursor/window budgets, revision snapshots and on-demand
 exact differences. Firebase Admin verifies identity/email status; enforce published
 release visibility and least-privilege read access. Use disposable synthetic data
@@ -248,7 +263,8 @@ Firebase email-enumeration protection, and map real 401/403 to the frontend
 
 ### B3 — miniature golden ingestion and LCIA reconciliation
 
-Depends on B1; B2 may proceed independently after B1. Introduce private Airflow
+Depends on B1; B2 may proceed independently after B1. One issue and one PR for all
+B3. Introduce private Airflow
 and ETL profiles, segregated metadata, portable local Spark entry point and
 manifest/CLI/DAG contracts. No Airflow Docker socket requirement. Archive bytes,
 stage all original records, resolve references, preserve/aggregate duplicates,
@@ -269,7 +285,8 @@ prove full BAFU import completeness.
 
 ### B4 — promotion, atomic publication and rollback
 
-Depends on B3. Implement readiness gates, checksummed artifacts, self-contained
+Depends on B3; the API visibility gate also requires B2. One issue and one PR for
+all B4. Implement readiness gates, checksummed artifacts, self-contained
 promoted provenance and authenticated maintainer operations. Prepare/run/promote
 do not publish; publish atomically changes the active revision pointer. Test
 rollback, retries/idempotence and failed/interrupted operations in disposable
@@ -282,7 +299,7 @@ requires the release gates and explicit approval below.
 
 ### I1 — real adapter and end-to-end integration
 
-Depends on B2 and B4. Generate frontend DTOs from FastAPI OpenAPI with reproducible
+Depends on the Phase 1 gate, B2 and B4. Generate frontend DTOs from FastAPI OpenAPI with reproducible
 drift checks; replace provisional types deliberately and verify mock/real adapter
 parity. Implement the HTTP/Firebase adapter behind the existing services boundary,
 then select it through explicit configuration. Never silently fall back to mocks.

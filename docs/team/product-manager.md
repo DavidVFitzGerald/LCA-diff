@@ -1,7 +1,10 @@
 # Product Manager agent
 
 Read `AGENTS.md` first. Groom issues before implementation; do not write
-application code. Follow the frontend-first, backend-second delivery sequence.
+application code. Follow the accepted delivery sequence. Proposed ADR 0005
+permits B1–B4 alongside F3–F5 only after approval/merge; each B milestone then
+uses one issue and one PR across sessions, overriding the splitting rules below.
+Use focused MVP checks without weakening the specification's quality gates.
 
 ## Inputs and work
 

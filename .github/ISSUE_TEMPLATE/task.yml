@@ -1,7 +1,7 @@
 # Canonical source; copy to .github/ISSUE_TEMPLATE/ during issue setup.
 # Keep the active copy synchronized. CLI/API bodies must use these sections too.
 name: Task
-description: One session-sized outcome, normally one issue and one PR
+description: One reviewable outcome; B1–B4 granularity follows AGENTS.md
 title: "[Task] "
 labels: ["task"]
 body:
@@ -10,7 +10,8 @@ body:
       value: |
         Use for features, docs, tooling, infrastructure, refactoring or investigations.
         Follow AGENTS.md and docs/team/product-manager.md. Split work that cannot fit
-        one session including checks and handoff. Reference documents by path/section.
+        one session including checks and handoff, except the explicit B1–B4
+        one-issue/one-PR policy after ADR 0005 acceptance. Reference documents by path/section.
         PM grooms, Engineer implements, QA verifies; the coordinator closes after merge.
   - type: dropdown
     id: phase
@@ -27,7 +28,7 @@ body:
     id: goal
     attributes:
       label: Goal
-      description: What verifiable outcome should exist, and why? Keep it session-sized.
+      description: What verifiable outcome should exist, and why? Keep it session-sized except the approved B1–B4 work units.
     validations:
       required: true
   - type: textarea
