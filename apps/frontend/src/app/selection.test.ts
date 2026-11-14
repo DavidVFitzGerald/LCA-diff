@@ -12,6 +12,7 @@ const entry = (
   id,
   name,
   geography: "CH",
+  path: ["p"],
 });
 const ids = (entries: readonly SelectedProcess[]) =>
   entries.map((e) => `${e.release_id}/${e.id}`);
@@ -82,5 +83,43 @@ describe("ordered selection store", () => {
     store.clear();
     expect(store.getSnapshot()).toEqual([]);
     expect(store.isSelected(selectionKey(entry("p1")))).toBe(false);
+  });
+});
+
+describe("bulk selection store operations", () => {
+  it("appends only new entries in the given order with one notification", () => {
+    const store = createSelectionStore();
+    store.select(entry("m"));
+    store.select(entry("a"));
+    const listener = vi.fn();
+    store.subscribe(listener);
+    store.selectMany([entry("z"), entry("a"), entry("b"), entry("z")]);
+    expect(ids(store.getSnapshot())).toEqual(["r1/m", "r1/a", "r1/z", "r1/b"]);
+    expect(listener).toHaveBeenCalledTimes(1);
+    store.selectMany([entry("a")]);
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(Object.isFrozen(store.getSnapshot()[2].path)).toBe(true);
+  });
+
+  it("removes many keys at once and ignores unknown keys", () => {
+    const store = createSelectionStore();
+    store.selectMany(["a", "b", "c", "d"].map((id) => entry(id)));
+    const listener = vi.fn();
+    store.subscribe(listener);
+    store.deselectMany(["missing"]);
+    expect(listener).not.toHaveBeenCalled();
+    store.deselectMany(
+      new Set([selectionKey(entry("b")), selectionKey(entry("d")), "x"]),
+    );
+    expect(ids(store.getSnapshot())).toEqual(["r1/a", "r1/c"]);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("bulk-appends tens of thousands of entries without a cap", () => {
+    const store = createSelectionStore();
+    store.selectMany(
+      Array.from({ length: 50_000 }, (_, index) => entry(`p${index}`)),
+    );
+    expect(store.getSnapshot()).toHaveLength(50_000);
   });
 });

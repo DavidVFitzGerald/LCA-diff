@@ -10,6 +10,9 @@ import type {
   SearchRequest,
   ResolveSelectionRequest,
   Page,
+  ProcessHeader,
+  ProcessId,
+  RevisionRef,
   ServiceResult,
   ServiceError,
   SnapshotRequest,
@@ -30,6 +33,8 @@ export interface QueryScope {
   readonly namespace: string;
   readonly uid: string | null;
 }
+/** Per-request item window for paged reads; never a total limit. */
+export const SERVICE_WINDOW = 100;
 function capture<T>(input: T): T {
   return input === undefined ? input : (JSON.parse(JSON.stringify(input)) as T);
 }
@@ -98,6 +103,47 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
           if (!result.ok) throw new ServiceQueryError(result.error);
           return result.data;
         },
+      });
+    },
+    /**
+     * Every ID in a selection scope, following all cursors (#19, D1). The
+     * response window bounds each request, never the total selection.
+     */
+    resolveAll: (input: Omit<ResolveSelectionRequest, "cursor" | "limit">) => {
+      const dto = capture(input);
+      return options("resolveSelection", ["all", dto], async (signal) => {
+        const ids: ProcessId[] = [];
+        let cursor: string | undefined;
+        do {
+          const result = await data.resolveSelection(
+            { ...dto, limit: SERVICE_WINDOW, ...(cursor ? { cursor } : {}) },
+            { signal },
+          );
+          if (!result.ok) return result;
+          ids.push(...result.data.items);
+          cursor = result.data.next_cursor ?? undefined;
+        } while (cursor !== undefined);
+        return { ok: true, data: ids } as const;
+      });
+    },
+    /** Headers for any number of IDs in one release, batched by window (#19). */
+    headersFor: (revision: RevisionRef, ids: readonly ProcessId[]) => {
+      const snapshot = [capture(revision)];
+      const wanted = [...ids];
+      return options("headers", ["all", snapshot, wanted], async (signal) => {
+        const headers: ProcessHeader[] = [];
+        for (let start = 0; start < wanted.length; start += SERVICE_WINDOW) {
+          const result = await data.headers(
+            {
+              revision_snapshot: snapshot,
+              process_ids: wanted.slice(start, start + SERVICE_WINDOW),
+            },
+            { signal },
+          );
+          if (!result.ok) return result;
+          headers.push(...result.data.items);
+        }
+        return { ok: true, data: headers } as const;
       });
     },
     resolveSelection: (input: ResolveSelectionRequest) => {
