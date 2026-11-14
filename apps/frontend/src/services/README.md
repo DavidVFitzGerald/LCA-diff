@@ -319,3 +319,54 @@ its observer and is aborted, so it cannot replace newer data. Chart geometry
 - `services/mock/comparison-queries.test.ts`
 
 This is mock evidence, not real-backend performance.
+
+## Process headers and comparability (#21)
+
+`components/comparison/ComparisonHeader` renders the shared metadata header for
+a tab from the canonical ordered selection (`app/selection.ts`); it owns no
+order. Flows mounts it now; Scores mounts the same component in #28.
+
+**Headers query.** `queries.selectionHeaders(revision, ids, client)` issues
+one query per selected revision:
+
+- The key is the sorted ID set, so column reordering never refetches.
+- Headers are immutable per revision and cached per process (a `header` key
+  under the same adapter namespace and UID). A changed selection requests only
+  uncached IDs, in `SERVICE_WINDOW` batches; already-known headers are shown
+  as placeholder data meanwhile. Bulk selection seeds the same cache through
+  `queries.rememberHeaders`, so bulk-added columns are not fetched twice.
+- Every batch must answer the requested revision (`STALE_SNAPSHOT` otherwise)
+  with exactly the requested IDs (`UNKNOWN_PROCESS` otherwise); nothing from a
+  rejected batch is cached. I1 adapter parity needs `POST /processes/headers`
+  to accept a single-release snapshot and return each requested ID once.
+
+**Display.** Each header shows Process Name, Location, Reference Flow Name,
+Reference Amount (the exact stored lexeme) and Reference Unit. Blank
+geography, reference-flow name or unit shows `—` with the accessible text
+"not specified"; nothing is invented. Long values ellipsize; the header's
+accessible description and a hover/focus overlay give the full identity,
+including release, revision and process ID. Columns are a single roving tab
+stop (arrows, Home, End).
+
+**Widths.** `components/comparison/model.ts` documents the per-tab bounds
+within spec §6.3: Flows 120–240 px, Scores 110–230 px, using
+`clamp(available / count, min, max)`. Columns are windowed horizontally
+(`@tanstack/react-virtual`, overscan 4), and the active column stays mounted.
+#23 shares this column window with the cell grid.
+
+**Comparability warning.** It is shown, without blocking or confirmation,
+when any loaded reference amount differs exactly (`services/decimal.ts`, so
+`1`, `1.0` and `1e0` agree) or any unit differs as an exact string. While
+headers load, it reports only differences already known and never claims the
+bases are equal. Values are never rescaled. `services/decimal` is the one
+transport-free services module the UI lint boundary now allows besides
+`contracts`.
+
+**Test evidence:**
+
+- `components/comparison/model.test.ts`
+- `services/mock/comparison-headers.test.tsx`
+- `e2e/process-headers.spec.ts` (Chromium; also run in Firefox)
+
+Large-selection windowing and invalid responses are component-level evidence;
+the composed app has no large browser scenario yet (#23).

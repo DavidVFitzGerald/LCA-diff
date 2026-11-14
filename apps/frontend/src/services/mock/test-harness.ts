@@ -7,6 +7,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, useQueryClient } from "@tanstack/react-query";
 import { createElement, Fragment, useEffect } from "react";
+import type { ReactElement } from "react";
 import { afterAll, beforeAll, beforeEach, vi } from "vitest";
 import { App } from "../../App";
 import { ApplicationProviders } from "../../app/ApplicationProviders";
@@ -162,7 +163,10 @@ export const failure = (code: ServiceErrorCode, retryable = false) =>
     error: { code, message: `Synthetic ${code}`, request_id: "t", retryable },
   }) as const;
 
-/** Renders the verified App with an injected discovery mock and controllable auth. */
+/**
+ * Renders the verified App (or `ui`, e.g. one component under test) with an
+ * injected discovery mock and controllable auth.
+ */
 export function mount(
   options: {
     catalog?: DiscoveryCatalog;
@@ -170,6 +174,7 @@ export function mount(
     wrap?: (
       discovery: ReturnType<typeof createMockDiscovery>,
     ) => Partial<DataService>;
+    ui?: ReactElement;
   } = {},
 ) {
   let state = verified("account-a");
@@ -217,7 +222,7 @@ export function mount(
       children: createElement(
         Fragment,
         null,
-        createElement(App),
+        options.ui ?? createElement(App),
         createElement(Capture),
       ),
     }),

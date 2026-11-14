@@ -110,16 +110,27 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.process-header-anchor {
+  position: relative;
+}
+/* Overlay below the header strip: never clipped, never shifts the grid. */
 .process-header-panel {
+  position: absolute;
+  z-index: 5;
+  top: 100%;
+  left: 0;
   display: grid;
-  min-height: 1.5rem;
-  padding: 0.35rem 0;
-  color: #365646;
+  max-width: min(36rem, 100%);
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #8b9f95;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 6px 20px #12251b26;
+  color: #20352e;
   font-size: 0.78rem;
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
-.process-header-panel:empty::before {
-  content: "Hover or focus a process header for its full identity.";
-  color: #6b7f73;
+.process-header-panel:empty {
+  display: none;
 }
