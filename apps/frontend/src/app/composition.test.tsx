@@ -122,6 +122,75 @@ describe("explicit service composition", () => {
     expect(document.body).not.toHaveTextContent("private-config-value");
   });
 
+  it.each(["", "LARGE", "huge", "default", 1, { large: true }])(
+    "rejects unsupported mock scenario %j instead of falling back (#23)",
+    (scenario) => {
+      expect(() => createApplication("mock", scenario)).toThrow(
+        CONFIGURATION_ERROR,
+      );
+      render(<Bootstrap mode="mock" scenario={scenario} />);
+      expect(screen.getByRole("alert")).toHaveTextContent(CONFIGURATION_ERROR);
+      expect(screen.queryByText(/Local demo mode/)).not.toBeInTheDocument();
+    },
+  );
+
+  it("never accepts a scenario outside explicit mock mode (#23)", () => {
+    for (const mode of [undefined, "real", "test"])
+      expect(() => createApplication(mode, "large")).toThrow(
+        CONFIGURATION_ERROR,
+      );
+  });
+
+  it("serves the large synthetic workload only when requested and names it (#23)", async () => {
+    const standard = createApplication("mock");
+    const large = createApplication("mock", "large");
+    expect(standard.demo?.scenario).toBe("default");
+    expect(large.demo?.scenario).toBe("large");
+    const [plain, wide] = await Promise.all(
+      [standard, large].map(async (runtime) => {
+        await runtime.services.auth.signIn({
+          email: runtime.demo!.verified_email,
+          password: runtime.demo!.password,
+        });
+        const releases = await runtime.services.data.releases();
+        if (!releases.ok) throw new Error(releases.error.code);
+        const release = releases.data.items[0];
+        const ref = {
+          release_id: release.release_id,
+          revision_id: release.revision_id,
+        };
+        const ids = await runtime.services.data.resolveSelection({
+          revision_snapshot: [ref],
+          fields: {},
+          scope: "all_matching",
+          limit: 100,
+        });
+        if (!ids.ok) throw new Error(ids.error.code);
+        const rows = await runtime.services.data.flowRows({
+          revision_snapshot: [ref],
+          process_ids: ids.data.items,
+          limit: 1,
+        });
+        if (!rows.ok) throw new Error(rows.error.code);
+        return { processes: ids.data.total_count, rows: rows.data.total_count };
+      }),
+    );
+    expect(plain.processes).toBeLessThan(10);
+    expect(wide.processes).toBeGreaterThanOrEqual(200);
+    expect(wide.rows).toBeGreaterThanOrEqual(2000);
+    render(
+      <ApplicationProviders runtime={large}>
+        <App />
+      </ApplicationProviders>,
+    );
+    expect(screen.getAllByRole("status")[0]).toHaveTextContent(
+      "Local demo mode — synthetic services (large synthetic scenario",
+    );
+    // The mock session is browser-persisted; never leak it into later tests.
+    await Promise.all([standard, large].map((r) => r.services.auth.signOut()));
+    window.sessionStorage.clear();
+  });
+
   it("runs explicit mock mode without dataset reads during resolving/unauthenticated auth", async () => {
     const runtime = createApplication("mock");
     const releases = vi.spyOn(runtime.services.data, "releases");

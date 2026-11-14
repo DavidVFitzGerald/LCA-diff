@@ -32,6 +32,17 @@ function quantize(range: IndexRange, quantum: number, count: number) {
     Math.min(count - 1, Math.ceil((range[1] + 1) / quantum) * quantum - 1),
   ] as const;
 }
+function windowOf(
+  range: { startIndex: number; endIndex: number } | null,
+  overscan: number,
+  count: number,
+): IndexRange {
+  if (!range || count <= 0) return null;
+  return [
+    Math.max(0, range.startIndex - overscan),
+    Math.min(count - 1, range.endIndex + overscan),
+  ];
+}
 const sameRange = (a: IndexRange, b: IndexRange) =>
   a === b || (!!a && !!b && a[0] === b[0] && a[1] === b[1]);
 
@@ -52,6 +63,7 @@ export function ComparisonGrid({
   leadingWidth,
   rowCount,
   rowKey,
+  version,
   heights,
   renderLeading,
   renderCell,
@@ -63,7 +75,14 @@ export function ComparisonGrid({
   columnWidth: number;
   leadingWidth: number;
   rowCount: number;
+  /** Data identity of a row, for keeping the tab stop on the same row. */
   rowKey: (index: number) => string;
+  /**
+   * Row set identity (e.g. the comparison token). Rows are keyed by index
+   * so a loading row and its loaded data share one DOM node (focus is kept);
+   * a new version resets measured heights.
+   */
+  version?: string;
   heights: ReadonlyMap<number, number>;
   renderLeading: (index: number, cell: CellAttributes) => ReactNode;
   renderCell: (
@@ -113,7 +132,6 @@ export function ComparisonGrid({
     getScrollElement: () => scroller.current,
     estimateSize: () => DEFAULT_ROW_HEIGHT,
     overscan: ROW_OVERSCAN,
-    getItemKey: rowKey,
     rangeExtractor: (range) =>
       withIndex(defaultRangeExtractor(range), activeRow),
   });
@@ -136,19 +154,32 @@ export function ComparisonGrid({
 
   // Summary-derived heights; resizeItem keeps rows above the viewport from
   // shifting visible content (scroll anchoring) and is a no-op when equal.
+  useLayoutEffect(() => rowWindow.measure(), [rowWindow, version]);
+  // Applied in a microtask after commit (still before paint): resizing an
+  // item notifies the virtualizer synchronously, and React forbids that
+  // flushSync inside a lifecycle method.
   useLayoutEffect(() => {
-    for (const [index, height] of heights)
-      if (index < rowCount) rowWindow.resizeItem(index, height);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      for (const [index, height] of heights)
+        if (index < rowCount) rowWindow.resizeItem(index, height);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [heights, rowCount, rowWindow]);
 
   const rowItems = rowWindow.getVirtualItems();
   const columnItems = columnWindow.getVirtualItems();
-  const mountedRows: IndexRange = rowItems.length
-    ? [rowItems[0].index, rowItems[rowItems.length - 1].index]
-    : null;
-  const mountedColumns: IndexRange = columnItems.length
-    ? [columnItems[0].index, columnItems[columnItems.length - 1].index]
-    : null;
+  // The viewport plus overscan, excluding the always-mounted active cell,
+  // so a far-away tab stop never widens the data window.
+  const mountedRows = windowOf(rowWindow.range, ROW_OVERSCAN, rowCount);
+  const mountedColumns = windowOf(
+    columnWindow.range,
+    COLUMN_OVERSCAN,
+    columns.length,
+  );
   const reported = useRef<[IndexRange, IndexRange]>([null, null]);
   const rows = quantize(mountedRows, QUANTUM.rows, rowCount);
   const cols = quantize(mountedColumns, QUANTUM.columns, columns.length);

@@ -17,7 +17,9 @@ import "./signed-value.css";
 export type CellState =
   | { readonly kind: "present"; readonly amount: DecimalString }
   | { readonly kind: "absent" }
-  | { readonly kind: "unavailable"; readonly reason: string };
+  | { readonly kind: "unavailable"; readonly reason: string }
+  /** Not yet read (#23). Same root element, so a focused cell keeps focus. */
+  | { readonly kind: "pending" };
 
 export type CellAttributes = HTMLAttributes<HTMLDivElement> &
   Partial<Record<`data-${string}`, string | number>>;
@@ -46,6 +48,18 @@ export const SignedValueCell = memo(function SignedValueCell({
 }) {
   const prefix = context ? `${context}: ` : "";
   const tipId = useId();
+  if (value.kind === "pending")
+    return (
+      <div
+        className="signed-cell"
+        data-pending=""
+        aria-busy="true"
+        style={{ height: row.rowHeight }}
+        {...cell}
+      >
+        <span className="signed-sr-only">{prefix}Loading</span>
+      </div>
+    );
   if (value.kind === "absent")
     return (
       <div

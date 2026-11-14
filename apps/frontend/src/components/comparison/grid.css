@@ -81,9 +81,6 @@
   outline: 2px solid #1f6f4a;
   outline-offset: -2px;
 }
-.grid-pending {
-  height: 100%;
-}
 /* Compact inner columns of the bounded identifying block. */
 .identity-fields {
   display: grid;

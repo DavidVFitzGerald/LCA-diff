@@ -30,6 +30,8 @@ export function selectionSnapshot(
 }
 
 export interface FlowGridData {
+  /** The comparison token: rows keep their order within one token. */
+  readonly token: string | undefined;
   /** Total rows of the comparison; 0 while the first page loads. */
   readonly rowCount: number;
   readonly loading: boolean;
@@ -156,6 +158,7 @@ export function useFlowGrid(
 
   const failed = pages.error ?? summaries.error ?? cellResults.error ?? null;
   return {
+    token,
     rowCount,
     loading: pages.isPending && processIds.length > 0,
     error: failed,

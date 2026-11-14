@@ -7,6 +7,7 @@ import type { ComparisonLayout } from "./ComparisonHeader";
 import { leadingWidth as boundedLeadingWidth } from "./grid-model";
 import type { IndexRange } from "./grid-model";
 import { SignedValueCell } from "./SignedValueCell";
+import { PENDING_ROW } from "./geometry";
 import type { CellAttributes } from "./SignedValueCell";
 import { useFlowGrid } from "./useFlowGrid";
 import { selectionKey } from "../../app/selection";
@@ -149,22 +150,18 @@ function FlowsBody({
   const renderCell = (index: number, column: number, cell: CellAttributes) => {
     const geometry = data.geometry(index);
     const value = data.cell(index, entries[column].id);
-    if (!geometry || !value)
-      return (
-        <div {...cell} className="grid-pending" aria-busy="true">
-          <span className="signed-sr-only">
-            {columns[column].label}: loading
-          </span>
-        </div>
-      );
+    // One component for every state keeps the focused DOM node when a
+    // pending cell's data arrives.
     return (
       <SignedValueCell
-        row={geometry}
+        row={geometry ?? PENDING_ROW}
         context={columns[column].label}
         value={
-          value.present
-            ? { kind: "present", amount: value.amount }
-            : { kind: "absent" }
+          !geometry || !value
+            ? { kind: "pending" }
+            : value.present
+              ? { kind: "present", amount: value.amount }
+              : { kind: "absent" }
         }
         cell={cell}
       />
@@ -187,6 +184,7 @@ function FlowsBody({
         leadingWidth={leadingWidth}
         rowCount={data.rowCount}
         rowKey={rowKey}
+        version={data.token}
         heights={data.heights}
         renderLeading={renderLeading}
         renderCell={renderCell}
