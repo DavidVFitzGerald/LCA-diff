@@ -389,3 +389,54 @@ transport-free services module the UI lint boundary now allows besides
 
 Large-selection windowing and invalid responses are component-level evidence;
 the composed app has no large browser scenario yet (#23).
+
+## Signed bars and value labels (#22)
+
+`components/comparison/geometry.ts` derives row geometry from the
+whole-selection extrema in `FlowRowSummary` (`max_positive` P,
+`max_negative_magnitude` N), never from mounted cells. With H = 40 px and
+M = max(P, N):
+
+| Row | Chart height | Zero axis (from top) |
+| --- | --- | --- |
+| Positive only | H | H (bottom) |
+| Negative only | H | 0 (top) |
+| Mixed | H × (P + N) / M | H × P / M |
+| M = 0 | H | 2 px baseline |
+
+Bars run from data y = 0 with height H × |value| / M. Nonzero values get a
+1 px minimum so none is invisible. Each row also exposes `rowHeight`
+(chart height plus 6 px padding above and below) for the #23 virtualizer.
+
+**Exact digits.** Floats are used for pixels only, and only through
+`decimalRatio` in `services/decimal.ts`. It scales the significant digits of
+each operand by its own exponent, so `1e-300` and `1e999` never overflow into
+invalid geometry.
+
+**Labels and tooltips.**
+
+- Labels come from `formatDecimal`: the value only, in fixed notation for
+  [1e-3, 1e6) and scientific otherwise, rounded half-up from the exact digits.
+- They sit just above zero, or below it when every populated value is
+  non-positive.
+- They use a translucent chip and never change geometry.
+- Hover or focus shows `displayDecimal`, the full stored lexeme. Zeros show
+  unsigned, so `-0` and `0` display alike.
+
+**Cell states.** `SignedValueCell` is the one component for Flows and Scores:
+
+- `present`: a zero shows `0` with no bar.
+- `absent`: completely blank, labelled "No flow" for assistive technology.
+- `unavailable`: shows `N/A` with its reason in the description, and no bar.
+
+**Colour and sign.** Positive bars are green and negative bars red, with
+opacity rising monotonically with |value| / M. The sign is also in the label
+and in the accessible name ("…, negative").
+
+**Test evidence:**
+
+- `services/decimal-display.test.ts`
+- `components/comparison/geometry.test.ts`
+- `components/comparison/SignedValueCell.test.tsx`
+
+Browser assertions arrive when #23/#24 mount the cells in the grid.
