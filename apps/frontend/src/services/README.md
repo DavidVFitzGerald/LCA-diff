@@ -238,3 +238,17 @@ newer state; late results or failures from an earlier epoch are replaced with
 `Authentication context changed` and never lock a newer account. Signout locks
 protected UI and caches before the adapter answers. Real adapters must map
 401/403 to these codes. See `docs/engineering/f2-session-verification.md`.
+
+## Tree consumption (#16)
+
+`src/components/process-tree/` reads only `queries.releases()` and
+`queries.searchPages()`. Each expanded branch issues its own search with
+`fields: {}`, a single-release `revision_snapshot`, `branch_path` set to the
+branch path and `limit: 50`, continued through `next_cursor`. The component
+merges pages by release and path prefix, deduplicates by release and ID, and
+accepts `matching_descendant_count` only for branches at or below the request
+scope. I1 adapter parity therefore requires the real search to support
+single-release `branch_path` paging that returns ancestor chains with exact
+in-scope counts. Scenario tests inject `createMockDiscovery` from
+`src/services/mock/process-tree.test.tsx`, because the lint boundary forbids
+mock imports elsewhere; no scenario switch ships in the composed app.
