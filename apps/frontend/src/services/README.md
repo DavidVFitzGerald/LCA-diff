@@ -397,12 +397,12 @@ whole-selection extrema in `FlowRowSummary` (`max_positive` P,
 `max_negative_magnitude` N), never from mounted cells. With H = 40 px and
 M = max(P, N):
 
-| Row | Chart height | Zero axis (from top) |
-| --- | --- | --- |
-| Positive only | H | H (bottom) |
-| Negative only | H | 0 (top) |
-| Mixed | H × (P + N) / M | H × P / M |
-| M = 0 | H | 2 px baseline |
+| Row           | Chart height    | Zero axis (from top) |
+| ------------- | --------------- | -------------------- |
+| Positive only | H               | H (bottom)           |
+| Negative only | H               | 0 (top)              |
+| Mixed         | H × (P + N) / M | H × P / M            |
+| M = 0         | H               | 2 px baseline        |
 
 Bars run from data y = 0 with height H × |value| / M. Nonzero values get a
 1 px minimum so none is invisible. Each row also exposes `rowHeight`
