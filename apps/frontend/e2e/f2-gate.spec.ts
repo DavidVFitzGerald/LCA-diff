@@ -113,6 +113,14 @@ test("verified shell tabs, sidebars, settings and signout work from the keyboard
       .getByRole("tree", { name: "Processes" })
       .locator('[role="treeitem"][tabindex="0"]'),
   );
+  // Process search (#17): Advanced search toggle, then Process Name (Clear
+  // search appears only with text; advanced fields are hidden).
+  await page.keyboard.press("Shift+Tab");
+  await expectVisibleFocus(
+    page.getByRole("button", { name: "Advanced search" }),
+  );
+  await page.keyboard.press("Shift+Tab");
+  await expectVisibleFocus(page.getByRole("textbox", { name: "Process Name" }));
   await page.keyboard.press("Shift+Tab");
   const collapseProcesses = page.getByRole("button", {
     name: "Collapse processes",
