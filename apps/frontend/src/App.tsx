@@ -165,19 +165,10 @@ export function App() {
     if (verified && desktop)
       document.querySelector<HTMLElement>("main")?.focus();
   }, [verified, desktop]);
-  const [signOutError, setSignOutError] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
-  async function signOut() {
-    setSigningOut(true);
-    setSignOutError(false);
-    try {
-      const result = await services.auth.signOut();
-      setSignOutError(!result.ok);
-    } catch {
-      setSignOutError(true);
-    } finally {
-      setSigningOut(false);
-    }
+  // The guarded auth service locks protected UI and caches before the adapter
+  // answers; a failed signout stays locked and is explained by the modal.
+  function signOut() {
+    void services.auth.signOut().catch(() => undefined);
   }
   return (
     <div className="app">
@@ -198,16 +189,12 @@ export function App() {
         </main>
       ) : (
         <>
-          <div
-            className="shell"
-            inert={!verified || signingOut}
-            aria-busy={resolving || signingOut}
-          >
+          <div className="shell" inert={!verified} aria-busy={resolving}>
             {verified && auth.status === "authenticated" ? (
               <Workspace
                 key={auth.user.uid}
                 email={auth.user.email}
-                signOut={() => void signOut()}
+                signOut={signOut}
               />
             ) : (
               <>
@@ -228,8 +215,6 @@ export function App() {
               </>
             )}
           </div>
-          {signOutError && <p role="alert">Sign out failed. Try again.</p>}
-          {verified && signingOut && <p aria-live="polite">Signing out…</p>}
           {resolving && !showLogin && (
             <p className="session-loading" aria-live="polite">
               Restoring your session…

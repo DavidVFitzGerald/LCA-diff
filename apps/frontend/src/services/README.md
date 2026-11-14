@@ -228,3 +228,13 @@ constants, so product UI shows mock instructions without importing mock modules;
 other runtimes omit it. Form actions forward an `AbortSignal` and are aborted
 when their view, account or lock state changes. Observed auth state remains the
 only unlock signal. See `docs/engineering/f2-auth-forms-verification.md`.
+
+## Session lifecycle (#14)
+
+The provider wraps both services: `guardDataService` and `guardAuthService`.
+Protected reads returning `AUTH_REQUIRED`/`EMAIL_NOT_VERIFIED` in the current
+session epoch lock the session to an error state until the adapter reports a
+newer state; late results or failures from an earlier epoch are replaced with
+`Authentication context changed` and never lock a newer account. Signout locks
+protected UI and caches before the adapter answers. Real adapters must map
+401/403 to these codes. See `docs/engineering/f2-session-verification.md`.
