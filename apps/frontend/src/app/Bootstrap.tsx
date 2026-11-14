@@ -3,14 +3,21 @@ import { App } from "../App";
 import { ApplicationProviders } from "./ApplicationProviders";
 import { CONFIGURATION_ERROR, createApplication } from "./composition";
 
-export function Bootstrap({ mode }: { mode: unknown }) {
+export function Bootstrap({
+  mode,
+  scenario = null,
+}: {
+  mode: unknown;
+  /** The `mock-scenario` URL parameter; null when absent. */
+  scenario?: unknown;
+}) {
   const runtime = useMemo(() => {
     try {
-      return createApplication(mode);
+      return createApplication(mode, scenario);
     } catch {
       return null;
     }
-  }, [mode]);
+  }, [mode, scenario]);
   if (!runtime)
     return (
       <main>

@@ -123,3 +123,6 @@ export function labelTop(row: RowGeometry): number {
 
 /** Colour intensity rises monotonically with |value| / M. */
 export const barOpacity = (magnitude: number) => 0.35 + 0.65 * magnitude;
+
+/** Height of a standard (H-tall) row, used before its summary arrives. */
+export const STANDARD_ROW_HEIGHT = CHART_HEIGHT + 2 * CHART_PADDING;

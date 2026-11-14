@@ -161,3 +161,16 @@ p {
     transition: background-color 0.12s;
   }
 }
+/* The comparison pane is viewport-tall so the windowed grid scrolls
+   internally while headers stay pinned (#23). */
+.comparison {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 115px);
+}
+.comparison > [role="tabpanel"]:not([hidden]) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}

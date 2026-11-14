@@ -207,7 +207,32 @@ export function mount(
     overrides.resolveSelection ?? discovery.resolveSelection,
   );
   const headers = vi.fn(overrides.headers ?? discovery.headers);
-  const data = { ...base.data, releases, search, resolveSelection, headers };
+  // Discovery catalogs here have no comparison data: the Flows grid (#23)
+  // sees an empty comparison unless a test overrides the comparison reads.
+  const emptyComparison: Partial<DataService> = {
+    async flowRows(input) {
+      return {
+        ok: true,
+        data: {
+          items: [],
+          next_cursor: null,
+          total_count: 0,
+          comparison_token: "harness-empty",
+          revision_snapshot: input.revision_snapshot,
+          request_id: "harness-empty",
+        },
+      };
+    },
+  };
+  const data = {
+    ...base.data,
+    ...emptyComparison,
+    ...overrides,
+    releases,
+    search,
+    resolveSelection,
+    headers,
+  };
   let client!: QueryClient;
   function Capture() {
     const value = useQueryClient();
