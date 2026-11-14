@@ -45,7 +45,7 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 | M1 — container development environment | QA passed; runtime/editor evidence merged in PR #35 | M0 baseline merged |
 | M2 — GitHub execution setup | Forms/PR guidance and activation merged; #4 solo protection proposal in review | M0/M1 delivered; main protection waits for approved ADR 0004 |
 | F1 — frontend foundation | Complete: #5–#10 merged; final PR #44 at `9612943`, independent QA and hosted CI passed | M2 activation delivered; protection tracked separately in #4 |
-| F2 — shell and simulated authentication | #11 shell implementation prepared; completion awaits independent QA, CI and maintainer merge; #12–#15 retain issue gates | F1 complete; each task's issue dependencies |
+| F2 — shell and simulated authentication | #11–#14 merged after independent QA and hosted CI (latest PR #48 at `93872b3`); #15 gate evidence prepared, completion awaits its QA, CI and maintainer merge | F1 complete; each task's issue dependencies |
 | F3–F5 — remaining mock frontend journeys | Not started; predecessor gates retained | F2 completion and each task's issue dependencies |
 | B1–B4 — Phase 2, backend and ingestion | Not started | Phase 1 gate, then gates below |
 | I1 — real frontend integration | Not started | B2 and validated synthetic publication from B4 |
@@ -162,11 +162,12 @@ Gate: keyboard/focus behavior and all simulated auth states have component and
 browser evidence; logout/account switching clears protected in-memory state and
 query caches. These checks do not prove real identity/security enforcement.
 
-#11 prepares the shell, required-login dialog, keyboard tabs/sidebar framing and
-desktop-required state. Its [verification record](f2-shell-verification.md)
-separates delivered shell evidence from #12–#15 auth adapter/forms/lifecycle and
-consolidated acceptance. Completion remains conditional on independent QA, hosted
-CI and maintainer merge; the F2 milestone is not complete.
+#11 (shell), #12 (mock auth), #13 (account forms) and #14 (session lifecycle)
+are merged after independent QA and hosted CI. #15 consolidates the gate in the
+[F2 verification record](f2-verification.md): browser and component evidence,
+versions, accepted component-only transitions and real-auth checks deferred to
+B2/I1. The F2 milestone is not complete until #15 passes QA, hosted CI and
+maintainer merge.
 
 ### F3 — discovery and process selection
 
@@ -241,6 +242,10 @@ Gate: endpoint, auth, invalid-input, unpublished-data denial, snapshot and query
 behavior pass unit/Postgres/targeted integration tests. Export valid OpenAPI for
 I1. API tests must not depend on proprietary data or production Firebase accounts.
 
+Carried from F2 QA (#13/#14): reconcile the reset unknown-account error with
+Firebase email-enumeration protection, and map real 401/403 to the frontend
+`AUTH_REQUIRED`/`EMAIL_NOT_VERIFIED` codes.
+
 ### B3 — miniature golden ingestion and LCIA reconciliation
 
 Depends on B1; B2 may proceed independently after B1. Introduce private Airflow
@@ -288,6 +293,12 @@ refresh/expiry/revocation, forbidden responses, query cancellation, exact decima
 missingness, snapshots during publication, and restored/stale workspace behavior.
 Mocks remain separately runnable. All applicable PR gates, targeted Spark/Airflow
 checks and real-integration Playwright smoke checks pass.
+
+Carried from F2 (#14/#15): browser-level expiry/revocation/401/403 journeys with
+the Auth Emulator; signout-failure UX for unverified sessions when the adapter
+emits no new state; no lock/unlock cycling when the adapter re-emits the same
+verified state against a persistent server 401/403. See
+[F2 verification](f2-verification.md).
 
 ## Production readiness and release
 
