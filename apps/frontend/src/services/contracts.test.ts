@@ -70,6 +70,9 @@ describe("provisional precision boundary", () => {
     expectTypeOf<Parameters<DataService["flowCells"]>[1]>().toEqualTypeOf<
       RequestOptions | undefined
     >();
+    expectTypeOf<Parameters<DataService["flowSummaries"]>[1]>().toEqualTypeOf<
+      RequestOptions | undefined
+    >();
     expectTypeOf<Parameters<AuthService["signIn"]>[1]>().toEqualTypeOf<
       RequestOptions | undefined
     >();

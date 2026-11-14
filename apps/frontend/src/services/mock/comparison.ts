@@ -4,11 +4,19 @@ import type {
   DataService,
   FlowCellsRequest,
   FlowRow,
+  FlowRowSummary,
+  FlowSummariesResponse,
   Indicator,
   IndicatorTree,
   RevisionSnapshot,
   ScoreCellsRequest,
 } from "../contracts";
+import {
+  compareDecimalMagnitude,
+  decimalMagnitude,
+  decimalSign,
+} from "../decimal";
+import { decimalString } from "../contracts";
 import { createComparisonCatalog } from "./comparison-fixtures";
 import type {
   ComparisonCatalog,
@@ -26,7 +34,12 @@ import type { MockScenario } from "./runtime";
 
 export type ComparisonService = Pick<
   DataService,
-  "indicatorTree" | "flowRows" | "flowCells" | "scoreRows" | "scoreCells"
+  | "indicatorTree"
+  | "flowRows"
+  | "flowCells"
+  | "flowSummaries"
+  | "scoreRows"
+  | "scoreCells"
 >;
 export interface ComparisonOptions {
   readonly catalog?: ComparisonCatalog;
@@ -371,6 +384,90 @@ export function createMockComparison(
           request_id,
         };
       });
+    },
+    flowSummaries: (input, options) => {
+      const captured = copy(input);
+      return request(
+        "flowSummaries",
+        options?.signal,
+        (request_id): FlowSummariesResponse => {
+          const result = selected(
+            captured.revision_snapshot,
+            captured.process_ids,
+          );
+          const rows = uniqueIds(captured.row_keys);
+          if (rows.length > windowLimit)
+            throw new MockFailure("REQUEST_WINDOW_TOO_LARGE");
+          const context = contexts.get(captured.comparison_token);
+          if (
+            !context ||
+            JSON.stringify(context.refs) !== JSON.stringify(result.refs)
+          )
+            throw new MockFailure("STALE_SNAPSHOT");
+          // The summary covers the token's whole selection, never a subset.
+          if (
+            context.tab !== "flows" ||
+            result.processes.size !== context.processes.size ||
+            [...result.processes.keys()].some(
+              (id) => !context.processes.has(id),
+            ) ||
+            rows.some((id) => !context.row_ids.includes(id))
+          )
+            invalid();
+          const ordered = [...result.processes]
+            .sort(([a], [b]) => compare(a, b))
+            .map(([, entry]) => entry);
+          const zero = decimalString("0");
+          const summaries = rows.map((row_key): FlowRowSummary => {
+            let max_positive = zero;
+            let max_negative_magnitude = zero;
+            let positive_count = 0;
+            let negative_count = 0;
+            let zero_count = 0;
+            let absent_count = 0;
+            for (const { process, revision } of ordered) {
+              const value =
+                process.flows[row_key] ?? revision.shared_flows[row_key];
+              if (!value?.present) {
+                absent_count += 1;
+                continue;
+              }
+              const sign = decimalSign(value.amount);
+              if (sign === 0) zero_count += 1;
+              else if (sign > 0) {
+                positive_count += 1;
+                // Strictly greater: the first process in ID order wins ties.
+                if (compareDecimalMagnitude(value.amount, max_positive) > 0)
+                  max_positive = value.amount;
+              } else {
+                negative_count += 1;
+                if (
+                  compareDecimalMagnitude(
+                    value.amount,
+                    max_negative_magnitude,
+                  ) > 0
+                )
+                  max_negative_magnitude = decimalMagnitude(value.amount);
+              }
+            }
+            return {
+              row_key: row_key as FlowRowSummary["row_key"],
+              max_positive,
+              max_negative_magnitude,
+              positive_count,
+              negative_count,
+              zero_count,
+              absent_count,
+            };
+          });
+          return {
+            summaries,
+            revision_snapshot: result.refs,
+            comparison_token: captured.comparison_token,
+            request_id,
+          };
+        },
+      );
     },
     scoreCells: (input, options) => {
       const captured = copy(input);
