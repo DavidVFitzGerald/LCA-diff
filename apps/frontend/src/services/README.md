@@ -335,7 +335,10 @@ one query per selected revision:
   uncached IDs, in `SERVICE_WINDOW` batches; already-known headers are shown
   as placeholder data meanwhile. If a read fails, the hook keeps showing the
   cached headers (placeholders apply only while pending), so loaded columns
-  and known differences survive the failure. Bulk selection seeds the same
+  and known differences survive the failure. Per-process entries have no
+  observers, so they are kept for the session (`gcTime: Infinity`) instead of
+  expiring after 5 minutes; signout or account change clears them with the
+  rest of the client. Bulk selection seeds the same
   cache through `queries.rememberHeaders`, so bulk-added columns are not
   fetched twice.
 - Every batch, in both `selectionHeaders` and the bulk `headersFor`, must
