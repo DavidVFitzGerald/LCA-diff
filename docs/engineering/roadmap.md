@@ -303,6 +303,9 @@ Depends on the Phase 1 gate, B2 and B4. Generate frontend DTOs from FastAPI Open
 drift checks; replace provisional types deliberately and verify mock/real adapter
 parity. Implement the HTTP/Firebase adapter behind the existing services boundary,
 then select it through explicit configuration. Never silently fall back to mocks.
+Reconcile the provisional frontend-only `flowSummaries` read summary (#20,
+`apps/frontend/src/services/README.md`) with the generated OpenAPI contract: B2
+provides an equivalent stateless endpoint or the spec/ADR workflow replaces it.
 
 Gate: complete UI journeys work against the real API and a published synthetic
 release with emulator-backed auth. Verify no protected calls before login,

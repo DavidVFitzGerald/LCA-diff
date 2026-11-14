@@ -43,6 +43,44 @@ export interface QueryScope {
 export const SERVICE_WINDOW = 100;
 /** Per-request cell budget (rows × processes); never a selection limit. */
 export const SERVICE_CELL_WINDOW = 1000;
+/** Release-ordered snapshot identity, independent of request ordering. */
+function snapshotKey(snapshot: RevisionSnapshot): string {
+  return JSON.stringify(
+    [...snapshot]
+      .map(({ release_id, revision_id }) => [release_id, revision_id])
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+  );
+}
+/**
+ * A response must answer the requested immutable snapshot (and token, when
+ * one was sent); otherwise it is rejected rather than cached under the
+ * request key (#20, spec §7.3).
+ */
+function mismatch(
+  requested: { revision_snapshot: RevisionSnapshot; comparison_token?: string },
+  response: {
+    revision_snapshot: RevisionSnapshot;
+    comparison_token?: string;
+    request_id: string;
+  },
+): { readonly ok: false; readonly error: ServiceError } | null {
+  if (
+    snapshotKey(requested.revision_snapshot) ===
+      snapshotKey(response.revision_snapshot) &&
+    (requested.comparison_token === undefined ||
+      requested.comparison_token === response.comparison_token)
+  )
+    return null;
+  return {
+    ok: false,
+    error: {
+      code: "STALE_SNAPSHOT",
+      message: "Response does not match the requested revision snapshot",
+      request_id: response.request_id,
+      retryable: false,
+    },
+  };
+}
 function capture<T>(input: T): T {
   return input === undefined ? input : (JSON.parse(JSON.stringify(input)) as T);
 }
@@ -205,6 +243,8 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
             { signal },
           );
           if (!result.ok) throw new ServiceQueryError(result.error);
+          const stale = mismatch(dto, result.data);
+          if (stale) throw new ServiceQueryError(stale.error);
           return result.data;
         },
       });
@@ -212,9 +252,10 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
     /** Whole-selection chart extrema for one row window (#20). */
     flowSummaries: (input: FlowSummariesRequest) => {
       const dto = capture(input);
-      return options("flowSummaries", dto, (signal) =>
-        data.flowSummaries(dto, { signal }),
-      );
+      return options("flowSummaries", dto, async (signal) => {
+        const result = await data.flowSummaries(dto, { signal });
+        return (result.ok && mismatch(dto, result.data)) || result;
+      });
     },
     /**
      * Cells for one visible window of any size, split into transport batches
@@ -237,21 +278,9 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
         let snapshot: RevisionSnapshot | undefined;
         for (const result of results) {
           if (!result.ok) return result;
-          if (
-            result.data.comparison_token !== dto.comparison_token ||
-            (snapshot !== undefined &&
-              JSON.stringify(snapshot) !==
-                JSON.stringify(result.data.revision_snapshot))
-          )
-            return {
-              ok: false,
-              error: {
-                code: "STALE_SNAPSHOT",
-                message: "Cell batches answered from different revisions",
-                request_id: result.data.request_id,
-                retryable: false,
-              },
-            } as const;
+          // Every batch, including a lone one, must answer the request.
+          const stale = mismatch(dto, result.data);
+          if (stale) return stale;
           snapshot = result.data.revision_snapshot;
           cells.push(...result.data.cells);
         }

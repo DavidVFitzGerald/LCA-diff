@@ -65,6 +65,16 @@ describe("exact decimal comparison", () => {
     expect(decimalMagnitude(d("7.10"))).toBe("7.10");
   });
 
+  it("compares exponents beyond the safe-integer range exactly", () => {
+    const huge = d("1e99999999999999999999");
+    const larger = d("1e100000000000000000000");
+    expect(compareDecimal(huge, larger)).toBe(-1);
+    expect(compareDecimal(d("-1e99999999999999999999"), d("-1"))).toBe(-1);
+    expect(compareDecimal(d("1e-99999999999999999999"), d("0"))).toBe(1);
+    expect(compareDecimalMagnitude(d("-1e99999999999999999999"), huge)).toBe(0);
+    expect(decimalSign(d("0e99999999999999999999"))).toBe(0);
+  });
+
   it("rejects non-decimal input", () => {
     for (const value of ["", ".", "1e", "NaN", "Infinity", "0x1", "1,0"])
       expect(() => compareDecimal(value as never, d("1"))).toThrow(TypeError);

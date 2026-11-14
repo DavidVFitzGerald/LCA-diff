@@ -237,3 +237,111 @@ describe("comparison query helpers", () => {
     expect((error as ServiceQueryError).detail.code).toBe("STALE_SNAPSHOT");
   });
 });
+
+describe("responses must answer the requested snapshot and token (QA #20 D1)", () => {
+  const other = [{ ...snapshot[0], revision_id: "other" }];
+  async function windowError(app: ReturnType<typeof setup>, rowCount: number) {
+    const page = await firstPage(app);
+    return app.client
+      .fetchQuery(
+        app.queries.flowCellWindow({
+          revision_snapshot: snapshot,
+          comparison_token: page.comparison_token,
+          process_ids: ids,
+          row_keys: page.items.slice(0, rowCount).map((row) => row.row_key),
+        }),
+      )
+      .then(
+        () => "ok",
+        (error: unknown) => (error as ServiceQueryError).detail.code,
+      );
+  }
+
+  it("rejects a lone batch or every batch answered from another revision", async () => {
+    for (const rowCount of [1, 20]) {
+      const app = setup();
+      app.flowCells.mockImplementation(async (input, options) => {
+        const result = await app.service.flowCells(input, options);
+        return result.ok
+          ? { ok: true, data: { ...result.data, revision_snapshot: other } }
+          : result;
+      });
+      expect(await windowError(app, rowCount)).toBe("STALE_SNAPSHOT");
+    }
+    const app = setup();
+    app.flowCells.mockImplementation(async (input, options) => {
+      const result = await app.service.flowCells(input, options);
+      return result.ok
+        ? { ok: true, data: { ...result.data, comparison_token: "other" } }
+        : result;
+    });
+    expect(await windowError(app, 1)).toBe("STALE_SNAPSHOT");
+  });
+
+  it("accepts the requested snapshot in any release order", async () => {
+    const app = setup();
+    app.flowCells.mockImplementation(async (input, options) => {
+      const result = await app.service.flowCells(input, options);
+      return result.ok
+        ? {
+            ok: true,
+            data: {
+              ...result.data,
+              revision_snapshot: [...result.data.revision_snapshot].reverse(),
+            },
+          }
+        : result;
+    });
+    expect(await windowError(app, 1)).toBe("ok");
+  });
+
+  it("rejects summaries and row pages answered from another revision or token", async () => {
+    const app = setup();
+    const page = await firstPage(app);
+    const input = {
+      revision_snapshot: snapshot,
+      comparison_token: page.comparison_token,
+      process_ids: ids,
+      row_keys: [page.items[0].row_key],
+    };
+    for (const change of [
+      { revision_snapshot: other },
+      { comparison_token: "other" },
+    ]) {
+      app.flowSummaries.mockImplementationOnce(async (request, options) => {
+        const result = await app.service.flowSummaries(request, options);
+        return result.ok
+          ? { ok: true, data: { ...result.data, ...change } }
+          : result;
+      });
+      app.client.removeQueries();
+      const code = await app.client
+        .fetchQuery(app.queries.flowSummaries(input))
+        .then(
+          () => "ok",
+          (error: unknown) => (error as ServiceQueryError).detail.code,
+        );
+      expect(code).toBe("STALE_SNAPSHOT");
+    }
+    app.flowRows.mockImplementationOnce(async (request, options) => {
+      const result = await app.service.flowRows(request, options);
+      return result.ok
+        ? { ok: true, data: { ...result.data, revision_snapshot: other } }
+        : result;
+    });
+    app.client.removeQueries();
+    const rows = await app.client
+      .fetchInfiniteQuery(
+        app.queries.flowRowPages({
+          revision_snapshot: snapshot,
+          process_ids: ids,
+          limit: 25,
+        }),
+      )
+      .then(
+        () => "ok",
+        (error: unknown) => (error as ServiceQueryError).detail.code,
+      );
+    expect(rows).toBe("STALE_SNAPSHOT");
+  });
+});
