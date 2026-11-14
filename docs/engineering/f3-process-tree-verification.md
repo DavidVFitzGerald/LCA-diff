@@ -12,7 +12,7 @@ Rootless workspace, Compose project `lca-diff-f3-tree` (`FRONTEND_PORT=5186`).
 Node `v24.22.3`, npm `11.19.1`, Vitest `5.1.0`, Playwright `1.65.1`, Chromium
 `159.0.8154.6`, Firefox `159.0`. Safari/WebKit remains UNAVAILABLE (see the
 [F2 record](f2-verification.md)). New dependency: `@tanstack/react-virtual`
-`3.14.24` (exact pin; its `@tanstack/virtual-core` `3.19.9`). The lockfile diff
+`3.14.24` (exact pin, published 2026-10-29; its `@tanstack/virtual-core` `3.19.9`, same date; newer releases were under 14 days old). The lockfile diff
 is limited to those two packages; frozen `npm ci` installs 232 packages.
 
 ## Commands
@@ -33,7 +33,7 @@ docker compose -p lca-diff-f3-tree exec -T workspace bash -lc 'cd apps/frontend 
 | `./dev check` | PASS |
 | Frozen `npm ci` | PASS, 232 packages |
 | format:check, lint, typecheck, build | PASS |
-| test:unit | PASS, 185 tests in 11 files (stable over 5 consecutive runs) |
+| test:unit | PASS, 187 tests in 11 files (stable over repeated consecutive runs) |
 | test:e2e `@smoke` | PASS, 10 cases (5 × Chromium/Firefox) |
 | test:e2e full | PASS, 28 cases (14 × Chromium/Firefox) |
 | Hosted PR `quality` / full dispatch run | Recorded in the #16 handoff |
@@ -49,7 +49,7 @@ boundary forbids mock imports outside `src/services/**` and
 | --- | --- | --- |
 | AC1 roots and scoped loading | `model.test.ts` › six-segment verbatim paths, identical paths in two releases distinct; `process-tree.test.tsx` › roots collapsed with name/version, single-release `branch_path` search DTO with `limit` 50; `process-tree.spec.ts` | Unit, component, browser |
 | AC2 paging and stable merge | `model.test.ts` › dedupe across pages/scopes, out-of-scope counts ignored, order independent of load order; `process-tree.test.tsx` › 120 leaves page 50 → 100 → 120 with the same DOM nodes, unique keys, continuation removed when exhausted | Unit, component |
-| AC3 keyboard, ARIA, virtualization | `process-tree.test.tsx` › Arrow/Home/End/Enter, Space unbound, `aria-level`/`aria-setsize` (incl. `-1`)/`aria-posinset`, one `tabindex=0`, focus to collapsed ancestor; 2,000 leaves keep mounted rows ≤ viewport + overscan + active row and keyboard End scrolls the active row into view; `process-tree.spec.ts` › visible focus ring, levels 1–6, ArrowLeft to parent, counts 3/3/1 | Component, browser |
+| AC3 keyboard, ARIA, virtualization | `process-tree.test.tsx` › Arrow/Home/End/Enter, Space unbound, `aria-level`/`aria-setsize` (incl. `-1`)/`aria-posinset`, one `tabindex=0`, focus to collapsed ancestor; no focus reclaim after blurring to a non-focusable area; focus by script/assistive technology makes that row active; 2,000 leaves keep mounted rows ≤ viewport + overscan + active row and keyboard End scrolls the active row into view; `process-tree.spec.ts` › visible focus ring, levels 1–6, ArrowLeft to parent, counts 3/3/1 | Component, browser |
 | AC4 states and cancellation | `process-tree.test.tsx` › loading under latency, empty catalog, empty release, releases and page `TEMPORARILY_UNAVAILABLE` then Retry keeping loaded nodes, `STALE_SNAPSHOT` without Retry, collapse aborts in-flight page silently and re-expand refetches, signout during/after load leaves no tree text or `lca-services` cache, re-login (same/different UID) starts collapsed with no storage; `process-tree.spec.ts` › signout clears tree text, re-login collapsed, no new storage keys | Component, browser |
 | AC5 boundaries and duplicates | `model.test.ts` › duplicate branch labels and same-name/geography processes distinct; existing lint boundary test passes; no component imports `services/mock/**` | Unit, lint |
 
@@ -70,3 +70,12 @@ scenario is carried to #23 and the F3 gate (#19 AC6).
 - A collapsed branch keeps its already loaded pages in component state for
   stable names and counts; its in-flight query is aborted. State is discarded
   when the tree unmounts on signout or account change and is never persisted.
+
+## QA follow-up fixes
+
+QA PASS at `f8d5370` reported F-1 (Medium): blurring to a non-focusable area
+left the tree's focus flag set, so a later page load pulled focus back into
+the tree. F-2 (Low): focus arriving without a keyboard move or click did not
+update the active row. Both are fixed with regression tests. F-3 (pseudo rows
+without `aria-posinset`/`aria-setsize`) and the browser check of
+`sessionStorage`/IndexedDB remain non-blocking follow-ups.

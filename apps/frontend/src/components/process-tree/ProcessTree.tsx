@@ -459,13 +459,28 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
         role="tree"
         aria-labelledby={labelledBy}
         onKeyDown={onKeyDown}
-        onFocus={() => {
+        onFocus={(event) => {
           treeFocused.current = true;
+          // Focus arriving by any route (pointer, script, assistive technology)
+          // makes that row the active one, so Enter acts on the focused row.
+          const key = (event.target as HTMLElement).dataset.rowKey;
+          if (key !== undefined && key !== active) setActive(key);
         }}
         onBlur={(event) => {
+          const tree = event.currentTarget;
+          const left = event.target as Element;
           const next = event.relatedTarget;
-          if (next instanceof Node && !event.currentTarget.contains(next))
-            treeFocused.current = false;
+          if (next instanceof Node) {
+            if (!tree.contains(next)) treeFocused.current = false;
+            return;
+          }
+          // No next target: the user blurred to a non-focusable area (row still
+          // mounted) or the focused row unmounted (collapse/virtualization), in
+          // which case focus is restored to the effective row.
+          queueMicrotask(() => {
+            if (left.isConnected && !tree.contains(document.activeElement))
+              treeFocused.current = false;
+          });
         }}
       >
         <div

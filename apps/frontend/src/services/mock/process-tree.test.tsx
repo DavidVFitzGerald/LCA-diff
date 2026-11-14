@@ -390,6 +390,32 @@ describe("process tree keyboard and ARIA", () => {
     expect(document.activeElement).not.toBe(document.body);
   });
 
+  it("does not take focus back after the user leaves the tree to a non-focusable area", async () => {
+    mount({ scenario: { latency_ms: (op) => (op === "search" ? 60 : 0) } });
+    const root = await focusTree();
+    key("ArrowRight");
+    expect(item(/^Loading Alpha catalog/)).toBeVisible();
+    act(() => root.blur()); // e.g. a click on non-focusable page background
+    await waitFor(() => expect(item(/^transport/)).toBeVisible());
+    await settle();
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("makes a row focused by other means the active row for Enter", async () => {
+    mount();
+    await focusTree();
+    key("End");
+    const second = item("Alpha catalog 2026 v2");
+    expect(second).toHaveFocus();
+    const first = item(/^Alpha catalog 2026 v1/);
+    act(() => first.focus()); // script or assistive-technology focus
+    expect(first).toHaveAttribute("tabindex", "0");
+    expect(second).toHaveAttribute("tabindex", "-1");
+    key("Enter");
+    await waitFor(() => expect(first).toHaveAttribute("aria-expanded", "true"));
+    expect(second).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("bounds mounted rows for 2,000 loaded leaves and scrolls keyboard focus into view", async () => {
     mount({
       catalog: catalog([
