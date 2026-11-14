@@ -9,237 +9,30 @@
 import {
   act,
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
 } from "@testing-library/react";
-import { QueryClient, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
-import { App } from "../../App";
-import { ApplicationProviders } from "../../app/ApplicationProviders";
-import { createApplication } from "../../app/composition";
+import { describe, expect, it } from "vitest";
 import { TREE_PAGE_LIMIT } from "../../components/process-tree/model";
 import { TREE_ROW_HEIGHT } from "../../components/process-tree/ProcessTree";
-import { decimalString } from "../contracts";
-import type {
-  AuthService,
-  AuthState,
-  DataService,
-  ProcessHeader,
-  Release,
-  ServiceErrorCode,
-  ServiceResult,
-} from "../contracts";
-import { createMockDiscovery } from "./discovery";
-import type { DiscoveryCatalog, DiscoveryScenario } from "./discovery";
+import {
+  catalog,
+  failure,
+  focusTree,
+  geometry,
+  installScrollGeometry,
+  item,
+  items,
+  key,
+  many,
+  mount,
+  settle,
+  tree,
+  verified,
+} from "./test-harness";
 
-// jsdom has no layout: give the tree scroller a viewport and a scroll API.
-let viewport = 320;
-beforeAll(() => {
-  Object.defineProperty(HTMLElement.prototype, "clientHeight", {
-    configurable: true,
-    get(this: HTMLElement) {
-      return this.classList.contains("process-tree") ? viewport : 0;
-    },
-  });
-  Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
-    configurable: true,
-    get(this: HTMLElement) {
-      const sizer = this.firstElementChild as HTMLElement | null;
-      return this.classList.contains("process-tree") && sizer
-        ? parseFloat(sizer.style.height) || 0
-        : 0;
-    },
-  });
-  const offsets = new WeakMap<Element, number>();
-  Object.defineProperty(HTMLElement.prototype, "scrollTop", {
-    configurable: true,
-    get(this: HTMLElement) {
-      return offsets.get(this) ?? 0;
-    },
-    set(this: HTMLElement, value: number) {
-      // Browsers clamp scroll offsets to the scrollable range.
-      const max = Math.max(0, this.scrollHeight - this.clientHeight);
-      offsets.set(this, Math.min(Math.max(0, value), max));
-    },
-  });
-  Element.prototype.scrollTo = function (
-    this: Element,
-    options?: ScrollToOptions | number,
-  ) {
-    if (typeof options === "object" && options.top !== undefined) {
-      this.scrollTop = options.top;
-      this.dispatchEvent(new Event("scroll"));
-    }
-  };
-});
-afterAll(() => {
-  // Restore the inherited jsdom Element.prototype getter.
-  Reflect.deleteProperty(HTMLElement.prototype, "clientHeight");
-  Reflect.deleteProperty(HTMLElement.prototype, "scrollTop");
-  Reflect.deleteProperty(HTMLElement.prototype, "scrollHeight");
-});
-beforeEach(() => {
-  viewport = 320;
-  localStorage.clear();
-});
-
-interface LeafSpec {
-  name: string;
-  geography?: string;
-  path: string[];
-}
-function catalog(
-  releases: { id: string; name: string; version: string; leaves: LeafSpec[] }[],
-): DiscoveryCatalog {
-  return {
-    releases: releases.map((release): Release => ({
-      release_id: release.id,
-      revision_id: `${release.id}-rev`,
-      database_code: "TEST",
-      version: release.version,
-      display_name: release.name,
-      published_at: null,
-    })),
-    revisions: releases.map((release) => ({
-      revision: { release_id: release.id, revision_id: `${release.id}-rev` },
-      headers: release.leaves.map((leaf, index): ProcessHeader => ({
-        release_id: release.id,
-        revision_id: `${release.id}-rev`,
-        id: `${release.id}:p${index}`,
-        name: leaf.name,
-        geography: leaf.geography ?? "CH",
-        category: leaf.path[0] ?? "",
-        subcategory: leaf.path.slice(1).join("\\"),
-        category_path: leaf.path,
-        reference_flow_name: "Synthetic output",
-        reference_amount: decimalString("1"),
-        reference_unit: "kg",
-        warnings: [],
-      })),
-    })),
-  };
-}
-const many = (count: number, path: string[], prefix = "Leaf") =>
-  Array.from({ length: count }, (_, index) => ({
-    name: `${prefix} ${String(index).padStart(4, "0")}`,
-    path,
-  }));
-const standard = () =>
-  catalog([
-    {
-      id: "r1",
-      name: "Alpha catalog",
-      version: "2026 v1",
-      leaves: [
-        { name: "Road A", path: ["transport", "road"] },
-        { name: "Road A", geography: "DE", path: ["transport", "road"] },
-        { name: "Infra", path: ["transport", "road", "infra"] },
-        { name: "Ship", path: ["transport", "water"] },
-      ],
-    },
-    {
-      id: "r2",
-      name: "Alpha catalog",
-      version: "2026 v2",
-      leaves: [{ name: "Road A", path: ["transport", "road"] }],
-    },
-  ]);
-const verified = (uid: string): AuthState => ({
-  status: "authenticated",
-  user: { uid, email: `${uid}@example.invalid`, email_verified: true },
-});
-const ok: ServiceResult<void> = { ok: true, data: undefined };
-const failure = (code: ServiceErrorCode, retryable = false) =>
-  ({
-    ok: false,
-    error: { code, message: `Synthetic ${code}`, request_id: "t", retryable },
-  }) as const;
-
-function mount(
-  options: {
-    catalog?: DiscoveryCatalog;
-    scenario?: DiscoveryScenario;
-    wrap?: (
-      discovery: ReturnType<typeof createMockDiscovery>,
-    ) => Partial<DataService>;
-  } = {},
-) {
-  let state = verified("account-a");
-  const observers = new Set<(next: AuthState) => void>();
-  const emit = (next: AuthState) => {
-    state = next;
-    observers.forEach((observer) => observer(next));
-  };
-  const base = createApplication("mock").services;
-  const auth: AuthService = {
-    ...base.auth,
-    observe(listener) {
-      observers.add(listener);
-      queueMicrotask(() => observers.has(listener) && listener(state));
-      return () => void observers.delete(listener);
-    },
-    signOut: vi.fn(async () => {
-      emit({ status: "unauthenticated" });
-      return ok;
-    }),
-  };
-  const discovery = createMockDiscovery({
-    catalog: options.catalog ?? standard(),
-    scenario: options.scenario,
-  });
-  const overrides = options.wrap?.(discovery) ?? {};
-  const releases = vi.fn(overrides.releases ?? discovery.releases);
-  const search = vi.fn(overrides.search ?? discovery.search);
-  let client!: QueryClient;
-  function Capture() {
-    const value = useQueryClient();
-    useEffect(() => {
-      client = value;
-    }, [value]);
-    return null;
-  }
-  render(
-    <ApplicationProviders
-      runtime={{
-        mode: "test",
-        services: { auth, data: { ...base.data, releases, search } },
-      }}
-    >
-      <App />
-      <Capture />
-    </ApplicationProviders>,
-  );
-  return {
-    search,
-    releases,
-    client: () => client,
-    emit: (next: AuthState) => act(() => emit(next)),
-  };
-}
-const tree = () => screen.findByRole("tree", { name: "Processes" });
-const item = (name: string | RegExp) => screen.getByRole("treeitem", { name });
-const items = () => screen.queryAllByRole("treeitem");
-const key = (k: string) => {
-  const target = document.activeElement!;
-  fireEvent.keyDown(target, { key: k });
-};
-async function focusTree() {
-  const root = (await tree()).querySelector<HTMLElement>('[tabindex="0"]')!;
-  act(() => root.focus());
-  return root;
-}
-const settle = () => act(async () => {});
+installScrollGeometry();
 
 describe("process tree roots and scoped loading", () => {
   it("renders release roots collapsed and searches one branch scope at a time", async () => {
@@ -285,7 +78,7 @@ describe("process tree roots and scoped loading", () => {
   });
 
   it("pages a large branch without replacing or duplicating loaded rows", async () => {
-    viewport = TREE_ROW_HEIGHT * 200;
+    geometry.tree = TREE_ROW_HEIGHT * 200;
     const app = mount({
       catalog: catalog([
         { id: "r1", name: "Big", version: "v", leaves: many(120, ["t"]) },
@@ -451,7 +244,7 @@ describe("process tree keyboard and ARIA", () => {
         "Leaf 1950 — CH",
       ),
     );
-    const limit = Math.ceil(viewport / TREE_ROW_HEIGHT) + 2 * 6 + 1;
+    const limit = Math.ceil(geometry.tree / TREE_ROW_HEIGHT) + 2 * 6 + 1;
     expect(items().length).toBeLessThanOrEqual(limit);
     key("End");
     await settle();
@@ -464,7 +257,9 @@ describe("process tree keyboard and ARIA", () => {
     await settle();
     const scrolled = screen.getByRole("tree").scrollTop;
     expect(scrolled).toBeLessThanOrEqual(top);
-    expect(scrolled + viewport).toBeGreaterThanOrEqual(top + TREE_ROW_HEIGHT);
+    expect(scrolled + geometry.tree).toBeGreaterThanOrEqual(
+      top + TREE_ROW_HEIGHT,
+    );
     expect(document.activeElement).toBe(last);
     expect(items().length).toBeLessThanOrEqual(limit + 1);
     key("Home");
@@ -535,7 +330,7 @@ describe("process tree states and cancellation", () => {
     await focusTree();
     key("ArrowRight");
     await waitFor(() => expect(item(/^t, 60 processes/)).toBeVisible());
-    viewport = TREE_ROW_HEIGHT * 100;
+    geometry.tree = TREE_ROW_HEIGHT * 100;
     fireEvent.click(item("Load more in Big (50 of 60 loaded)"));
     const error = await screen.findByRole("treeitem", {
       name: "Could not load Big. Synthetic TEMPORARILY_UNAVAILABLE Retry",
