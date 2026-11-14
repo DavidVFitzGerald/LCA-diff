@@ -51,17 +51,17 @@ Use isolated worktrees and container projects/ports/volumes, preserve frontend
 files/contracts and coordinate shared root tooling/locks/CI/documentation.
 Backend implementation and creation of its four issues have not started.
 
-| Milestone | Status | Dependency |
-| --- | --- | --- |
-| M0 — workflow and roadmap | Baseline merged in PR #35 | None |
-| M1 — container development environment | QA passed; runtime/editor evidence merged in PR #35 | M0 baseline merged |
-| M2 — GitHub execution setup | Forms/PR guidance and activation merged; #4 solo protection proposal in review | M0/M1 delivered; main protection waits for approved ADR 0004 |
-| F1 — frontend foundation | Complete: #5–#10 merged; final PR #44 at `9612943`, independent QA and hosted CI passed | M2 activation delivered; protection tracked separately in #4 |
-| F2 — shell and simulated authentication | Complete: #11–#15 merged after independent QA and hosted CI (final PR #49 at `1f82774`) | F1 complete; each task's issue dependencies |
-| F3–F5 — remaining mock frontend journeys | F3: #16 (paged process tree, PR #50), #18 (ordered selection, PR #53) and #17 (search, PR #54) merged; #19 (bulk selection, F3 gate) in progress; F4–F5 not started; predecessor gates retained | F2 completion and each task's issue dependencies |
-| B1–B4 — Phase 2, backend and ingestion | Not started | Until ADR 0005 acceptance: Phase 1 gate; afterward M1/M2 and milestone gates below |
-| I1 — real frontend integration | Not started | Phase 1 gate, B2 and validated synthetic publication from B4 |
-| R1–R2 — production readiness and release | Not started | Dependencies below |
+| Milestone                                | Status                                                                                                                                                                                                      | Dependency                                                                         |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| M0 — workflow and roadmap                | Baseline merged in PR #35                                                                                                                                                                                   | None                                                                               |
+| M1 — container development environment   | QA passed; runtime/editor evidence merged in PR #35                                                                                                                                                         | M0 baseline merged                                                                 |
+| M2 — GitHub execution setup              | Forms/PR guidance and activation merged; #4 solo protection proposal in review                                                                                                                              | M0/M1 delivered; main protection waits for approved ADR 0004                       |
+| F1 — frontend foundation                 | Complete: #5–#10 merged; final PR #44 at `9612943`, independent QA and hosted CI passed                                                                                                                     | M2 activation delivered; protection tracked separately in #4                       |
+| F2 — shell and simulated authentication  | Complete: #11–#15 merged after independent QA and hosted CI (final PR #49 at `1f82774`)                                                                                                                     | F1 complete; each task's issue dependencies                                        |
+| F3–F5 — remaining mock frontend journeys | F3 complete: #16–#19 merged after independent QA and hosted CI (final PR #62 at `d3fddb1`). F4: #20 (flow windows and row summaries) in progress; later F4–F5 tasks not started; predecessor gates retained | F2 completion and each task's issue dependencies                                   |
+| B1–B4 — Phase 2, backend and ingestion   | Not started                                                                                                                                                                                                 | Until ADR 0005 acceptance: Phase 1 gate; afterward M1/M2 and milestone gates below |
+| I1 — real frontend integration           | Not started                                                                                                                                                                                                 | Phase 1 gate, B2 and validated synthetic publication from B4                       |
+| R1–R2 — production readiness and release | Not started                                                                                                                                                                                                 | Dependencies below                                                                 |
 
 M0–M2 are the explicitly authorized documentation/environment bootstrap exception
 to issue-first execution. When M2 opens initial issues, record roadmap/environment
@@ -356,19 +356,19 @@ Missing data/license/evidence blocks release, not unrelated synthetic developmen
 The issue bodies will carry detailed checks. This table prevents milestone-level
 scope loss; test numbers refer to the 19 mandatory behaviors in §9.2.
 
-| Contract | Milestones owning delivery and evidence | §9.2 behaviors |
-| --- | --- | --- |
-| Governance, stack, environment, tiered CI (§§0, 3, 9) | M0–M2; F1/B1 introduce checks; R1–R2 complete gates | All applicable checks |
-| UI, identity state and account isolation (§§6.1, 6.8, 8) | F2/F5 mock; B2/I1 real; R2 acceptance | 13, 17 |
-| Search, bulk selection, ordering, grid, warnings (§§6.2–6.4, 9.1) | F3–F5; B2/I1; R2 benchmarks | 17–18 |
-| Scores, signed bars, exact differences (§§6.5–6.7) | F1/F4/F5; B2/I1 | 7, 15–16 |
-| Schema, decimals, isolation, provenance (§4) | B1/B3/B4; B2/I1 wire precision | 2–3, 11–12, 14 |
-| XML mapping, duplicates, reference resolution, exclusion (§§1–2, 5.1–5.5) | B3; R2 full manifest | 1–6 |
-| Workbook matching, verified basis, full-row audits (§§5.6–5.8) | B3; R2 audit signoff | 7–10 |
-| Read API, snapshots, errors, auth (§7) | F1 provisional; B2 authoritative; B4/I1 integration | 12–18 |
-| Configuration/logs, security, publish/operations (§§5.8, 8) | B1–B4; I1; R1–R2 | 12–14, 19 |
-| Future insertion points without future features (§10) | F1/B1/B3/B2 as applicable; inspect at I1 | Review against DESIGN-NOW scope |
-| Conservative defaults and external verification (§11) | B3/R2 data gates; R1 licensing/operations | Relevant failure/gating cases |
+| Contract                                                                  | Milestones owning delivery and evidence             | §9.2 behaviors                  |
+| ------------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------- |
+| Governance, stack, environment, tiered CI (§§0, 3, 9)                     | M0–M2; F1/B1 introduce checks; R1–R2 complete gates | All applicable checks           |
+| UI, identity state and account isolation (§§6.1, 6.8, 8)                  | F2/F5 mock; B2/I1 real; R2 acceptance               | 13, 17                          |
+| Search, bulk selection, ordering, grid, warnings (§§6.2–6.4, 9.1)         | F3–F5; B2/I1; R2 benchmarks                         | 17–18                           |
+| Scores, signed bars, exact differences (§§6.5–6.7)                        | F1/F4/F5; B2/I1                                     | 7, 15–16                        |
+| Schema, decimals, isolation, provenance (§4)                              | B1/B3/B4; B2/I1 wire precision                      | 2–3, 11–12, 14                  |
+| XML mapping, duplicates, reference resolution, exclusion (§§1–2, 5.1–5.5) | B3; R2 full manifest                                | 1–6                             |
+| Workbook matching, verified basis, full-row audits (§§5.6–5.8)            | B3; R2 audit signoff                                | 7–10                            |
+| Read API, snapshots, errors, auth (§7)                                    | F1 provisional; B2 authoritative; B4/I1 integration | 12–18                           |
+| Configuration/logs, security, publish/operations (§§5.8, 8)               | B1–B4; I1; R1–R2                                    | 12–14, 19                       |
+| Future insertion points without future features (§10)                     | F1/B1/B3/B2 as applicable; inspect at I1            | Review against DESIGN-NOW scope |
+| Conservative defaults and external verification (§11)                     | B3/R2 data gates; R1 licensing/operations           | Relevant failure/gating cases   |
 
 ## Published frontend issues and session handoffs
 
