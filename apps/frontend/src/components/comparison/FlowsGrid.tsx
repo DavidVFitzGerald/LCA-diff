@@ -169,6 +169,9 @@ function FlowsBody({
   };
   return (
     <>
+      <p role="status" className="comparison-grid-status">
+        {data.updating ? "Updating the comparison…" : ""}
+      </p>
       {data.error && (
         <p role="alert" className="comparison-grid-error">
           Flow values could not be loaded.{" "}
@@ -184,7 +187,7 @@ function FlowsBody({
         leadingWidth={leadingWidth}
         rowCount={data.rowCount}
         rowKey={rowKey}
-        version={data.token}
+        busy={data.updating}
         heights={data.heights}
         renderLeading={renderLeading}
         renderCell={renderCell}

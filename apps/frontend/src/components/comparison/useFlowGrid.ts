@@ -1,5 +1,9 @@
 import { useEffect, useMemo } from "react";
-import { useInfiniteQuery, useQueries } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useQueries,
+} from "@tanstack/react-query";
 import { SERVICE_WINDOW, useServiceQueries } from "../../app/queries";
 import type { SelectedProcess } from "../../app/selection";
 import type {
@@ -35,6 +39,8 @@ export interface FlowGridData {
   /** Total rows of the comparison; 0 while the first page loads. */
   readonly rowCount: number;
   readonly loading: boolean;
+  /** A changed selection is loading; the previous comparison is shown. */
+  readonly updating: boolean;
   readonly error: Error | null;
   row(index: number): FlowRow | undefined;
   /** Whole-selection geometry once the row's summary has arrived. */
@@ -63,14 +69,25 @@ export function useFlowGrid(
   const queries = useServiceQueries();
   const snapshot = useMemo(() => selectionSnapshot(entries), [entries]);
   const processIds = useMemo(() => entries.map((entry) => entry.id), [entries]);
+  // Rows and their extrema do not depend on column order: a canonical sorted
+  // set keeps the comparison (and its token) across reorders (spec §9.1).
+  const canonicalIds = useMemo(
+    () => [...processIds].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+    [processIds],
+  );
   const pages = useInfiniteQuery({
     ...queries.flowRowPages({
       revision_snapshot: snapshot,
-      process_ids: processIds,
+      process_ids: canonicalIds,
       limit: SERVICE_WINDOW,
     }),
     enabled: processIds.length > 0,
+    // Keep showing the previous comparison while a changed selection loads:
+    // no empty grid, no scroll reset, no lost focus (#23 QA D1).
+    placeholderData: keepPreviousData,
   });
+  // While the previous comparison is shown, read nothing with its token.
+  const updating = pages.isPlaceholderData;
   const loadedPages = useMemo(() => pages.data?.pages ?? [], [pages.data]);
   const token = loadedPages[0]?.comparison_token;
   const rowCount = loadedPages[0]?.total_count ?? 0;
@@ -86,6 +103,7 @@ export function useFlowGrid(
       hasNextPage &&
       !isFetchingNextPage &&
       !isError &&
+      !updating &&
       loadedRows.length <= wantedEnd
     )
       void fetchNextPage();
@@ -93,6 +111,7 @@ export function useFlowGrid(
     hasNextPage,
     isFetchingNextPage,
     isError,
+    updating,
     loadedRows.length,
     wantedEnd,
     fetchNextPage,
@@ -100,7 +119,7 @@ export function useFlowGrid(
 
   // Summaries: one request per loaded row page that intersects the window.
   const summaryPages = useMemo(() => {
-    if (!rows || !token) return [];
+    if (!rows || !token || updating) return [];
     const result: number[] = [];
     for (let page = 0; page < loadedPages.length; page += 1) {
       const start = page * SERVICE_WINDOW;
@@ -108,13 +127,13 @@ export function useFlowGrid(
       if (end >= rows[0] && start <= rows[1]) result.push(page);
     }
     return result;
-  }, [rows, token, loadedPages]);
+  }, [rows, token, updating, loadedPages]);
   const summaries = useQueries({
     queries: summaryPages.map((page) =>
       queries.flowSummaries({
         revision_snapshot: snapshot,
         comparison_token: token!,
-        process_ids: processIds,
+        process_ids: canonicalIds,
         row_keys: loadedPages[page].items.map((row) => row.row_key),
       }),
     ),
@@ -124,8 +143,10 @@ export function useFlowGrid(
 
   const tiles = useMemo(
     () =>
-      token ? tilesFor(rows, columns, loadedRows.length, entries.length) : [],
-    [token, rows, columns, loadedRows.length, entries.length],
+      token && !updating
+        ? tilesFor(rows, columns, loadedRows.length, entries.length)
+        : [],
+    [token, updating, rows, columns, loadedRows.length, entries.length],
   );
   const cellResults = useQueries({
     queries: tiles.map((tile) =>
@@ -161,6 +182,7 @@ export function useFlowGrid(
     token,
     rowCount,
     loading: pages.isPending && processIds.length > 0,
+    updating,
     error: failed,
     row: (index) => loadedRows[index],
     geometry: (index) => geometries.get(index),

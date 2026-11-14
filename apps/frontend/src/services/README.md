@@ -457,8 +457,13 @@ columns with TanStack Virtual:
   rounded up to whole px). They are applied with `resizeItem`, which keeps
   content steady when rows above the viewport change height. Rows are keyed
   by index within one comparison token, so a loading row or cell and its
-  loaded data share one DOM node and keep focus. A new token resets measured
-  heights.
+  loaded data share one DOM node and keep focus. Cached heights are
+  corrected, scroll-anchored, as summaries arrive; they are never reset.
+- **Selection changes.** Rows are read for the canonical sorted process set,
+  so reordering columns re-reads no rows or summaries. While a changed
+  selection loads, the previous comparison stays shown (`aria-busy`, with an
+  "Updating the comparison…" status). Nothing is read with the old token, and
+  scroll position and focus are kept (#23 QA D1).
 - **Stripes.** Alternating backgrounds follow the row index.
 - **Identifying block.** A bounded sticky left block, 36% of the grid width
   clamped to 300–560 px, holds compact inner columns. For Flows these are the

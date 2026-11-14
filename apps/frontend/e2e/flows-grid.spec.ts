@@ -173,6 +173,23 @@ test("220 × 2,000+ flows mount only a window with sticky, aligned headers and i
   expect(
     await grid.locator('[role="row"]').first().getAttribute("aria-rowindex"),
   ).toBe(firstRow);
+
+  // QA D1: removing a process while deep keeps rows and the position.
+  const selected = page.getByRole("button", { name: /^Selected processes/ });
+  if ((await selected.getAttribute("aria-expanded")) === "false")
+    await selected.click();
+  await page
+    .getByRole("button", { name: /^Remove .+ from selection$/ })
+    .first()
+    .click();
+  await expect(grid).toHaveAttribute("aria-colcount", String(columns));
+  expect(Number(await grid.getAttribute("aria-rowcount"))).toBeGreaterThan(0);
+  await expect(grid).not.toHaveAttribute("aria-busy");
+  await expect(
+    grid.locator('[role="gridcell"][data-state]').first(),
+  ).toBeVisible();
+  const kept = await grid.evaluate((element) => element.scrollTop);
+  expect(Math.abs(kept - settled)).toBeLessThan(52);
   expect(problems).toEqual([]);
 });
 

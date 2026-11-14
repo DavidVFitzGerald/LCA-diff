@@ -7,7 +7,11 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { createElement, Fragment, useEffect } from "react";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { SelectionProvider, useSelectionStore } from "../../app/selection";
+import {
+  selectionKey,
+  SelectionProvider,
+  useSelectionStore,
+} from "../../app/selection";
 import type { SelectedProcess, SelectionStore } from "../../app/selection";
 import { FlowsGrid } from "../../components/comparison/FlowsGrid";
 import { STANDARD_ROW_HEIGHT } from "../../components/comparison/geometry";
@@ -323,6 +327,84 @@ describe("windowed Flows grid (#23)", () => {
     expect(focused).not.toHaveAttribute("aria-busy");
     expect(app.flowRows.mock.calls.length).toBeGreaterThan(1);
   }, 30000);
+
+  it("keeps rows, scroll and focus when a process is removed or added while deep (QA D1)", async () => {
+    const app = render(30);
+    await selectAll();
+    const before = Number(grid().getAttribute("aria-rowcount"));
+    scrollTo(1300 * STANDARD_ROW_HEIGHT);
+    await waitFor(
+      () =>
+        expect(
+          grid().querySelector(
+            '[role="rowheader"][data-row="1300"]:not([aria-busy])',
+          ),
+        ).not.toBeNull(),
+      { timeout: 10000 },
+    );
+    act(() => at(1300, -1)!.focus());
+    const focused = document.activeElement;
+    // Where the focused row sits in the viewport; anchoring may adjust
+    // scrollTop when rows above get their real heights, never the view.
+    const offset = () =>
+      Number(
+        /translateY\((.+)px\)/.exec(
+          at(1300, -1)!.closest<HTMLElement>('[role="row"]')!.style.transform,
+        )![1],
+      ) - scroller().scrollTop;
+    const top = offset();
+    // Remove a process: the previous comparison stays while the new loads.
+    act(() => store.deselect(selectionKey(entries[5])));
+    expect(Number(grid().getAttribute("aria-rowcount"))).toBe(before);
+    expect(grid()).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByText("Updating the comparison…")).toBeInTheDocument();
+    expect(Math.abs(offset() - top)).toBeLessThanOrEqual(1);
+    expect(document.activeElement).toBe(focused);
+    await waitFor(() => expect(grid()).not.toHaveAttribute("aria-busy"), {
+      timeout: 10000,
+    });
+    expect(Number(grid().getAttribute("aria-rowcount"))).toBeGreaterThan(0);
+    expect(Math.abs(offset() - top)).toBeLessThanOrEqual(1);
+    expect(document.activeElement).toBe(focused);
+    expect(grid().getAttribute("aria-colcount")).toBe(String(PROCESSES));
+    // Values return for the new comparison at the same position.
+    await waitFor(
+      () =>
+        expect(
+          grid().querySelector(
+            '[data-row="1300"][role="gridcell"][data-state]',
+          ),
+        ).not.toBeNull(),
+      { timeout: 10000 },
+    );
+    // Re-adding appends a column immediately and keeps the position.
+    act(() => store.select(entries[5]));
+    expect(grid().getAttribute("aria-colcount")).toBe(String(PROCESSES + 1));
+    expect(Number(grid().getAttribute("aria-rowcount"))).toBeGreaterThan(0);
+    expect(Math.abs(offset() - top)).toBeLessThanOrEqual(1);
+    expect(app.flowRows).toHaveBeenCalled();
+  }, 30000);
+
+  it("reorders columns without re-reading rows or losing focus (QA D1)", async () => {
+    const app = render();
+    await selectAll();
+    act(() => at(0, -1)!.focus());
+    fireEvent.keyDown(document.activeElement!, { key: "ArrowRight" });
+    await waitFor(() => expect(document.activeElement).toBe(at(0, 0)));
+    const rowReads = app.flowRows.mock.calls.length;
+    const summaryReads = app.flowSummaries.mock.calls.length;
+    act(() => store.move(selectionKey(entries[0]), 3));
+    await act(async () => {});
+    expect(Number(grid().getAttribute("aria-rowcount"))).toBeGreaterThan(0);
+    expect(grid()).not.toHaveAttribute("aria-busy");
+    expect(app.flowRows).toHaveBeenCalledTimes(rowReads);
+    expect(app.flowSummaries).toHaveBeenCalledTimes(summaryReads);
+    // The tab stop follows its process to the new column.
+    await waitFor(() => expect(document.activeElement).toBe(at(0, 3)));
+    expect(document.activeElement).toHaveAccessibleName(
+      new RegExp(`^${entries[0].name}: `),
+    );
+  });
 
   it("keeps the header strip horizontally aligned with the cells", async () => {
     render();

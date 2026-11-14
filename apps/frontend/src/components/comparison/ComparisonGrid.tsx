@@ -63,7 +63,7 @@ export function ComparisonGrid({
   leadingWidth,
   rowCount,
   rowKey,
-  version,
+  busy = false,
   heights,
   renderLeading,
   renderCell,
@@ -77,12 +77,8 @@ export function ComparisonGrid({
   rowCount: number;
   /** Data identity of a row, for keeping the tab stop on the same row. */
   rowKey: (index: number) => string;
-  /**
-   * Row set identity (e.g. the comparison token). Rows are keyed by index
-   * so a loading row and its loaded data share one DOM node (focus is kept);
-   * a new version resets measured heights.
-   */
-  version?: string;
+  /** A changed row set is loading; the previous rows stay shown. */
+  busy?: boolean;
   heights: ReadonlyMap<number, number>;
   renderLeading: (index: number, cell: CellAttributes) => ReactNode;
   renderCell: (
@@ -125,6 +121,10 @@ export function ComparisonGrid({
       : (columnIndex.get(active.columnKey ?? "") ??
         Math.min(active.column, columns.length - 1));
 
+  // Rows are keyed by index: rows keep their order within a comparison, and
+  // a loading row and its loaded data share one DOM node, so focus is kept.
+  // Sizes cached for an index are corrected (scroll-anchored) as soon as
+  // the row's summary arrives, so a changed selection never resets them.
   // No React Compiler runs in this build; virtualizer methods are used only here.
   // eslint-disable-next-line react-hooks/incompatible-library
   const rowWindow = useVirtualizer({
@@ -154,7 +154,6 @@ export function ComparisonGrid({
 
   // Summary-derived heights; resizeItem keeps rows above the viewport from
   // shifting visible content (scroll anchoring) and is a no-op when equal.
-  useLayoutEffect(() => rowWindow.measure(), [rowWindow, version]);
   // Applied in a microtask after commit (still before paint): resizing an
   // item notifies the virtualizer synchronously, and React forbids that
   // flushSync inside a lifecycle method.
@@ -273,6 +272,7 @@ export function ComparisonGrid({
       aria-label={label}
       aria-rowcount={rowCount}
       aria-colcount={columns.length + 1}
+      aria-busy={busy || undefined}
       data-mounted-rows={rowItems.length}
       data-mounted-columns={columnItems.length}
       onScroll={onScroll}

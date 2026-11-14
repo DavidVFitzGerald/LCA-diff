@@ -112,3 +112,10 @@
 .comparison-frame .comparison-header-error {
   margin-inline: 1rem;
 }
+.comparison-grid-status {
+  margin: 0;
+  padding-inline: 1rem;
+  min-height: 0;
+  font-size: 0.75rem;
+  color: #52675b;
+}
