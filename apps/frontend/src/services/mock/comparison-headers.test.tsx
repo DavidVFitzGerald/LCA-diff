@@ -10,13 +10,21 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { QueryClient } from "@tanstack/react-query";
 import { createElement, Fragment, useEffect } from "react";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { SelectionProvider, useSelectionStore } from "../../app/selection";
 import type { SelectedProcess, SelectionStore } from "../../app/selection";
 import { ComparisonHeader } from "../../components/comparison/ComparisonHeader";
 import { decimalString } from "../contracts";
-import type { HeadersRequest, ProcessHeader } from "../contracts";
+import type {
+  DataService,
+  HeadersRequest,
+  Page,
+  ProcessHeader,
+} from "../contracts";
+import { createServiceQueries, ServiceQueryError } from "../../app/queries";
+import { createMockDiscovery } from "./discovery";
 import type { DiscoveryCatalog } from "./discovery";
 import { catalog, failure, many, mount, settle } from "./test-harness";
 
@@ -282,6 +290,42 @@ describe("shared process headers", () => {
     expect(app.headers.mock.calls.length).toBeGreaterThan(0);
   });
 
+  it("keeps loaded headers and known differences when a later read fails (QA D1)", async () => {
+    let failing = false;
+    const app = render({
+      wrap: (discovery) => ({
+        headers: async (...args) =>
+          failing
+            ? failure("TEMPORARILY_UNAVAILABLE", true)
+            : discovery.headers(...args),
+      }),
+    });
+    app.pick("r1:p0", "r1:p3");
+    await loaded();
+    expect(warning()).toHaveTextContent("different reference units.");
+    failing = true;
+    app.pick("r1:p2");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "(TEMPORARILY_UNAVAILABLE)",
+    );
+    // Validated headers stay; only the unread column is pending.
+    expect(warning()).toHaveTextContent("different reference units.");
+    expect(column("Alpha")).toHaveAttribute("aria-busy", "false");
+    expect(column("Delta")).toHaveAttribute("aria-busy", "false");
+    expect(within(column("Delta")).getByText("MJ")).toBeVisible();
+    expect(column("Gamma")).toHaveAttribute("aria-busy", "true");
+    failing = false;
+    fireEvent.click(
+      within(screen.getByRole("alert")).getByRole("button", { name: "Retry" }),
+    );
+    await loaded();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(warning()).toHaveTextContent(
+      "different reference amounts and units.",
+    );
+    expect(app.requested().slice(-1)).toEqual([["r1:p2"]]);
+  });
+
   it("rejects responses for another revision or other processes and retries", async () => {
     let mode: "revision" | "missing" | "ok" = "revision";
     const app = render({
@@ -337,5 +381,72 @@ describe("shared process headers", () => {
     expect(store.getSnapshot()).toHaveLength(2);
     // Unknown bases never claim the processes are comparable or not.
     expect(warning()).toBeEmptyDOMElement();
+  });
+});
+
+describe("bulk header reads seed only validated headers (QA O1)", () => {
+  const ref = { release_id: "r1", revision_id: "r1-rev" };
+  function setup(tamper: (page: Page<ProcessHeader>) => Page<ProcessHeader>) {
+    const discovery = createMockDiscovery({ catalog: bases() });
+    const data = {
+      ...discovery,
+      headers: async (...args: Parameters<DataService["headers"]>) => {
+        const result = await discovery.headers(...args);
+        return result.ok ? { ...result, data: tamper(result.data) } : result;
+      },
+    } as unknown as DataService;
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const queries = createServiceQueries(data, { namespace: "t", uid: "u1" });
+    return { client, queries };
+  }
+  const read = ({ client, queries }: ReturnType<typeof setup>) =>
+    client.fetchQuery(queries.headersFor(ref, ["r1:p0", "r1:p1"]));
+  const code = (error: unknown) => (error as ServiceQueryError).detail.code;
+
+  it.each([
+    [
+      "another revision",
+      (page: Page<ProcessHeader>) => ({
+        ...page,
+        items: page.items.map((h) => ({ ...h, revision_id: "other-rev" })),
+      }),
+      "STALE_SNAPSHOT",
+    ],
+    [
+      "a missing ID",
+      (page: Page<ProcessHeader>) => ({ ...page, items: page.items.slice(1) }),
+      "UNKNOWN_PROCESS",
+    ],
+    [
+      "a duplicated ID",
+      (page: Page<ProcessHeader>) => ({
+        ...page,
+        items: [page.items[0], page.items[0]],
+      }),
+      "UNKNOWN_PROCESS",
+    ],
+  ])(
+    "rejects %s before anything can be cached",
+    async (_, tamper, expected) => {
+      const app = setup(tamper);
+      const error = await read(app).catch((caught: unknown) => caught);
+      expect(code(error)).toBe(expected);
+      expect(
+        app.queries.cachedHeaders(app.client, ref, ["r1:p0", "r1:p1"]),
+      ).toEqual([]);
+    },
+  );
+
+  it("returns valid headers that the selection header query can reuse", async () => {
+    const app = setup((page) => page);
+    const headers = await read(app);
+    app.queries.rememberHeaders(app.client, headers);
+    expect(
+      app.queries
+        .cachedHeaders(app.client, ref, ["r1:p1", "r1:p0"])
+        .map(({ id }) => id),
+    ).toEqual(["r1:p1", "r1:p0"]);
   });
 });
