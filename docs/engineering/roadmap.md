@@ -43,8 +43,8 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 | --- | --- | --- |
 | M0 — workflow and roadmap | Baseline merged in PR #35 | None |
 | M1 — container development environment | QA passed; runtime/editor evidence merged in PR #35 | M0 baseline merged |
-| M2 — GitHub execution setup | Forms/PR guidance and QA-passed activation record merged in PRs #35/#36 | M0/M1 delivered |
-| F1–F5 — Phase 1, frontend with mocks | #5 technical scaffold in progress; later tasks retain predecessor gates | M2 delivered, then gates below |
+| M2 — GitHub execution setup | Forms/PR guidance and activation merged; #4 solo protection proposal in review | M0/M1 delivered; main protection waits for approved ADR 0004 |
+| F1–F5 — Phase 1, frontend with mocks | #5 scaffold merged in PR #37; later tasks retain predecessor gates | M2 activation delivered; protection tracked separately in #4 |
 | B1–B4 — Phase 2, backend and ingestion | Not started | Phase 1 gate, then gates below |
 | I1 — real frontend integration | Not started | B2 and validated synthetic publication from B4 |
 | R1–R2 — production readiness and release | Not started | Dependencies below |
@@ -344,8 +344,12 @@ both forms visible in the rendered chooser. See [M2 verification](m2-verificatio
 The original private-repository protection probe returned HTTP 403.
 On this follow-up, GitHub reports the repository public and main protection returns
 HTTP 404, "Branch not protected". This session changed neither visibility nor
-billing. Effective protection remains tracked in #4; no nonexistent CI contexts
-were configured. M1's runtime/editor evidence in #2 is merged in PR #35.
+billing. Issue #4 now proposes solo-maintainer review through ADR 0004 and
+the versioned protection payload. The candidate rule is tested on an isolated
+branch; main activation waits for approved policy merge. See
+[review-protection.md](review-protection.md). The real `quality` check exists
+after PR #37; no placeholder contexts are configured. M1's runtime/editor
+evidence in #2 is merged in PR #35.
 
 PM role agents groomed the frontend bodies and independent QA reviewed their
 documentation coverage and dependency graph. All implementation issues remain

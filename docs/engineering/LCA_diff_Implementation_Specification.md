@@ -29,6 +29,17 @@ The supplied original Markdown description is **historical evidence**, not a sec
 
 ### 0.2 Authoritative decision workflow
 
+**Solo-maintainer policy (ADR 0004):** while PRs use the sole maintainer's account,
+review consists of independent QA role verification at the delivered commit,
+passing relevant CI and the maintainer's explicit merge as approval evidence.
+Require PRs with zero native approving reviews; do not claim another human's
+approval. Protect `main` with the GitHub Actions `quality` context (app ID 15368),
+strict up-to-date checking, administrator enforcement, resolved conversations,
+and no force pushes, deletion or bypass allowance. Agent QA remains a workflow
+requirement, not a native check. Add future required contexts only once implemented
+and observed. This exception takes effect only after ADR 0004 is approved and
+merged; revisit it when another regular maintainer joins.
+
 1. For **every decision deviating from the current PRD or this specification**, create a numbered **proposed** ADR in `docs/adr/`: context, decision, alternatives, rationale, consequences, scope (MVP/post-MVP), affected PRD/specification sections, migration/testing implications, and any superseded ADR IDs. Material product or architecture changes also require an ADR. See `docs/adr/README.md`.
 2. The ADR becomes **accepted and authoritative only after its pull request is approved and merged into `main`**. A draft branch, unmerged PR, or standalone status change has no authority. Protect `main` with required review and relevant CI checks; use CODEOWNERS for architecture/schema decisions where helpful.
 3. Update **both the current PRD and specification in that same PR**, plus affected tests and workflow documents. Describe the decision's implications in each current document even if most detail belongs in only one. Do not defer document reconciliation or merge a known contradiction. If an unexpected conflict nevertheless exists after merge, **the accepted ADR takes precedence**, and the documents must be corrected.

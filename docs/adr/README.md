@@ -29,6 +29,10 @@ not require an ADR. Historical folders are not decision inputs; follow root
 
 ## Index
 
+For solo operation under ADR 0004, independent agent QA plus passing checks and
+the maintainer's explicit merge records approval; a native approval by another
+human is not claimed. That exception takes effect only after ADR 0004 is merged.
+
 ADRs 0001–0003 were accepted through the maintainer's merge of
 [PR #35](https://github.com/DavidVFitzGerald/LCA-diff/pull/35) into `main`
 on 2026-11-13, commit `f809b179c5c54f47be32ec7b24a9abce36b64982`.
@@ -39,6 +43,7 @@ The maintainer confirmed the merge; GitHub records no separate APPROVED review.
 | [0001](0001-current-document-governance.md) | Synchronized decision documentation and historical-context exclusion | Accepted |
 | [0002](0002-frontend-first-delivery.md) | Frontend-first delivery through mock and real service adapters | Accepted |
 | [0003](0003-rootless-development-workspace.md) | Rootless development identity with host-owned bind mounts | Accepted |
+| [0004](0004-solo-maintainer-review.md) | Solo-maintainer review with enforced CI | Proposed |
 
 ## PR consistency checklist
 

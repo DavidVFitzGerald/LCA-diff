@@ -39,6 +39,15 @@ The local workspace uses **rootless Docker** without host Docker-group membershi
 
 ## 6. Governance and post-MVP
 
+**Solo-maintainer review (ADR 0004):** require PRs, independent agent QA of the
+delivered commit, passing relevant CI and an explicit maintainer merge as approval
+evidence. Native approval count is zero because PRs use the maintainer's identity;
+this does not claim review by another human. Enforce the current GitHub Actions
+`quality` check against an up-to-date branch for administrators too, require
+resolved conversations, and block force pushes/deletion without bypass allowances.
+Apply the solo exception only after its proposed ADR is approved and merged.
+Revisit native approvals if another regular maintainer joins.
+
 Keep this PRD and the current specification as **living GitHub Markdown documents**. Every decision deviating from either requires a numbered **Architecture Decision Record (ADR)** in `docs/adr/` and updates to **both current documents in the same PR**; do not defer reconciliation. An ADR becomes authoritative **only after its PR is approved and merged into `main`**. Accepted ADRs govern if an unexpected inconsistency remains, which must be corrected. GitHub Issues track implementation rather than changing architectural authority. See `docs/adr/README.md` for the workflow.
 
 The old documents in `docs/product/archive/` and `docs/engineering/archive/`, and all of `docs/reference/`, remain for human historical reference. Agents must exclude them from routine reading, searching, citations and delegated context unless explicitly asked to investigate history; they are not sources of implementation requirements.

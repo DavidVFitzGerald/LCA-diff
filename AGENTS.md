@@ -221,6 +221,12 @@ blockers; track missing coverage in issues.
 
 ## Git and session handoff
 
+ADR 0004 proposes solo-maintainer review: independent QA at the delivered SHA,
+passing required checks and an explicit maintainer merge record approval without
+a native approving review. Apply that exception only after the ADR is merged.
+Agents still do not merge without explicit authorization. GitHub cannot enforce
+agent QA; record its evidence before handing a PR to the maintainer.
+
 Commit focused coherent increments regularly on task branches, referencing the
 issue once assigned. Review diffs and stage explicit files; preserve unrelated
 work. Never rewrite shared history or force-push. Push branches/open PRs within
