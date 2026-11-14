@@ -44,8 +44,9 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 | M0 — workflow and roadmap | Baseline merged in PR #35 | None |
 | M1 — container development environment | QA passed; runtime/editor evidence merged in PR #35 | M0 baseline merged |
 | M2 — GitHub execution setup | Forms/PR guidance and activation merged; #4 solo protection proposal in review | M0/M1 delivered; main protection waits for approved ADR 0004 |
-| F1 — frontend foundation | #5–#9 merged; #10 supplies the final browser/CI gate; see verification record | M2 activation delivered; protection tracked separately in #4 |
-| F2–F5 — remaining mock frontend journeys | Not started; predecessor gates retained | F1 completion and each task's issue dependencies |
+| F1 — frontend foundation | Complete: #5–#10 merged; final PR #44 at `9612943`, independent QA and hosted CI passed | M2 activation delivered; protection tracked separately in #4 |
+| F2 — shell and simulated authentication | #11 shell implementation prepared; completion awaits independent QA, CI and maintainer merge; #12–#15 retain issue gates | F1 complete; each task's issue dependencies |
+| F3–F5 — remaining mock frontend journeys | Not started; predecessor gates retained | F2 completion and each task's issue dependencies |
 | B1–B4 — Phase 2, backend and ingestion | Not started | Phase 1 gate, then gates below |
 | I1 — real frontend integration | Not started | B2 and validated synthetic publication from B4 |
 | R1–R2 — production readiness and release | Not started | Dependencies below |
@@ -142,11 +143,11 @@ backend/cloud dependency; contract/fixture tests cover precision and missingness
 and typecheck/unit/build/browser smoke checks run in CI. Later generated DTO
 migration is explicitly reserved for I1.
 
-Current delivery evidence: #5–#9 are merged; #10 supplies the pinned Chromium/
-Firefox smoke and complete currently available frontend CI suite. The
-[F1 verification record](f1-verification.md) describes commands and coverage.
-The milestone becomes complete only after independent QA, hosted CI and approved
-merge of #10; this entry alone does not satisfy that gate.
+Current delivery evidence: #5–#10 are merged. The maintainer merged final
+[PR #44](https://github.com/DavidVFitzGerald/LCA-diff/pull/44) at `9612943`
+after independent QA PASS and hosted quality/full-suite CI PASS recorded in #10.
+The [F1 verification record](f1-verification.md) describes commands and coverage.
+This completes the F1 foundation gate; product authentication remains F2 work.
 
 ### F2 — application shell and simulated authentication
 
@@ -160,6 +161,12 @@ verified authentication or flash the modal while resolving a valid session.
 Gate: keyboard/focus behavior and all simulated auth states have component and
 browser evidence; logout/account switching clears protected in-memory state and
 query caches. These checks do not prove real identity/security enforcement.
+
+#11 prepares the shell, required-login dialog, keyboard tabs/sidebar framing and
+desktop-required state. Its [verification record](f2-shell-verification.md)
+separates delivered shell evidence from #12–#15 auth adapter/forms/lifecycle and
+consolidated acceptance. Completion remains conditional on independent QA, hosted
+CI and maintainer merge; the F2 milestone is not complete.
 
 ### F3 — discovery and process selection
 

@@ -1,8 +1,9 @@
 # Frontend GitHub backlog
 
-Status: 14 November 2026. F1 tasks #5–#9 are merged; #10 supplies browser/CI
-completion. Its issue/PR records final independent QA, hosted checks and approved
-merge. F2–F5 retain their issue dependencies. See [F1 verification](f1-verification.md)
+Status: 14 November 2026. F1 tasks #5–#10 are complete after the maintainer's
+merge of PR #44 at `9612943`; #10 records independent QA and hosted CI PASS.
+F2 #11 shell implementation is prepared for independent QA, CI and review;
+#12–#15 and F3–F5 retain their issue dependencies. See [F1 verification](f1-verification.md)
 for implemented contract/mock coverage and the remaining journey/integration gaps.
 
 Read [the roadmap](roadmap.md) and [AGENTS.md](../../AGENTS.md) for requirements
