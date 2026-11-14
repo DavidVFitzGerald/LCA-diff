@@ -103,6 +103,15 @@ are represented as passing. The manual full frontend suite currently equals the
 available foundation smoke plus unit/contract tests. Future suites extend this
 path rather than implying absent journeys have already passed.
 
+The first hosted run at `78645cf`
+([43590019891](https://github.com/DavidVFitzGerald/LCA-diff/actions/runs/43590019891))
+passed Chromium but failed Firefox startup: GitHub injected `/github/home`, owned
+by UID 1001, while the pinned job container runs as UID 0. Both browser steps now
+set `HOME=/root`, the container user's owned system home. This configures Firefox's
+normal home checks without changing ownership, capabilities or sandbox settings.
+The corrected SHA requires fresh hosted PR/dispatch evidence in the #10 handoff;
+the failed earlier run is not a passing browser result.
+
 F2 owns product shell/login and simulated account lifecycle; #15 adds product auth
 browser smoke. F3–F5 add selector/grid/score journeys and full mock acceptance;
 #29/#30 implement exact on-demand differences and canonical difference caching.
