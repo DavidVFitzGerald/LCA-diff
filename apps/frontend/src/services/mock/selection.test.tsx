@@ -274,7 +274,7 @@ describe("selected process list", () => {
     expect(heading()).toHaveTextContent("Selected processes (0)");
     expect(screen.getByText(/^No processes selected\./)).toHaveFocus();
     expect(
-      screen.getByText("Cleared 2 selected processes"),
+      screen.getByText("Cleared 2 selected processes."),
     ).toBeInTheDocument();
     expect(item("Road A — CH")).toHaveAttribute("aria-checked", "false");
     expect(item("Road A — DE")).toHaveAttribute("aria-checked", "false");
@@ -291,6 +291,22 @@ describe("selected process list", () => {
     expect(list()).toBeNull();
     fireEvent.click(heading());
     expect(listed()).toEqual(["1.Road A — CH Alpha catalog 2026 v1"]);
+  });
+
+  it("keeps focus on the section toggle when Clear all runs with the list collapsed", async () => {
+    mount();
+    await openRoad();
+    fireEvent.click(item("Road A — CH"));
+    fireEvent.click(item("Road A — DE"));
+    fireEvent.click(heading());
+    expect(heading()).toHaveAttribute("aria-expanded", "false");
+    const clear = screen.getByRole("button", { name: "Clear all" });
+    act(() => clear.focus());
+    fireEvent.click(clear);
+    await settle();
+    expect(heading()).toHaveTextContent("Selected processes (0)");
+    expect(heading()).toHaveFocus();
+    expect(document.activeElement).not.toBe(document.body);
   });
 
   it("discards the selection on signout and account change without storage", async () => {
