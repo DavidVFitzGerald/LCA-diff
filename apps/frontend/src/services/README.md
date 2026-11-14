@@ -304,6 +304,14 @@ no difference predicate.
     and snapshot (release order does not matter). Otherwise the window fails
     as `STALE_SNAPSHOT` rather than caching another revision under the request key.
   - `flowSummaries` and `flowRowPages` responses are checked the same way.
+  - Every later `flowRowPages` page must also carry the first page's
+    `comparison_token` (#64). The page param holds the cursor and the token of
+    the page it continues, so a page from another comparison session fails as
+    `STALE_SNAPSHOT` and is never appended to the cached pages.
+  - Release-order tolerance is tested against a two-release mock catalog: the
+    mock answers refs sorted by release ID, and requests list them in the
+    reverse order. A missing or extra release is still rejected for row pages,
+    summaries and cell windows.
 
 Batches bound requests, never the selection.
 

@@ -44,6 +44,11 @@ export interface QueryScope {
 export const SERVICE_WINDOW = 100;
 /** Per-request cell budget (rows × processes); never a selection limit. */
 export const SERVICE_CELL_WINDOW = 1000;
+/** Next flow-row page: its cursor and the comparison session it continues. */
+interface RowPageParam {
+  readonly cursor: string;
+  readonly token: string;
+}
 /** Release-ordered snapshot identity, independent of request ordering. */
 function snapshotKey(snapshot: RevisionSnapshot): string {
   return JSON.stringify(
@@ -377,7 +382,13 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
         data.flowCells(dto, { signal }),
       );
     },
-    /** Cursor-paged flow rows (#20); the token and snapshot key every page. */
+    /**
+     * Cursor-paged flow rows (#20). The snapshot keys every page, and each
+     * later page must carry the first page's `comparison_token` (#64): the
+     * page param holds the cursor plus the token of the page it came from, so
+     * a page from another comparison session fails as `STALE_SNAPSHOT` and is
+     * never appended to the cached session.
+     */
     flowRowPages: (input: Omit<ComparisonRowsRequest, "cursor">) => {
       const dto: ComparisonRowsRequest = capture(input);
       return infiniteQueryOptions({
@@ -390,17 +401,28 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
           dto,
         ] as const,
         enabled: scope.uid !== null,
-        initialPageParam: undefined as string | undefined,
-        getNextPageParam: (last: ComparisonPage<FlowRow>) =>
-          last.next_cursor ?? undefined,
+        initialPageParam: undefined as RowPageParam | undefined,
+        getNextPageParam: (
+          last: ComparisonPage<FlowRow>,
+        ): RowPageParam | undefined =>
+          last.next_cursor === null
+            ? undefined
+            : { cursor: last.next_cursor, token: last.comparison_token },
         queryFn: async ({ signal, pageParam }) => {
           if (scope.uid === null) throw denied();
           const result = await data.flowRows(
-            pageParam === undefined ? dto : { ...dto, cursor: pageParam },
+            pageParam === undefined
+              ? dto
+              : { ...dto, cursor: pageParam.cursor },
             { signal },
           );
           if (!result.ok) throw new ServiceQueryError(result.error);
-          const stale = mismatch(dto, result.data);
+          const stale = mismatch(
+            pageParam === undefined
+              ? dto
+              : { ...dto, comparison_token: pageParam.token },
+            result.data,
+          );
           if (stale) throw new ServiceQueryError(stale.error);
           return result.data;
         },
