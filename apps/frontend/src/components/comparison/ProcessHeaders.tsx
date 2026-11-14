@@ -225,7 +225,7 @@ export function ProcessHeaders({
     [keys],
   );
   return (
-    <>
+    <div className="process-header-anchor">
       <div
         ref={scrollerRef}
         className="process-header-scroller"
@@ -267,7 +267,7 @@ export function ProcessHeaders({
             releaseName(revealed.release_id),
           ).map((line) => <span key={line}>{line}</span>)}
       </div>
-    </>
+    </div>
   );
 }
 
