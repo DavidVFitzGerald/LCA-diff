@@ -2,7 +2,7 @@
 
 import re
 from collections.abc import Iterable
-from decimal import MAX_EMAX, MIN_EMIN, Decimal, Inexact, Rounded, localcontext
+from decimal import MAX_EMAX, MIN_EMIN, Decimal, DecimalException, Inexact, Rounded, localcontext
 
 DECIMAL_PATTERN = re.compile(r"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$", re.ASCII)
 
@@ -11,7 +11,10 @@ def decimal(value: str | Decimal) -> Decimal:
     if isinstance(value, str):
         if DECIMAL_PATTERN.fullmatch(value) is None:
             raise ValueError("Expected a finite decimal string")
-        result = Decimal(value)
+        try:
+            result = Decimal(value)
+        except DecimalException as error:
+            raise ValueError("Unrepresentable finite decimal string") from error
     elif isinstance(value, Decimal):
         result = value
     else:

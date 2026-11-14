@@ -5,9 +5,9 @@
 backend-format backend-format-check backend-lint backend-typecheck backend-test-unit backend-test-integration backend-migrate backend-compat:
 	@test "$${LCA_DEV_CONTAINER:-}" = 1 || { echo 'Run this target inside ./dev shell.' >&2; exit 1; }
 	@case "$@" in \
-	  backend-format) uv run --frozen ruff format packages/python db/migrations scripts/backend_compat.py ;; \
-	  backend-format-check) uv run --frozen ruff format --check packages/python db/migrations scripts/backend_compat.py ;; \
-	  backend-lint) uv run --frozen ruff check packages/python db/migrations scripts/backend_compat.py ;; \
+	  backend-format) uv run --frozen ruff format packages/python db/migrations scripts ;; \
+	  backend-format-check) uv run --frozen ruff format --check packages/python db/migrations scripts ;; \
+	  backend-lint) uv run --frozen ruff check packages/python db/migrations scripts ;; \
 	  backend-typecheck) uv run --frozen mypy ;; \
 	  backend-test-unit) uv run --frozen pytest -m unit ;; \
 	  backend-test-integration) uv run --frozen pytest -m integration ;; \

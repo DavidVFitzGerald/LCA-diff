@@ -252,6 +252,16 @@ def test_precision_scores_and_self_contained_provenance(connection: Connection) 
         connection,
         update(s.process_flows).where(s.process_flows.c.id == pfid).values(amount=Decimal("NaN")),
     )
+    connection.execute(
+        update(s.release_revision)
+        .where(s.release_revision.c.id == rev)
+        .values(status="published", published_at=datetime.now(UTC))
+    )
+    rejected(
+        connection,
+        update(s.flow).where(s.flow.c.id == fid).values(name="changed historical description"),
+    )
+    rejected(connection, s.flow.delete().where(s.flow.c.id == fid))
 
 
 def test_published_data_are_immutable_even_when_inactive(connection: Connection) -> None:
@@ -260,6 +270,42 @@ def test_published_data_are_immutable_even_when_inactive(connection: Connection)
     source_id = source(connection, rev)
     _, other_rev = revision(connection)
     other_pid = process(connection, other_rev)
+    run_id, rule_id = uuid4(), uuid4()
+    connection.execute(
+        insert(s.import_run).values(
+            id=run_id,
+            revision_id=rev,
+            status="completed",
+            parser_version="test",
+            transformer_version="test",
+        )
+    )
+    connection.execute(
+        insert(s.resolution_rule).values(
+            id=rule_id,
+            database_release_id=release,
+            rule_type="test",
+            input_key={},
+            resolution={},
+            author="synthetic",
+            evidence="unapproved source evidence",
+            approved=False,
+            effective_version="test",
+            checksum="c" * 64,
+        )
+    )
+    connection.execute(
+        insert(s.validation_issue).values(
+            revision_id=rev,
+            import_run_id=run_id,
+            stage="test",
+            severity="WARNING",
+            code="TEST",
+            message="synthetic",
+            resolution_state="unresolved",
+            resolution_rule_id=rule_id,
+        )
+    )
     connection.execute(
         update(s.release_revision)
         .where(s.release_revision.c.id == rev)
@@ -270,6 +316,9 @@ def test_published_data_are_immutable_even_when_inactive(connection: Connection)
     )
     for statement in (
         update(s.process).where(s.process.c.id == pid).values(name="changed"),
+        update(s.resolution_rule)
+        .where(s.resolution_rule.c.id == rule_id)
+        .values(evidence="changed history"),
         update(s.process).where(s.process.c.id == pid).values(revision_id=other_rev),
         update(s.process).where(s.process.c.id == other_pid).values(revision_id=rev),
         s.process.delete().where(s.process.c.id == pid),
@@ -324,6 +373,38 @@ def test_publication_serializes_against_candidate_writes(engine: Engine) -> None
         publisher.commit()
         rejected(writer, update(s.process).where(s.process.c.id == pid).values(name="after freeze"))
         writer.rollback()
+    # Shared release metadata must serialize too; checking existing frozen children
+    # without locking the parent permits a metadata transaction to commit later.
+    with engine.begin() as connection:
+        release, rev = revision(connection)
+    with engine.connect() as metadata_writer, engine.connect() as publisher:
+        metadata_writer.execute(
+            update(s.database_release)
+            .where(s.database_release.c.id == release)
+            .values(display_name="before publication")
+        )
+        publisher.exec_driver_sql("SET LOCAL lock_timeout = '100ms'")
+        with pytest.raises(DBAPIError):
+            publisher.execute(
+                update(s.release_revision)
+                .where(s.release_revision.c.id == rev)
+                .values(status="published", published_at=datetime.now(UTC))
+            )
+        publisher.rollback()
+        metadata_writer.commit()
+        publisher.execute(
+            update(s.release_revision)
+            .where(s.release_revision.c.id == rev)
+            .values(status="published", published_at=datetime.now(UTC))
+        )
+        publisher.commit()
+        rejected(
+            metadata_writer,
+            update(s.database_release)
+            .where(s.database_release.c.id == release)
+            .values(display_name="after publication"),
+        )
+        metadata_writer.rollback()
 
 
 def test_api_and_import_roles(engine: Engine) -> None:
@@ -357,6 +438,12 @@ def test_api_and_import_roles(engine: Engine) -> None:
             connection,
             update(s.release_revision)
             .where(s.release_revision.c.id == private)
+            .values(status="published"),
+        )
+        rejected(
+            connection,
+            update(s.release_revision)
+            .where(s.release_revision.c.id == private)
             .values(status="published", published_at=datetime.now(UTC)),
         )
         rejected(
@@ -371,4 +458,14 @@ def test_api_and_import_roles(engine: Engine) -> None:
             ),
         )
         rejected(connection, text("DELETE FROM release_publication"))
+        connection.exec_driver_sql(
+            "CREATE TEMP TABLE release_revision (id uuid, published_at timestamptz)"
+        )
+        connection.exec_driver_sql("SET LOCAL search_path = pg_temp, public")
+        rejected(
+            connection,
+            update(s.process)
+            .where(s.process.c.id == public_pid)
+            .values(name="temporary-shadow attack"),
+        )
     importer.dispose()

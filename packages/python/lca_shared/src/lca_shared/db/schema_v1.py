@@ -56,8 +56,8 @@ def timestamp(name: str, *, nullable: bool = False) -> Column[Any]:
     )
 
 
-def json(name: str) -> Column[Any]:
-    return Column(name, JSONB, nullable=False, server_default="{}")
+def json(name: str, *, array: bool = False) -> Column[Any]:
+    return Column(name, JSONB, nullable=False, server_default="[]" if array else "{}")
 
 
 def revision() -> Column[Any]:
@@ -327,7 +327,7 @@ process = Table(
     text("geography"),
     text("category"),
     text("subcategory"),
-    json("category_path"),
+    json("category_path", array=True),
     text("reference_name"),
     number("reference_amount"),
     text("reference_unit"),
@@ -335,6 +335,7 @@ process = Table(
     UniqueConstraint("revision_id", "source_process_number"),
     UniqueConstraint("revision_id", "id"),
     finite("reference_amount"),
+    CheckConstraint("jsonb_typeof(category_path) = 'array'", name="category_path_array"),
 )
 process_flows = Table(
     "process_flows",
@@ -367,7 +368,7 @@ flow_provenance = Table(
     text("original_amount"),
     text("original_unit"),
     number("normalized_input_amount"),
-    json("applied_rule_ids"),
+    json("applied_rule_ids", array=True),
     uid("stg_bafu_exchange_id", nullable=True),
     ForeignKeyConstraint(
         ["revision_id", "process_flow_id"], ["process_flows.revision_id", "process_flows.id"]
@@ -381,6 +382,7 @@ flow_provenance = Table(
     ),
     UniqueConstraint("process_flow_id", "source_object_id", "exchange_ordinal"),
     finite("normalized_input_amount"),
+    CheckConstraint("jsonb_typeof(applied_rule_ids) = 'array'", name="applied_rules_array"),
 )
 impact_method = Table(
     "impact_method",
