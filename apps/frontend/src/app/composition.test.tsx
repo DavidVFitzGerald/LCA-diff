@@ -147,7 +147,7 @@ describe("explicit service composition", () => {
       }),
     ).resolves.toMatchObject({
       ok: false,
-      error: { code: "UNSUPPORTED_OPERATION" },
+      error: { code: "AUTH_FAILED" },
     });
   });
 
@@ -312,6 +312,12 @@ describe("query contract integration", () => {
   it("forwards query cancellation to a pending mock request and leaves no cached success", async () => {
     vi.useFakeTimers();
     const runtime = createApplication("mock");
+    const login = runtime.services.auth.signIn({
+      email: "verified@example.invalid",
+      password: "demo-password",
+    });
+    await vi.runAllTimersAsync();
+    expect((await login).ok).toBe(true);
     const read = vi.spyOn(runtime.services.data, "releases");
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },

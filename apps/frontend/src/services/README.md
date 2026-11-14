@@ -3,7 +3,7 @@
 `contracts.ts` defines the replaceable, transport-independent boundary for
 specification §§6–7. UI code will depend on `Services`, never HTTP, Firebase,
 or fixture imports. Discovery/selection and comparison mocks are implemented in
-#7/#8 and composed in #9. Full auth lifecycle execution follows in #12.
+#7/#8 and composed in #9. Simulated auth lifecycle execution is supplied by #12.
 
 All methods are asynchronous. Expected failures return `ServiceResult` with safe
 machine codes, correlation IDs and retryability; messages contain no raw provider
@@ -144,9 +144,10 @@ produce a visible safe startup error. No failure chooses mocks implicitly.
 services context. Components use `useServices`, `useAuthState` and
 `useServiceQueries`; tests may inject any contract-compatible services object.
 
-The technical placeholder auth observer transitions asynchronously from resolving
-to unauthenticated; account actions are explicitly unsupported until #12. The
-default technical page shows local demo status without initiating dataset queries.
+The mock auth observer transitions asynchronously from resolving to anonymous or
+a restored simulated session. Account actions are supplied by #12. The current
+page shows local demo status without initiating dataset queries; presentation
+and forms belong to #11/#13.
 Protected service methods are guarded at the provider boundary, including direct
 calls, and query options remain disabled until an observed verified UID exists.
 Logout, verification loss and account changes clear protected query caches and
@@ -172,3 +173,48 @@ TanStack behavior follows its official
 [query cancellation](https://tanstack.com/query/latest/docs/framework/react/guides/query-cancellation)
 and [query key](https://tanstack.com/query/latest/docs/framework/react/guides/query-keys)
 contracts. The pinned version and lockfile are resolved in the rootless workspace.
+
+## Simulated authentication (#12)
+
+`mock/auth.ts` implements `AuthService` without Firebase, network calls, real
+email delivery or a password database. The fixed password for every demo account
+is **`demo-password`**. Synthetic addresses use `@example.invalid` only:
+
+- `verified@example.invalid` and `other@example.invalid` are verified accounts.
+- `unverified@example.invalid` starts unverified.
+- Register a new address such as `new@example.invalid` using the fixed password.
+  Registration starts unverified; an existing account returns `AUTH_FAILED`.
+- Call `sendVerification`, then `refreshSession` to simulate following a received
+  verification link. Resending alone never verifies or unlocks data. A refresh
+  before a successful resend leaves the account unverified.
+- `resetPassword` succeeds for a known synthetic account and fails for an unknown
+  account. Completion means returning to sign-in with **`demo-password`**; no
+  email is sent and no submitted password is stored or changed.
+
+The browser adapter persists only a versioned active-session marker under
+`lca-diff:mock-session:v1`: synthetic UID/email, verification status and the pending
+verification marker. Reload restores that user asynchronously. Missing, malformed
+or non-synthetic markers resolve anonymous; unavailable browser storage keeps the
+session in memory. Signout removes only this marker and retains workspace keys.
+New account metadata lives in the adapter and the active marker: reloading after
+signout resets newly registered demo accounts and their verification changes to
+the built-in fixture defaults. This is a deliberate disposable simulation, not a
+durable account database. Credentials never enter storage or logs.
+
+`createMockAuth` accepts an optional storage double and the shared deterministic
+`scenario.latency_ms` / `scenario.failures` controls for each auth operation,
+including `restore`. `refresh_failure` simulates expiry, revocation or failed
+refresh. The returned scenario driver's `expireSession` and `revokeSession`
+immediately publish an error and erase the active marker; these drivers stay in
+services/tests, while product UI consumes `AuthService` only. Aborted requests
+reject with `AbortError`. Logout/account replacement invalidates delayed auth
+actions so they cannot publish an obsolete identity. State observers receive
+copies asynchronously on subscription and unsubscribe stops delivery.
+
+The composed mock data adapter returns typed `AUTH_REQUIRED` or
+`EMAIL_NOT_VERIFIED` before protected reads; verified identity exposes only safe
+synthetic identity/access fields. Pending reads cannot deliver success after a
+session transition, including signing back into the same UID. The provider/query
+guards remain a second boundary; expanded controller coverage belongs to #14.
+Forms and full browser auth journeys remain #13/#15. These mocks do not establish
+real identity, token lifecycle or backend authorization.
