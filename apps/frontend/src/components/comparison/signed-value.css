@@ -1,0 +1,79 @@
+.signed-cell {
+  position: relative;
+  box-sizing: border-box;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+.signed-cell:focus-visible {
+  outline-offset: -3px;
+}
+.signed-chart {
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+}
+.zero-axis {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px solid #6b7f73;
+}
+.signed-bar {
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  border-radius: 1px;
+}
+/* Distinct hues; sign is also carried by the label and accessible name. */
+.signed-bar.positive {
+  background: #1f7a4a;
+}
+.signed-bar.negative {
+  background: #b3261e;
+}
+.signed-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 14px;
+  line-height: 14px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #1d2e26;
+  pointer-events: none;
+}
+/* A readable chip over bars without changing their geometry. */
+.signed-label-text {
+  padding: 0 2px;
+  border-radius: 2px;
+  background: #ffffffb3;
+}
+.signed-cell[data-state="unavailable"] .signed-label {
+  color: #52675b;
+  font-style: italic;
+}
+.signed-tooltip {
+  position: absolute;
+  z-index: 6;
+  left: 0.25rem;
+  top: calc(100% - 0.25rem);
+  max-width: 22rem;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #8b9f95;
+  border-radius: 6px;
+  background: #fff;
+  color: #20352e;
+  box-shadow: 0 6px 20px #12251b26;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+}
+.signed-cell:hover .signed-tooltip,
+.signed-cell:focus .signed-tooltip {
+  opacity: 1;
+}
