@@ -150,12 +150,22 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
       header.revision_id,
       header.id,
     ] as const;
-  /** Seed the per-process cache from any validated header read. */
+  /**
+   * Seed the per-process cache from any validated header read. These entries
+   * never have observers, so they would be garbage-collected after the
+   * default `gcTime` and the failure fallback would lose them (#21 QA D2).
+   * Headers are immutable per revision, so they are kept for the session:
+   * the key is UID-scoped and signout or account change clears the client.
+   */
   function rememberHeaders(
     client: QueryClient,
     headers: readonly ProcessHeader[],
   ) {
     if (scope.uid === null) return;
+    client.setQueryDefaults(
+      ["lca-services", 1, scope.namespace, scope.uid, "header"],
+      { gcTime: Infinity, staleTime: Infinity },
+    );
     for (const header of headers)
       client.setQueryData(headerKey(header), header);
   }

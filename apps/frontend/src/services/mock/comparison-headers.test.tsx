@@ -12,7 +12,7 @@ import {
 } from "@testing-library/react";
 import { QueryClient } from "@tanstack/react-query";
 import { createElement, Fragment, useEffect } from "react";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { SelectionProvider, useSelectionStore } from "../../app/selection";
 import type { SelectedProcess, SelectionStore } from "../../app/selection";
 import { ComparisonHeader } from "../../components/comparison/ComparisonHeader";
@@ -288,6 +288,56 @@ describe("shared process headers", () => {
     fireEvent.mouseLeave(column("Beta"));
     expect(panel).toBeEmptyDOMElement();
     expect(app.headers.mock.calls.length).toBeGreaterThan(0);
+  });
+
+  it("keeps them after the default cache lifetime has passed (QA D2)", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      let failing = false;
+      const app = render({
+        wrap: (discovery) => ({
+          headers: async (...args) =>
+            failing
+              ? failure("TEMPORARILY_UNAVAILABLE", true)
+              : discovery.headers(...args),
+        }),
+      });
+      app.pick("r1:p0", "r1:p3");
+      await loaded();
+      expect(warning()).toHaveTextContent("different reference units.");
+      // Well past TanStack's default 5-minute gcTime.
+      await act(async () => {
+        vi.advanceTimersByTime(30 * 60 * 1000);
+      });
+      failing = true;
+      app.pick("r1:p2");
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "(TEMPORARILY_UNAVAILABLE)",
+      );
+      expect(warning()).toHaveTextContent("different reference units.");
+      expect(column("Alpha")).toHaveAttribute("aria-busy", "false");
+      expect(column("Delta")).toHaveAttribute("aria-busy", "false");
+      expect(column("Gamma")).toHaveAttribute("aria-busy", "true");
+      // Only the unread process was requested.
+      expect(app.requested().slice(-1)).toEqual([["r1:p2"]]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("clears the session-long header cache on signout", async () => {
+    const app = render();
+    app.pick("r1:p0");
+    await loaded();
+    const headerEntries = () =>
+      app
+        .client()
+        .getQueryCache()
+        .getAll()
+        .filter((query) => query.queryKey.includes("header"));
+    expect(headerEntries().length).toBeGreaterThan(0);
+    app.emit({ status: "unauthenticated" });
+    await waitFor(() => expect(headerEntries()).toEqual([]));
   });
 
   it("keeps loaded headers and known differences when a later read fails (QA D1)", async () => {
