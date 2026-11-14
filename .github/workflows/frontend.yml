@@ -31,9 +31,15 @@ jobs:
         run: bash ../../.devcontainer/install-browsers.sh node_modules/.bin/playwright
       - name: Critical browser smoke in both projects
         if: github.event_name != 'workflow_dispatch'
+        # The image runs as UID 0; GitHub's injected /github/home belongs to UID
+        # 1001. Firefox requires the current user's actual, owned system home.
+        env:
+          HOME: /root
         run: npm run test:e2e -- --grep @smoke
       - name: Complete available frontend browser suite on request
         if: github.event_name == 'workflow_dispatch'
+        env:
+          HOME: /root
         run: npm run test:e2e
       - name: Retain browser diagnostics on failure
         if: failure()
