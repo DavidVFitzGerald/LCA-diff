@@ -46,6 +46,7 @@ export function SelectedProcesses() {
   const [announcement, setAnnouncement] = useState("");
   const scroller = useRef<HTMLDivElement>(null);
   const emptyRef = useRef<HTMLParagraphElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const buttons = useRef(new Map<string, HTMLButtonElement>()).current;
   const listFocused = useRef(false);
   const scrollTarget = useRef<string | null>(null);
@@ -87,7 +88,8 @@ export function SelectedProcesses() {
     if (focusEmpty.current && entries.length === 0) {
       focusEmpty.current = false;
       listFocused.current = false;
-      emptyRef.current?.focus();
+      // A collapsed section hides the empty-state text, so focus its toggle.
+      (open ? emptyRef.current : toggleRef.current)?.focus();
       return;
     }
     if (effective === null) return;
@@ -103,7 +105,7 @@ export function SelectedProcesses() {
     const button = buttons.get(effective);
     if (listFocused.current && button && document.activeElement !== button)
       button.focus({ preventScroll: true });
-  }, [effective, entries.length, index, buttons]);
+  }, [effective, entries.length, index, buttons, open]);
 
   const move = (key: string | undefined) => {
     if (key === undefined) return;
@@ -126,7 +128,7 @@ export function SelectedProcesses() {
     focusEmpty.current = true;
     store.clear();
     setAnnouncement(
-      `Cleared ${total} selected ${total === 1 ? "process" : "processes"}`,
+      `Cleared ${total} selected ${total === 1 ? "process" : "processes"}.`,
     );
   }
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -151,6 +153,7 @@ export function SelectedProcesses() {
       <div className="selected-header">
         <h3 id="selected-heading">
           <button
+            ref={toggleRef}
             type="button"
             aria-expanded={open}
             aria-controls="selected-body"

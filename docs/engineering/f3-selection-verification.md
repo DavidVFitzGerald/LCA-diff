@@ -24,7 +24,7 @@ docker compose -p lca-diff-f3-selection exec -T workspace bash -lc 'cd apps/fron
 | --- | --- |
 | `./dev check`, frozen `npm ci` (232 packages, lockfile unchanged) | PASS |
 | format:check, lint, typecheck, build | PASS |
-| test:unit | PASS, 200 tests in 13 files (3 consecutive runs) |
+| test:unit | PASS, 201 tests in 13 files (3 consecutive runs) |
 | test:e2e `@smoke` | PASS, 10 cases |
 | test:e2e full | PASS, 30 cases (15 × Chromium/Firefox) |
 
@@ -50,3 +50,11 @@ the three-process demo catalog.
 `e2e/f2-gate.spec.ts` now passes through the "Selected processes (0)" button
 (Clear all is disabled while empty) and matches the "Processes" heading
 exactly. Tree component tests share `src/services/mock/test-harness.ts`.
+
+## QA follow-up fix
+
+QA FAIL at `b61dbe5` (F-1, Medium): Clear all with the list section collapsed
+dropped focus to `body`, because the empty-state text is hidden and Clear all
+becomes disabled. Focus now moves to the "Selected processes (0)" toggle in
+that case. A regression test covers it, and the announcement ends with a
+period as D4 specifies.
