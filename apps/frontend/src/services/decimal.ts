@@ -11,7 +11,7 @@ interface Parsed {
   /** Significant digits without leading/trailing zeros ("" for zero). */
   readonly digits: string;
   /** Position of the decimal point relative to the first significant digit. */
-  readonly magnitude: number;
+  readonly magnitude: bigint;
 }
 
 const LEXEME = /^([+-]?)(\d*)(?:\.(\d*))?(?:[eE]([+-]?\d+))?$/;
@@ -22,17 +22,16 @@ function parse(value: DecimalString): Parsed {
     throw new TypeError("Expected a finite decimal string");
   const integer = match[2];
   const fraction = match[3] ?? "";
-  const exponent = match[4] === undefined ? 0 : Number(match[4]);
-  if (!Number.isSafeInteger(exponent))
-    throw new TypeError("Decimal exponent out of range");
+  // BigInt keeps any exponent `decimalString` accepts exact (QA #20 D2).
+  const exponent = match[4] === undefined ? 0n : BigInt(match[4]);
   const all = integer + fraction;
   const leading = all.length - all.replace(/^0+/, "").length;
   const digits = all.slice(leading).replace(/0+$/, "");
-  if (digits === "") return { sign: 0, digits: "", magnitude: 0 };
+  if (digits === "") return { sign: 0, digits: "", magnitude: 0n };
   return {
     sign: match[1] === "-" ? -1 : 1,
     digits,
-    magnitude: integer.length - leading + exponent,
+    magnitude: BigInt(integer.length - leading) + exponent,
   };
 }
 

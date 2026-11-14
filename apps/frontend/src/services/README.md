@@ -285,7 +285,8 @@ Revision-bound IDs used against another snapshot fail as `UNKNOWN_PROCESS`.
 
 **Extrema and ties.** Extrema use `services/decimal.ts`, which compares
 lexemes exactly (digits and exponents, with `-0` as zero) and never converts to
-floating point. Ties keep the first process in canonical ID order. Because
+floating point, and uses BigInt exponents, so any exponent `decimalString`
+accepts compares exactly. Ties keep the first process in canonical ID order. Because
 the request has no column window, every visible column window sees the same P and N.
 Summaries carry no warnings, since cell warnings stay on the affected cell. They run
 no difference predicate.
@@ -299,8 +300,10 @@ no difference predicate.
   `app/cell-batches.ts`.
   - All batches share one abort signal.
   - Results merge in batch order.
-  - A batch that answers with a different token or snapshot fails the window
-    as `STALE_SNAPSHOT` rather than mixing revisions.
+  - Every batch, including a lone one, must answer with the requested token
+    and snapshot (release order does not matter). Otherwise the window fails
+    as `STALE_SNAPSHOT` rather than caching another revision under the request key.
+  - `flowSummaries` and `flowRowPages` responses are checked the same way.
 
 Batches bound requests, never the selection.
 
