@@ -44,7 +44,8 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 | M0 — workflow and roadmap | Baseline merged in PR #35 | None |
 | M1 — container development environment | QA passed; runtime/editor evidence merged in PR #35 | M0 baseline merged |
 | M2 — GitHub execution setup | Forms/PR guidance and activation merged; #4 solo protection proposal in review | M0/M1 delivered; main protection waits for approved ADR 0004 |
-| F1–F5 — Phase 1, frontend with mocks | #5 scaffold merged in PR #37; later tasks retain predecessor gates | M2 activation delivered; protection tracked separately in #4 |
+| F1 — frontend foundation | #5–#9 merged; #10 supplies the final browser/CI gate; see verification record | M2 activation delivered; protection tracked separately in #4 |
+| F2–F5 — remaining mock frontend journeys | Not started; predecessor gates retained | F1 completion and each task's issue dependencies |
 | B1–B4 — Phase 2, backend and ingestion | Not started | Phase 1 gate, then gates below |
 | I1 — real frontend integration | Not started | B2 and validated synthetic publication from B4 |
 | R1–R2 — production readiness and release | Not started | Dependencies below |
@@ -140,6 +141,12 @@ Gate: a container-built frontend can exercise the mock boundary without any
 backend/cloud dependency; contract/fixture tests cover precision and missingness,
 and typecheck/unit/build/browser smoke checks run in CI. Later generated DTO
 migration is explicitly reserved for I1.
+
+Current delivery evidence: #5–#9 are merged; #10 supplies the pinned Chromium/
+Firefox smoke and complete currently available frontend CI suite. The
+[F1 verification record](f1-verification.md) describes commands and coverage.
+The milestone becomes complete only after independent QA, hosted CI and approved
+merge of #10; this entry alone does not satisfy that gate.
 
 ### F2 — application shell and simulated authentication
 

@@ -62,6 +62,7 @@ npm --prefix apps/frontend run lint
 npm --prefix apps/frontend run typecheck
 npm --prefix apps/frontend run test:unit
 npm --prefix apps/frontend run build
+npm --prefix apps/frontend run test:e2e
 ```
 
 `make format` rewrites formatting; `make lint`, `make typecheck`, `make test-unit`
@@ -69,7 +70,20 @@ npm --prefix apps/frontend run build
 These targets refuse host execution. Dependencies and `dist/` are ignored
 container-created artifacts; the committed lockfile pins installation. Frontend
 CI runs the same locked install and checks in the digest-pinned Node container.
-Browser smoke checks arrive in #10; real integration remains Phase 2 work.
+The smoke command starts a temporary production preview, builds with explicit
+mock mode, and runs named Chromium and Firefox projects without an API. The
+development image installs matching browsers/OS dependencies from the frozen
+frontend lock; rebuild with `./dev build` then `./dev up` when this lock changes.
+Browser binaries remain inside the image at `/ms-playwright`. Do not install
+browsers or their OS dependencies on the host. To run one project inside the
+container, append `-- --project=chromium` or `-- --project=firefox` to `test:e2e`.
+`make test-e2e` is the equivalent guarded container target.
+
+PRs and the manual Frontend workflow run the available full frontend suite,
+currently the unit/contract checks plus this foundation smoke. Product auth,
+selection/grid/score journeys arrive in F2–F5; real integration remains Phase 2.
+See [F1 verification](docs/engineering/f1-verification.md) for exact versions,
+coverage, commands and remaining gates.
 
 To stop and remove the workspace container, run `./dev down` on the Docker host.
 The source checkout is retained. Container-home caches are disposable. If Make

@@ -70,9 +70,13 @@ versions, honoring Airflow constraints, and add the compatible Spark/Java runtim
 in its ETL image. A common Python range alone does not prove dependency resolution;
 propose an ADR before introducing separate projects/locks if conflicts arise.
 
-F1 introduces pinned Playwright tooling, matching container browsers/OS dependencies
-and the frontend package lock. Neither browsers, Java, application packages nor
-backend services are needed for this bootstrap. Do not install them on the host.
+F1 now adds pinned Playwright tooling, matching Chromium/Firefox binaries and OS
+dependencies to the development image using the committed frontend lock and
+the same dated Debian snapshot. Browser installation occurs during image build;
+CI uses the shared container-only installer. Rebuild the image after changing
+the frontend tooling lock. See [F1 verification](f1-verification.md) for exact
+versions, local commands and scope. Java/backend services remain outside frontend
+development. Do not install runtimes, browsers or OS dependencies on the host.
 
 ## Open and use the workspace
 

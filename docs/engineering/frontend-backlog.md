@@ -1,8 +1,9 @@
 # Frontend GitHub backlog
 
-Status: published planning baseline, 13 November 2026. All 30 frontend tasks are
-open; bootstrap delivery is merged and chooser activation is maintainer-verified.
-No application implementation or test PASS is claimed.
+Status: 14 November 2026. F1 tasks #5–#9 are merged; #10 supplies browser/CI
+completion. Its issue/PR records final independent QA, hosted checks and approved
+merge. F2–F5 retain their issue dependencies. See [F1 verification](f1-verification.md)
+for implemented contract/mock coverage and the remaining journey/integration gaps.
 
 Read [the roadmap](roadmap.md) and [AGENTS.md](../../AGENTS.md) for requirements
 precedence, containers, role handoffs and completion gates. GitHub issue bodies
@@ -29,7 +30,7 @@ silently enabled, waived, or represented as enforced.
 
 ## Milestones and tasks
 
-All tasks use Task type/label plus frontend and blocked labels. Dependencies
+Tasks use Task type/label plus frontend; blocked labels track unresolved predecessors. Dependencies
 below are implementation predecessors, not every related scope/follow-up link.
 Each issue also requires the verified environment and merged bootstrap baseline.
 Re-groom before starting; do not treat a later slice's drafted interfaces as frozen.

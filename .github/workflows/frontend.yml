@@ -11,7 +11,9 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
     container:
       image: node:24-bookworm@sha256:9d266751ca3d7fdbe651c878ffd5ad0a42fed49a18c283509267c97f025b7496
     defaults:
@@ -25,3 +27,19 @@ jobs:
       - run: npm run typecheck
       - run: npm run test:unit
       - run: npm run build
+      - name: Install matching browsers and OS dependencies from the pinned snapshot
+        run: bash ../../.devcontainer/install-browsers.sh node_modules/.bin/playwright
+      - name: Critical browser smoke in both projects
+        if: github.event_name != 'workflow_dispatch'
+        run: npm run test:e2e -- --grep @smoke
+      - name: Complete available frontend browser suite on request
+        if: github.event_name == 'workflow_dispatch'
+        run: npm run test:e2e
+      - name: Retain browser diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: frontend-browser-failure
+          path: apps/frontend/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
