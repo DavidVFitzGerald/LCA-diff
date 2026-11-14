@@ -218,3 +218,13 @@ session transition, including signing back into the same UID. The provider/query
 guards remain a second boundary; expanded controller coverage belongs to #14.
 Forms and full browser auth journeys remain #13/#15. These mocks do not establish
 real identity, token lifecycle or backend authorization.
+
+## Account forms (#13)
+
+`src/auth/AuthDialog.tsx` consumes only `AuthService` through the service
+context. The composition root additionally supplies optional `demo` guidance
+(the fixed demo password and synthetic account addresses) derived from the mock
+constants, so product UI shows mock instructions without importing mock modules;
+other runtimes omit it. Form actions forward an `AbortSignal` and are aborted
+when their view, account or lock state changes. Observed auth state remains the
+only unlock signal. See `docs/engineering/f2-auth-forms-verification.md`.

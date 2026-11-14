@@ -7,9 +7,17 @@ import type {
   Services,
 } from "../services/contracts";
 
+/** Local simulation instructions, supplied only by the composition root in mock mode. */
+export interface DemoGuidance {
+  readonly password: string;
+  readonly verified_email: string;
+  readonly unverified_email: string;
+  readonly registration_example: string;
+}
 export interface ApplicationRuntime {
   readonly mode: "mock" | "test";
   readonly services: Services;
+  readonly demo?: DemoGuidance;
 }
 export function verifiedUid(state: AuthState): string | null {
   return state.status === "authenticated" && state.user.email_verified
@@ -105,6 +113,7 @@ export function guardDataService(
 export const ServiceContext = createContext<{
   readonly services: Services;
   readonly mode: ApplicationRuntime["mode"];
+  readonly demo?: DemoGuidance;
   readonly namespace: string;
   readonly session: SessionStore;
 } | null>(null);

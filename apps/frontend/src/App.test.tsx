@@ -77,9 +77,7 @@ describe("F2 shell", () => {
     });
     expect(dialog).toHaveAttribute("aria-modal", "true");
     expect(document.querySelector(".shell")).toHaveAttribute("inert");
-    expect(
-      screen.getByRole("button", { name: "About this demo" }),
-    ).toHaveFocus();
+    expect(screen.getByLabelText("Email")).toHaveFocus();
     const event = new Event("cancel", { bubbles: false, cancelable: true });
     dialog.dispatchEvent(event);
     expect(event.defaultPrevented).toBe(true);

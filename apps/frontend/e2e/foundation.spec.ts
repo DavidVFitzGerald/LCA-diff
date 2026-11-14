@@ -30,7 +30,7 @@ test("@smoke required-login shell stays locked without protected data", async ({
       "Local demo mode — synthetic services. Auth: unauthenticated.",
     );
     const help = dialog.getByRole("button", { name: "About this demo" });
-    await expect(help).toBeFocused();
+    await expect(dialog.getByLabel("Email")).toBeFocused();
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     expect(
@@ -73,7 +73,5 @@ test("@smoke narrow viewport explains the desktop requirement and recovers on re
   await expect(
     page.getByRole("dialog", { name: "Sign in to LCA diff" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "About this demo" }),
-  ).toBeFocused();
+  await expect(page.getByLabel("Email")).toBeFocused();
 });
