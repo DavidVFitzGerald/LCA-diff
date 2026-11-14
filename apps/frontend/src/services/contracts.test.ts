@@ -53,6 +53,19 @@ describe("provisional precision boundary", () => {
     expect([numeric, absent, missing, valid]).toHaveLength(4);
   });
 
+  it.each(
+    [0, -1, null, undefined, true, {}, [], [1], { toString: () => "1" }].map(
+      (value) => ({ value }),
+    ),
+  )(
+    "rejects an untyped non-string measurement without coercion (%j)",
+    ({ value }) => {
+      expect(() => Reflect.apply(decimalString, undefined, [value])).toThrow(
+        TypeError,
+      );
+    },
+  );
+
   it("exposes asynchronous, cancellable services and an unsubscribe auth boundary", () => {
     expectTypeOf<Parameters<DataService["flowCells"]>[1]>().toEqualTypeOf<
       RequestOptions | undefined

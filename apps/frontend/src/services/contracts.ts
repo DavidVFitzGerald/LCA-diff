@@ -4,7 +4,10 @@ export type DecimalString = string & { readonly [decimalBrand]: true };
 
 /** Validate finite decimal syntax without converting or normalizing its bytes. */
 export function decimalString(value: string): DecimalString {
-  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(value)) {
+  if (
+    typeof value !== "string" ||
+    !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(value)
+  ) {
     throw new TypeError("Expected a finite decimal string");
   }
   return value as DecimalString;
