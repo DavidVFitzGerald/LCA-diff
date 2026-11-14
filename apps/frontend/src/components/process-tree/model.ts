@@ -147,6 +147,19 @@ export function mergeTree(
       for (const node of page.items)
         if (node.release_id === entry.release_id)
           visit(node, entry.branch_path);
+  // A release-scoped result is exact for the root even with zero matches.
+  for (const entry of ordered) {
+    const key = rootKey(entry.release_id);
+    const root = nodes.get(key) as TreeBranch | undefined;
+    const total = entry.pages.at(-1)?.total_count;
+    if (
+      root &&
+      root.count === null &&
+      !entry.branch_path.length &&
+      total !== undefined
+    )
+      nodes.set(key, { ...root, count: total });
+  }
 
   const children = new Map<string, string[]>();
   for (const node of nodes.values())

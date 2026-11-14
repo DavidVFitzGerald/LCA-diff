@@ -225,6 +225,17 @@ describe("process tree model", () => {
     expect(loadedLeaves([first, second])).toBe(4);
   });
 
+  it("gives a release root its exact count from a release-scoped page with zero matches", () => {
+    const empty = { ...page("r1", []), total_count: 0 };
+    const model = mergeTree([release("r1")], [scope("r1", [], [empty])]);
+    expect(model.nodes.get(rootKey("r1"))).toMatchObject({ count: 0 });
+    const deeper = mergeTree(
+      [release("r1")],
+      [scope("r1", ["x"], [{ ...empty, total_count: 5 }])],
+    );
+    expect(deeper.nodes.get(rootKey("r1"))).toMatchObject({ count: null });
+  });
+
   it("ignores pages from another revision of the release", () => {
     const stale = {
       ...scope("r1", [], [page("r1", [{ id: "p", name: "P", path: ["x"] }])]),
