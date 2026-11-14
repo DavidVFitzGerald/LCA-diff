@@ -1,7 +1,9 @@
 # 0005 — Parallel backend delivery in four work units
 
-Status: **Proposed**; requested by the maintainer on 2026-11-14. Approval and
-merge into `main` are still required for acceptance.
+Status: **Accepted** through the maintainer's explicit authorization to merge
+[PR #56](https://github.com/DavidVFitzGerald/LCA-diff/pull/56), merged into `main`
+at `125b0909595a6db89b214ac3db59b0d108a44226` on 2026-11-14 after independent
+QA and hosted CI passed. This records observed merge evidence, not self-approval.
 Date: 2026-11-14.
 Issue: [#55](https://github.com/DavidVFitzGerald/LCA-diff/issues/55).
 Scope: MVP scheduling, issue granularity and focused validation; no stack or
