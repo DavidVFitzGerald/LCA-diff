@@ -33,6 +33,28 @@ function mount(initial: AuthState) {
       vi.fn(operation),
     ]),
   ) as unknown as Services["data"];
+  // Unprotected release roots: the verified workspace reads only releases on mount.
+  data.releases = vi.fn(async () => ({
+    ok: true as const,
+    data: {
+      items: [
+        {
+          release_id: "shell-release",
+          revision_id: "shell-revision",
+          database_code: "TEST",
+          version: "v1",
+          display_name: "Shell release",
+          published_at: null,
+        },
+      ],
+      revision_snapshot: [
+        { release_id: "shell-release", revision_id: "shell-revision" },
+      ],
+      next_cursor: null,
+      total_count: 1,
+      request_id: "shell-releases",
+    },
+  }));
   const auth = {
     ...base.services.auth,
     observe(next: (state: AuthState) => void) {
@@ -64,6 +86,14 @@ function mount(initial: AuthState) {
 function expectNoDataCalls(data: Services["data"]) {
   Object.values(data).forEach((operation) =>
     expect(operation).not.toHaveBeenCalled(),
+  );
+}
+/** Verified workspace: release roots only; no search until a branch is expanded. */
+function expectOnlyReleases(data: Services["data"]) {
+  Object.entries(data).forEach(([name, operation]) =>
+    name === "releases"
+      ? expect(operation).toHaveBeenCalledOnce()
+      : expect(operation).not.toHaveBeenCalled(),
   );
 }
 
@@ -164,7 +194,7 @@ describe("F2 shell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(await screen.findByRole("dialog")).toBeVisible();
     expect(app.auth.signOut).toHaveBeenCalledOnce();
-    expectNoDataCalls(app.data);
+    expectOnlyReleases(app.data);
   });
   it("removes the dialog on observed verified auth and restores focus", async () => {
     const app = mount({ status: "unauthenticated" });
@@ -177,7 +207,7 @@ describe("F2 shell", () => {
     expect(
       screen.getByRole("main", { name: "Comparison workspace" }),
     ).toHaveFocus();
-    expectNoDataCalls(app.data);
+    await waitFor(() => expectOnlyReleases(app.data));
   });
   it("uses a meaningful narrow-screen message rather than the workspace or dialog", async () => {
     vi.stubGlobal(

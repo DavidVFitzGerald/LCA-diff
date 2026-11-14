@@ -6,6 +6,7 @@ import {
   verifiedUid,
 } from "./app/service-context";
 import { AuthDialog } from "./auth/AuthDialog";
+import { ProcessTree } from "./components/process-tree/ProcessTree";
 import "./app/shell.css";
 
 const desktopQuery = "(min-width: 960px)";
@@ -75,8 +76,8 @@ function Workspace({ email, signOut }: { email: string; signOut: () => void }) {
             {processesOpen ? "Collapse processes" : "Expand processes"}
           </button>
           <section id="process-sidebar" hidden={!processesOpen}>
-            <h2>Processes</h2>
-            <p>Choose processes here to begin a comparison.</p>
+            <h2 id="process-tree-heading">Processes</h2>
+            <ProcessTree labelledBy="process-tree-heading" />
           </section>
         </aside>
         <main
