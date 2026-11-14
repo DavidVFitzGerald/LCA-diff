@@ -198,7 +198,11 @@ export function mount(
   const overrides = options.wrap?.(discovery) ?? {};
   const releases = vi.fn(overrides.releases ?? discovery.releases);
   const search = vi.fn(overrides.search ?? discovery.search);
-  const data = { ...base.data, releases, search };
+  const resolveSelection = vi.fn(
+    overrides.resolveSelection ?? discovery.resolveSelection,
+  );
+  const headers = vi.fn(overrides.headers ?? discovery.headers);
+  const data = { ...base.data, releases, search, resolveSelection, headers };
   let client!: QueryClient;
   function Capture() {
     const value = useQueryClient();
@@ -221,6 +225,8 @@ export function mount(
   return {
     search,
     releases,
+    resolveSelection,
+    headers,
     data,
     client: () => client,
     emit: (next: AuthState) => act(() => emit(next)),

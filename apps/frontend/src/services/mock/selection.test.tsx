@@ -66,7 +66,8 @@ describe("selecting processes in the tree", () => {
     const ch = item("Road A — CH");
     const de = item("Road A — DE");
     expect(ch).toHaveAttribute("aria-checked", "false");
-    expect(item("road, 3 processes")).not.toHaveAttribute("aria-checked");
+    // Branches expose scope-relative tri-state (#19).
+    expect(item("road, 3 processes")).toHaveAttribute("aria-checked", "false");
     act(() => de.focus());
     key(" ");
     expect(de).toHaveAttribute("aria-checked", "true");
@@ -75,8 +76,7 @@ describe("selecting processes in the tree", () => {
     expect(ch).toHaveAttribute("aria-checked", "true");
     expect(ch).toHaveFocus();
     act(() => item("infra, 1 process").focus());
-    key(" "); // Space on a branch is unbound until #19
-    expect(item("infra, 1 process")).toHaveAttribute("aria-expanded", "false");
+    // Branch Space bulk-toggles (#19, covered in bulk-selection.test.tsx).
     key("Enter");
     await waitFor(() => expect(item("Infra — CH")).toBeVisible());
     act(() => item("Infra — CH").focus());

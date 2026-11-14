@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query";
 import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
 import type {
   Page,
@@ -12,6 +12,11 @@ import type {
 import { ServiceQueryError, useServiceQueries } from "../../app/queries";
 import { selectionKey, useSelection } from "../../app/selection";
 import type { SelectionStore } from "../../app/selection";
+import { BulkStatusArea } from "../bulk-selection/BulkStatusArea";
+import { checkState, scopeKey, selectedByScope } from "../bulk-selection/scope";
+import type { CheckState } from "../bulk-selection/scope";
+import { useBulkSelection } from "../bulk-selection/useBulkSelection";
+import type { BulkAction } from "../bulk-selection/useBulkSelection";
 import { loadedLeaves, mergeTree, rootKey, TREE_PAGE_LIMIT } from "./model";
 import type {
   BranchPages,
@@ -229,6 +234,8 @@ function parentOf(row: Row): string | null {
   return row.kind === "node" ? row.node.parent : row.branch;
 }
 
+/** Stable select function, so a cached ID list maps to one Set (#19). */
+const toIdSet = (ids: readonly string[]): ReadonlySet<string> => new Set(ids);
 const NO_FILTER = "{}";
 const scopedKey = (filter: string, key: string) => `${filter}\n${key}`;
 
@@ -287,6 +294,8 @@ export function ProcessTree({
     () => new Set(selected.map(selectionKey)),
     [selected],
   );
+  const bulk = useBulkSelection();
+  const bulkRunning = bulk.status.state === "running";
 
   const model = useMemo(() => {
     const loaded: BranchPages[] = [...loads.values()].map((load) => ({
@@ -463,6 +472,92 @@ export function ProcessTree({
     ? `${plural(matches)} ${matches === 1 ? "matches" : "match"} your search.`
     : announcement;
 
+  // D5: parent checkbox state relative to the current actionable scope. While
+  // filtering, a release's matching-ID set is resolved only when that release
+  // has selected entries; until it arrives, loaded matching leaves are used.
+  const selectedReleases = useMemo(
+    () => [...new Set(selected.map((entry) => entry.release_id))].sort(),
+    [selected],
+  );
+  const matchSets = useQueries({
+    queries: (filtering ? selectedReleases : []).flatMap((release_id) => {
+      const release = releases.find((r) => r.release_id === release_id);
+      if (!release) return [];
+      return [
+        {
+          ...queries.resolveAll({
+            fields,
+            scope: "all_matching",
+            revision_snapshot: [
+              {
+                release_id: release.release_id,
+                revision_id: release.revision_id,
+              },
+            ],
+          }),
+          select: toIdSet,
+        },
+      ];
+    }),
+  });
+  const matchSetFor = new Map<string, ReadonlySet<string> | undefined>(
+    (filtering ? selectedReleases : []).map((release_id, position) => [
+      release_id,
+      matchSets[position]?.data,
+    ]),
+  );
+  const scopeCounts = useMemo(
+    () =>
+      selectedByScope(
+        selected,
+        filtering
+          ? (entry) =>
+              matchSetFor.get(entry.release_id)?.has(entry.id) ??
+              model.nodes.has(
+                JSON.stringify(["process", entry.release_id, entry.id]),
+              )
+          : undefined,
+      ),
+    // matchSetFor is rebuilt each render; its contents are captured by matchSets.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selected, filtering, model, matchSets],
+  );
+  const branchState = (node: TreeBranch) => ({
+    state: checkState(
+      node.count,
+      scopeCounts.get(scopeKey(node.release_id, node.path)) ?? 0,
+    ),
+    busy:
+      filtering &&
+      selectedReleases.includes(node.release_id) &&
+      matchSetFor.get(node.release_id) === undefined,
+  });
+  const releaseLabel = (release: Release) =>
+    `${release.display_name} ${release.version}`;
+  function runBulk(action: BulkAction) {
+    if (!bulkRunning) void bulk.run(action);
+  }
+  function toggleBranch(node: TreeBranch) {
+    const release = releases.find((r) => r.release_id === node.release_id);
+    if (!release || !node.count) return;
+    runBulk({
+      kind: branchState(node).state === "true" ? "deselect" : "select",
+      label: node.parent === null ? releaseLabel(release) : node.label,
+      fields,
+      scopes: [{ release, scope: "branch", branch_path: node.path }],
+    });
+  }
+  const allMatches = (kind: BulkAction["kind"]) =>
+    runBulk({
+      kind,
+      label: "all matches",
+      fields,
+      scopes: releases.map((release) => ({
+        release,
+        scope: "all_matching" as const,
+      })),
+    });
+
   const toggle = (key: string, open?: boolean) => {
     if (filtering)
       setCollapsed((previous) => {
@@ -531,9 +626,10 @@ export function ProcessTree({
         activate(row);
         break;
       case " ":
-        // Space toggles process selection; branch bulk selection is #19.
-        if (row.kind !== "node" || row.node.kind !== "process") return;
-        activate(row);
+        // Space toggles a process, or bulk-toggles a branch's scope (#19).
+        if (row.kind !== "node") return;
+        if (row.node.kind === "process") activate(row);
+        else toggleBranch(row.node);
         break;
       default:
         return;
@@ -565,6 +661,35 @@ export function ProcessTree({
 
   return (
     <>
+      {filtering && (
+        <div className="bulk-matches">
+          <button
+            type="button"
+            disabled={bulkRunning || noResults}
+            onClick={() => allMatches("select")}
+          >
+            Select all matches
+          </button>
+          <button
+            type="button"
+            disabled={bulkRunning || noResults}
+            onClick={() => allMatches("deselect")}
+          >
+            Deselect all matches
+          </button>
+        </div>
+      )}
+      <BulkStatusArea
+        status={bulk.status}
+        onCancel={bulk.cancel}
+        onRetry={() => {
+          if (bulk.status.state !== "failed") return;
+          const action = bulk.status.action;
+          bulk.dismiss();
+          void bulk.run(action);
+        }}
+        onDismiss={bulk.dismiss}
+      />
       {noResults && (
         <p className="tree-no-results">No processes match your search.</p>
       )}
@@ -624,8 +749,26 @@ export function ProcessTree({
                 filtering={filtering}
                 active={row.key === effective}
                 checked={
-                  row.kind === "node" && row.node.kind === "process"
-                    ? selectedKeys.has(selectionKey(row.node))
+                  row.kind !== "node"
+                    ? undefined
+                    : row.node.kind === "process"
+                      ? selectedKeys.has(selectionKey(row.node))
+                        ? "true"
+                        : "false"
+                      : branchState(row.node).state
+                }
+                checkBusy={
+                  row.kind === "node" &&
+                  row.node.kind === "branch" &&
+                  branchState(row.node).busy
+                }
+                onCheck={
+                  row.kind === "node" && row.node.kind === "branch"
+                    ? () => {
+                        const node = row.node as TreeBranch;
+                        setActive(row.key);
+                        toggleBranch(node);
+                      }
                     : undefined
                 }
                 top={item.index * TREE_ROW_HEIGHT}
@@ -655,6 +798,8 @@ function TreeRow({
   filtering,
   active,
   checked,
+  checkBusy,
+  onCheck,
   top,
   register,
   onClick,
@@ -663,7 +808,9 @@ function TreeRow({
   model: TreeModel;
   filtering: boolean;
   active: boolean;
-  checked: boolean | undefined;
+  checked: CheckState | undefined;
+  checkBusy: boolean;
+  onCheck: (() => void) | undefined;
   top: number;
   register: (element: HTMLDivElement | null) => void;
   onClick: () => void;
@@ -692,7 +839,7 @@ function TreeRow({
         aria-posinset={row.posinset}
         aria-setsize={row.setsize}
         aria-expanded={branch ? row.expanded : undefined}
-        aria-busy={branch && row.busy ? true : undefined}
+        aria-busy={(branch && row.busy) || checkBusy ? true : undefined}
         aria-checked={checked}
         title={nodeName(node)}
       >
@@ -701,8 +848,17 @@ function TreeRow({
         </span>
         {checked !== undefined && (
           <span
-            className={`tree-check${checked ? " checked" : ""}`}
+            className={`tree-check${checked === "true" ? " checked" : checked === "mixed" ? " mixed" : ""}`}
             aria-hidden="true"
+            onClick={
+              onCheck
+                ? (event) => {
+                    // The checkbox bulk-toggles; the rest of the row expands.
+                    event.stopPropagation();
+                    onCheck();
+                  }
+                : undefined
+            }
           />
         )}
         <span className="tree-label">
@@ -781,5 +937,6 @@ function toggleSelection(
     id: node.id,
     name: node.label,
     geography: node.geography,
+    path: node.path,
   });
 }
