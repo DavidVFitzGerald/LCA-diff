@@ -7,6 +7,8 @@ import {
 } from "./app/service-context";
 import { AuthDialog } from "./auth/AuthDialog";
 import { ProcessTree } from "./components/process-tree/ProcessTree";
+import { SelectedProcesses } from "./components/selected-processes/SelectedProcesses";
+import { SelectionProvider } from "./app/selection";
 import "./app/shell.css";
 
 const desktopQuery = "(min-width: 960px)";
@@ -42,7 +44,7 @@ function Workspace({ email, signOut }: { email: string; signOut: () => void }) {
     document.getElementById(`tab-${next}`)?.focus();
   }
   return (
-    <>
+    <SelectionProvider>
       <header className="app-header">
         <h1>LCA diff</h1>
         <div className="account-controls">
@@ -78,6 +80,7 @@ function Workspace({ email, signOut }: { email: string; signOut: () => void }) {
           <section id="process-sidebar" hidden={!processesOpen}>
             <h2 id="process-tree-heading">Processes</h2>
             <ProcessTree labelledBy="process-tree-heading" />
+            <SelectedProcesses />
           </section>
         </aside>
         <main
@@ -140,7 +143,7 @@ function Workspace({ email, signOut }: { email: string; signOut: () => void }) {
           </aside>
         )}
       </div>
-    </>
+    </SelectionProvider>
   );
 }
 
