@@ -151,6 +151,8 @@ export function useBulkSelection() {
             ),
           );
           if (token.cancelled) return;
+          // Comparison headers (#21) reuse these instead of refetching.
+          queries.rememberHeaders(client, headers);
           added.push(
             ...[...headers].sort(bulkOrder).map((header) => ({
               release_id: header.release_id,

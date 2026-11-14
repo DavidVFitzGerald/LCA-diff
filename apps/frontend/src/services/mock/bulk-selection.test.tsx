@@ -291,10 +291,11 @@ describe("bulk action states", () => {
           resolveFails-- > 0
             ? failure("TEMPORARILY_UNAVAILABLE", true)
             : discovery.resolveSelection(...args),
-        headers: async (...args) =>
-          headerFails-- > 0
+        // Fail the bulk read, not the comparison header of the lone pick.
+        headers: async (input, ...rest) =>
+          input.process_ids.length > 1 && headerFails-- > 0
             ? failure("RELEASE_UNAVAILABLE", true)
-            : discovery.headers(...args),
+            : discovery.headers(input, ...rest),
       }),
     });
     await open([/^Big v1/, /^t, 270/, /^rail, 10/]);

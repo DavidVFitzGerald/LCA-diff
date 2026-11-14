@@ -1,4 +1,5 @@
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import type {
   ComparisonPage,
   ComparisonRowsRequest,
@@ -71,15 +72,18 @@ function mismatch(
       requested.comparison_token === response.comparison_token)
   )
     return null;
+  return staleSnapshot(response.request_id);
+}
+function staleSnapshot(request_id: string) {
   return {
     ok: false,
     error: {
       code: "STALE_SNAPSHOT",
       message: "Response does not match the requested revision snapshot",
-      request_id: response.request_id,
+      request_id,
       retryable: false,
     },
-  };
+  } as const;
 }
 function capture<T>(input: T): T {
   return input === undefined ? input : (JSON.parse(JSON.stringify(input)) as T);
@@ -92,6 +96,31 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
       request_id: "query-auth-guard",
       retryable: false,
     });
+  /** Per-process header cache key: headers are immutable per revision. */
+  const headerKey = (header: {
+    readonly release_id: string;
+    readonly revision_id: string;
+    readonly id: ProcessId;
+  }) =>
+    [
+      "lca-services",
+      1,
+      scope.namespace,
+      scope.uid,
+      "header",
+      header.release_id,
+      header.revision_id,
+      header.id,
+    ] as const;
+  /** Seed the per-process cache from any validated header read. */
+  function rememberHeaders(
+    client: QueryClient,
+    headers: readonly ProcessHeader[],
+  ) {
+    if (scope.uid === null) return;
+    for (const header of headers)
+      client.setQueryData(headerKey(header), header);
+  }
   function options<T>(
     operation: keyof DataService,
     input: unknown,
@@ -191,6 +220,91 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
         }
         return { ok: true, data: headers } as const;
       });
+    },
+    rememberHeaders,
+    /**
+     * Headers for the selected processes of one revision (#21). The key is
+     * the sorted ID set, so reordering columns never refetches. Headers are
+     * immutable per revision and cached per process, so a changed selection
+     * fetches only uncached IDs, in `SERVICE_WINDOW` batches; cached ones are
+     * shown as placeholder data meanwhile. Every response must answer the
+     * requested revision with exactly the requested IDs.
+     */
+    selectionHeaders: (
+      revision: RevisionRef,
+      ids: readonly ProcessId[],
+      client: QueryClient,
+    ) => {
+      const ref: RevisionRef = {
+        release_id: revision.release_id,
+        revision_id: revision.revision_id,
+      };
+      const snapshot = [ref];
+      const wanted = [...new Set(ids)].sort();
+      const cached = () =>
+        wanted.flatMap((id) => {
+          const hit = client.getQueryData<ProcessHeader>(
+            headerKey({ ...ref, id }),
+          );
+          return hit ? [hit] : [];
+        });
+      const query = options<readonly ProcessHeader[]>(
+        "headers",
+        ["set", snapshot, wanted],
+        async (signal) => {
+          const known = new Map(cached().map((header) => [header.id, header]));
+          const missing = wanted.filter((id) => !known.has(id));
+          const fetched: ProcessHeader[] = [];
+          for (let start = 0; start < missing.length; start += SERVICE_WINDOW) {
+            const batch = missing.slice(start, start + SERVICE_WINDOW);
+            const result = await data.headers(
+              { revision_snapshot: snapshot, process_ids: batch },
+              { signal },
+            );
+            if (!result.ok) return result;
+            const stale =
+              mismatch({ revision_snapshot: snapshot }, result.data) ??
+              (result.data.items.some(
+                (header) =>
+                  header.release_id !== ref.release_id ||
+                  header.revision_id !== ref.revision_id,
+              )
+                ? staleSnapshot(result.data.request_id)
+                : null);
+            if (stale) return stale;
+            const returned = new Set(result.data.items.map(({ id }) => id));
+            if (
+              returned.size !== result.data.items.length ||
+              returned.size !== batch.length ||
+              batch.some((id) => !returned.has(id))
+            )
+              return {
+                ok: false,
+                error: {
+                  code: "UNKNOWN_PROCESS",
+                  message: "Response does not match the requested processes",
+                  request_id: result.data.request_id,
+                  retryable: false,
+                },
+              } as const;
+            fetched.push(...result.data.items);
+          }
+          rememberHeaders(client, fetched);
+          for (const header of fetched) known.set(header.id, header);
+          return {
+            ok: true,
+            data: wanted.map((id) => known.get(id)!),
+          } as const;
+        },
+      );
+      return {
+        ...query,
+        // Already-known headers stay visible while new ones load.
+        placeholderData: (): readonly ProcessHeader[] | undefined => {
+          const hits = cached();
+          return hits.length ? hits : undefined;
+        },
+      };
     },
     resolveSelection: (input: ResolveSelectionRequest) => {
       const dto = capture(input);
