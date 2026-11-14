@@ -20,7 +20,7 @@ on 2026-11-13. See [M2 verification](m2-verification.md) for the handoff.
 | [#1](https://github.com/DavidVFitzGerald/LCA-diff/issues/1) — M0 baseline | Baseline and ADRs merged in PR #35; merge evidence is recorded in the ADR index. |
 | [#2](https://github.com/DavidVFitzGerald/LCA-diff/issues/2) — M1 runtime gate | QA passed: independent rootless/lock/restart/ownership checks plus maintainer-reported editor check; merged in PR #35. |
 | [#3](https://github.com/DavidVFitzGerald/LCA-diff/issues/3) — GitHub execution setup | Labels/milestones/issues published; forms and PR guidance merged; maintainer confirmed Task and Bug in chooser. |
-| [#4](https://github.com/DavidVFitzGerald/LCA-diff/issues/4) — Review protection | Originally HTTP 403 on the private plan; repository now reports public, but main protection returns HTTP 404 (not protected). This session changed no visibility/billing settings. Add real CI contexts once available. |
+| [#4](https://github.com/DavidVFitzGerald/LCA-diff/issues/4) — Review protection | Public repository supports protection. Solo-maintainer ADR 0004 and versioned policy are proposed; isolated candidate validation is separate from main activation after policy merge. See review-protection.md. |
 
 Planning/publication was authorized despite the pending M1 verification. Frontend
 implementation starts at [#5](https://github.com/DavidVFitzGerald/LCA-diff/issues/5) only after [#2](https://github.com/DavidVFitzGerald/LCA-diff/issues/2) and [#3](https://github.com/DavidVFitzGerald/LCA-diff/issues/3)
