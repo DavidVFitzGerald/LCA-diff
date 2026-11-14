@@ -100,12 +100,43 @@ describe("signed row geometry (#22, spec §6.6)", () => {
         const b = bar(value, r)!;
         expect(b.height).toBeGreaterThanOrEqual(MIN_BAR);
         expect(b.height).toBeLessThanOrEqual(H);
-        expect(b.top).toBeGreaterThanOrEqual(0);
-        expect(b.top + b.height).toBeLessThanOrEqual(r.chartHeight + 1e-9);
+        // Never beyond the padded cell, and never across zero (even for a
+        // value on a side the row lacks).
+        expect(b.top).toBeGreaterThanOrEqual(-CHART_PADDING);
+        expect(b.top + b.height).toBeLessThanOrEqual(
+          r.chartHeight + CHART_PADDING,
+        );
+        expectAnchoredAtZero(b, r);
       }
     }
     // A nonzero value far below M still shows a hairline, never nothing.
     expect(bar("1e-300", row("1e300", "0"))!.height).toBe(MIN_BAR);
+  });
+
+  it("keeps sub-pixel bars on their own side of zero in lopsided mixed rows (QA D1)", () => {
+    for (const [P, N, value] of [
+      ["1000", "0.5", "-0.5"],
+      ["0.5", "1000", "0.5"],
+      ["1e300", "1e-300", "-1e-300"],
+      ["1e-300", "1e300", "1e-300"],
+      ["1000", "0.5", "-0.0001"],
+    ] as const) {
+      const r = row(P, N);
+      const b = bar(value, r)!;
+      expect(b.height).toBe(MIN_BAR);
+      expectAnchoredAtZero(b, r);
+    }
+    // Ordinary bars in the same rows are unchanged.
+    expect(bar("1000", row("1000", "0.5"))).toMatchObject({
+      top: 0,
+      height: H,
+    });
+  });
+
+  it("chooses M from exact magnitudes, not float ratios (QA D2)", () => {
+    expect(row("1", "1.00000000000000000001").M).toBe("1.00000000000000000001");
+    expect(row("1.00000000000000000001", "1").M).toBe("1.00000000000000000001");
+    expect(row("2e-400", "1e-400").M).toBe("2e-400");
   });
 
   it("places labels just above zero, or below for non-positive rows, inside the padded cell", () => {
@@ -117,3 +148,12 @@ describe("signed row geometry (#22, spec §6.6)", () => {
     expect(labelTop(tinyPositive)).toBe(-CHART_PADDING);
   });
 });
+
+/** Positive bars end exactly at the axis; negative bars start there. */
+function expectAnchoredAtZero(
+  b: NonNullable<ReturnType<typeof barGeometry>>,
+  r: ReturnType<typeof rowGeometry>,
+) {
+  if (b.sign > 0) expect(b.top + b.height).toBeCloseTo(r.axis, 9);
+  else expect(b.top).toBeCloseTo(r.axis, 9);
+}

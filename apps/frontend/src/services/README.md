@@ -404,9 +404,12 @@ M = max(P, N):
 | Mixed         | H × (P + N) / M | H × P / M            |
 | M = 0         | H               | 2 px baseline        |
 
-Bars run from data y = 0 with height H × |value| / M. Nonzero values get a
-1 px minimum so none is invisible. Each row also exposes `rowHeight`
-(chart height plus 6 px padding above and below) for the #23 virtualizer.
+Bars run from data y = 0 with height H × |value| / M and never cross zero.
+M is chosen by exact magnitude comparison. Nonzero values get a 1 px
+minimum so none is invisible; when the row has less than 1 px on that side
+of zero (a lopsided mixed row), the hairline extends into the padding
+rather than across the axis. Each row also exposes `rowHeight` (chart
+height plus 6 px padding above and below) for the #23 virtualizer.
 
 **Exact digits.** Floats are used for pixels only, and only through
 `decimalRatio` in `services/decimal.ts`. It scales the significant digits of
@@ -426,7 +429,8 @@ invalid geometry.
 **Cell states.** `SignedValueCell` is the one component for Flows and Scores:
 
 - `present`: a zero shows `0` with no bar.
-- `absent`: completely blank, labelled "No flow" for assistive technology.
+- `absent`: visually blank, with visually-hidden "No flow" text for assistive
+  technology.
 - `unavailable`: shows `N/A` with its reason in the description, and no bar.
 
 **Colour and sign.** Positive bars are green and negative bars red, with
