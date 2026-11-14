@@ -24,7 +24,7 @@ docker compose -p lca-diff-f3-search exec -T workspace bash -lc 'cd apps/fronten
 | --- | --- |
 | `./dev check`, frozen `npm ci` (232 packages, lockfile unchanged) | PASS |
 | format:check, lint, typecheck, build | PASS |
-| test:unit | PASS, 212 tests in 15 files (3 consecutive runs) |
+| test:unit | PASS, 214 tests in 15 files (3 consecutive runs) |
 | test:e2e `@smoke` | PASS, 10 cases |
 | test:e2e full | PASS, 32 cases (16 × Chromium/Firefox) |
 
@@ -45,3 +45,20 @@ tokens, literal substring AND); I1 must prove the real search's parity.
 
 `e2e/f2-gate.spec.ts` now passes through the Process Name field and the
 Advanced search toggle.
+
+## QA and hosted CI follow-up fixes
+
+- **Hosted full run at `bcc5181` (Firefox):** the Process Name input's intrinsic
+  width pushed the Clear × button under the comparison pane, so it could not
+  be clicked. Search inputs now fill the sidebar width (`min-width: 0`). The
+  browser test asserts that the search controls stay inside the process
+  sidebar.
+- **QA FAIL at `bcc5181`, F1 (High):** reusing a filter answered from the query
+  cache stayed on "Loading…". The tree dropped a new loader's first report as
+  "superseded" because the current-filter ref was updated in a later parent
+  effect. Only mounted loaders can report, so the guard was removed;
+  superseded scopes are still purged when the filter changes. Regression test:
+  "renders a filter reused from the query cache".
+- **QA F2 (Low):** a collapsed filtered release now keeps its loaded results,
+  so its count and the live summary remain. Regression test: "keeps a
+  collapsed filtered release's count and the summary".

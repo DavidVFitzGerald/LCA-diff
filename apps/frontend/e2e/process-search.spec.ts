@@ -78,6 +78,19 @@ test("search filters the tree, keeps selections and clears back to the full tree
   await expect(beta).toHaveAttribute("aria-level", "6");
   await expect(gamma).toHaveCount(0);
 
+  // The search controls stay inside the process sidebar in every browser.
+  const sidebar = await page
+    .getByRole("complementary", { name: "Process selection" })
+    .boundingBox();
+  for (const control of [
+    name,
+    page.getByRole("button", { name: "Clear search" }),
+    page.getByRole("textbox", { name: "Geography" }),
+  ]) {
+    const box = (await control.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(sidebar!.x);
+    expect(box.x + box.width).toBeLessThanOrEqual(sidebar!.x + sidebar!.width);
+  }
   await page.getByRole("textbox", { name: "Geography" }).fill("zzz");
   await expect(page.getByText("No processes match your search.")).toBeVisible();
 

@@ -303,9 +303,7 @@ export function ProcessTree({
   }, [model]);
 
   const loadsRef = useRef<ReadonlyMap<string, BranchLoad>>(allLoads);
-  const filterRef = useRef(filter);
   useEffect(() => {
-    filterRef.current = filter;
     // Drop pages of superseded filters; unfiltered pages are kept (D4).
     const next = new Map(
       [...loadsRef.current].filter(
@@ -320,16 +318,15 @@ export function ProcessTree({
     }
   }, [filter]);
   const onLoad = useCallback((scoped: string, load: BranchLoad | null) => {
-    const [scope, ...rest] = scoped.split("\n");
-    const key = rest.join("\n");
-    // Late reports from a superseded filter never re-enter the view (D3).
-    if (scope !== NO_FILTER && scope !== filterRef.current) return;
+    const key = scoped.slice(scoped.indexOf("\n") + 1);
     const before = loadsRef.current.get(scoped);
     const next = new Map(loadsRef.current);
     if (load) next.set(scoped, load);
     // A collapsed branch keeps its loaded pages (for stable names and counts)
     // for this component's lifetime, which ends on signout or account change.
-    else if (before?.pages.length && scope === NO_FILTER)
+    // Only mounted loaders report, so every report belongs to a live scope;
+    // superseded filter scopes are purged when the filter changes.
+    else if (before?.pages.length)
       next.set(scoped, {
         ...before,
         status: "success",
@@ -341,7 +338,7 @@ export function ProcessTree({
     else next.delete(scoped);
     loadsRef.current = next;
     setLoads(next);
-    if (!load || scope !== filterRef.current) return;
+    if (!load) return;
     const node = modelRef.current.nodes.get(key);
     const label = node ? nodeName(node) : "branch";
     if (load.error && !before?.error)
