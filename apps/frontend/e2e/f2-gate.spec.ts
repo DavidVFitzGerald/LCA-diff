@@ -101,6 +101,13 @@ test("verified shell tabs, sidebars, settings and signout work from the keyboard
   // Back through the process sidebar to the header account controls.
   await scores.focus();
   await page.keyboard.press("Shift+Tab");
+  // The process tree (#16) is the sidebar's single tab stop.
+  await expectVisibleFocus(
+    page
+      .getByRole("tree", { name: "Processes" })
+      .locator('[role="treeitem"][tabindex="0"]'),
+  );
+  await page.keyboard.press("Shift+Tab");
   const collapseProcesses = page.getByRole("button", {
     name: "Collapse processes",
   });

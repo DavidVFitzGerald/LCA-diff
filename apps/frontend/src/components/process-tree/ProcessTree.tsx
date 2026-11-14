@@ -222,7 +222,8 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
     null,
   );
   const treeFocused = useRef(false);
-  const scrollWanted = useRef(false);
+  /** Keyboard target awaiting scroll; bound to its key so no other render consumes it. */
+  const scrollTarget = useRef<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const items = useRef(new Map<string, HTMLDivElement>()).current;
 
@@ -245,6 +246,17 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
     const before = loadsRef.current.get(key);
     const next = new Map(loadsRef.current);
     if (load) next.set(key, load);
+    // A collapsed branch keeps its loaded pages (for stable names and counts)
+    // for this component's lifetime, which ends on signout or account change.
+    else if (before?.pages.length)
+      next.set(key, {
+        ...before,
+        status: "success",
+        fetching: false,
+        fetchingNext: false,
+        nextFailed: false,
+        error: null,
+      });
     else next.delete(key);
     loadsRef.current = next;
     setLoads(next);
@@ -328,14 +340,21 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
   useEffect(() => {
     if (effective !== active) setActive(effective);
     if (effective === null) return;
-    if (scrollWanted.current) {
-      scrollWanted.current = false;
-      virtualizer.scrollToIndex(index.get(effective)!, { align: "auto" });
-    }
     const element = items.get(effective);
+    // Fixed-height rows: scroll the active row to the nearest edge directly;
+    // the virtualizer follows the scroll event.
+    const container = scroller.current;
+    if (scrollTarget.current === effective && container) {
+      scrollTarget.current = null;
+      const top = index.get(effective)! * TREE_ROW_HEIGHT;
+      const view = container.clientHeight;
+      if (top < container.scrollTop) container.scrollTop = top;
+      else if (top + TREE_ROW_HEIGHT > container.scrollTop + view)
+        container.scrollTop = top + TREE_ROW_HEIGHT - view;
+    }
     if (treeFocused.current && element && document.activeElement !== element)
       element.focus({ preventScroll: true });
-  }, [effective, active, index, items, virtualizer]);
+  }, [effective, active, index, items]);
 
   const toggle = (key: string, open?: boolean) =>
     setExpanded((previous) => {
@@ -358,7 +377,7 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
   };
   const move = (key: string | undefined) => {
     if (key === undefined) return;
-    scrollWanted.current = true;
+    scrollTarget.current = key;
     setActive(key);
   };
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -452,7 +471,7 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
         <div
           role="none"
           className="process-tree-sizer"
-          style={{ height: virtualizer.getTotalSize() }}
+          style={{ height: rows.length * TREE_ROW_HEIGHT }}
         >
           {virtualizer.getVirtualItems().map((item) => {
             const row = rows[item.index];
@@ -462,7 +481,7 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
                 row={row}
                 model={model}
                 active={row.key === effective}
-                top={item.start}
+                top={item.index * TREE_ROW_HEIGHT}
                 register={(element) => {
                   if (element) items.set(row.key, element);
                   else items.delete(row.key);
