@@ -2,6 +2,8 @@ import type { Services } from "../services/contracts";
 import {
   browserMockSessionStorage,
   createMockAuth,
+  DEMO_PASSWORD,
+  MOCK_ACCOUNTS,
 } from "../services/mock/auth";
 import { protectMockData } from "../services/mock/protected-data";
 import { createMockDiscovery } from "../services/mock/discovery";
@@ -49,5 +51,15 @@ export function createApplication(mode: unknown): ApplicationRuntime {
       session,
     ),
   };
-  return { mode: "mock", services };
+  return {
+    mode: "mock",
+    services,
+    demo: {
+      password: DEMO_PASSWORD,
+      verified_email: MOCK_ACCOUNTS.find((user) => user.email_verified)!.email,
+      unverified_email: MOCK_ACCOUNTS.find((user) => !user.email_verified)!
+        .email,
+      registration_example: "new@example.invalid",
+    },
+  };
 }

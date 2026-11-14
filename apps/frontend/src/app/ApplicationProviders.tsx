@@ -45,6 +45,7 @@ export function ApplicationProviders({
         data: guardDataService(runtime.services.data, session),
       },
       mode: runtime.mode,
+      demo: runtime.demo,
       namespace: namespaceFor(runtime.services),
       session,
     };

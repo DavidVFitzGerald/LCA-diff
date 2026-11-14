@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import type { KeyboardEvent } from "react";
 import {
   useAuthState,
   useServiceContext,
   verifiedUid,
 } from "./app/service-context";
+import { AuthDialog } from "./auth/AuthDialog";
 import "./app/shell.css";
 
 const desktopQuery = "(min-width: 960px)";
@@ -15,63 +16,6 @@ function subscribeViewport(listener: () => void) {
 }
 function isDesktop() {
   return window.matchMedia?.(desktopQuery).matches ?? true;
-}
-
-/** Native modal supplies focus containment and top-layer backdrop blocking. */
-function LoginDialog({
-  unverified,
-  failed,
-}: {
-  unverified: boolean;
-  failed: boolean;
-}) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const [details, setDetails] = useState(false);
-  useEffect(() => {
-    const target = dialog.current!;
-    const previousFocus = document.activeElement;
-    target.showModal();
-    return () => {
-      target.close();
-      if (previousFocus instanceof HTMLElement && previousFocus.isConnected)
-        previousFocus.focus();
-    };
-  }, []);
-  return (
-    <dialog
-      ref={dialog}
-      className="login-dialog"
-      aria-modal="true"
-      aria-labelledby="login-title"
-      aria-describedby="login-description"
-      onCancel={(event) => event.preventDefault()}
-    >
-      <p className="eyebrow">LCA diff · Local demo</p>
-      <h2 id="login-title">
-        {unverified ? "Verify your email" : "Sign in to LCA diff"}
-      </h2>
-      <p id="login-description">
-        {unverified
-          ? "Email verification is required before browsing or comparing processes."
-          : failed
-            ? "Your session could not be confirmed. Sign in again to continue."
-            : "A verified account is required to browse and compare processes."}
-      </p>
-      <p>Account sign-in is unavailable in this preview.</p>
-      <button
-        type="button"
-        aria-expanded={details}
-        aria-controls="demo-details"
-        onClick={() => setDetails(!details)}
-      >
-        About this demo
-      </button>
-      <p id="demo-details" hidden={!details}>
-        This local simulation uses synthetic services. No live account or email
-        delivery is connected.
-      </p>
-    </dialog>
-  );
 }
 
 type Tab = "flows" | "scores";
@@ -209,6 +153,14 @@ export function App() {
   );
   const verified = verifiedUid(auth) !== null;
   const resolving = auth.status === "resolving";
+  // Once login is required, keep the modal mounted through action-driven
+  // resolving states so form focus and progress survive. Only the observed
+  // verified state unmounts it; initial restoration never flashes it.
+  const loginRequired = !verified && !resolving;
+  const [loginShown, setLoginShown] = useState(false);
+  if (loginRequired && !loginShown) setLoginShown(true);
+  if (verified && loginShown) setLoginShown(false);
+  const showLogin = !verified && (loginRequired || loginShown);
   useEffect(() => {
     if (verified && desktop)
       document.querySelector<HTMLElement>("main")?.focus();
@@ -278,17 +230,12 @@ export function App() {
           </div>
           {signOutError && <p role="alert">Sign out failed. Try again.</p>}
           {verified && signingOut && <p aria-live="polite">Signing out…</p>}
-          {resolving && (
+          {resolving && !showLogin && (
             <p className="session-loading" aria-live="polite">
               Restoring your session…
             </p>
           )}
-          {!verified && !resolving && (
-            <LoginDialog
-              unverified={auth.status === "authenticated"}
-              failed={auth.status === "error"}
-            />
-          )}
+          {showLogin && <AuthDialog auth={auth} />}
         </>
       )}
     </div>
