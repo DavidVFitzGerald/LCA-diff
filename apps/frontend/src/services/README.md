@@ -2,8 +2,8 @@
 
 `contracts.ts` defines the replaceable, transport-independent boundary for
 specification §§6–7. UI code will depend on `Services`, never HTTP, Firebase,
-or fixture imports. Discovery/selection mocks are implemented in #7. Comparison
-follows in #8, composition/query integration in #9, and auth lifecycle execution
+or fixture imports. Discovery/selection and comparison mocks are implemented in
+#7/#8. Composition/query integration follows in #9, and auth lifecycle execution
 in #12.
 
 All methods are asynchronous. Expected failures return `ServiceResult` with safe
@@ -92,3 +92,46 @@ continue after a stable process ID. Replaying across different semantic inputs
 fails with `INVALID_FILTER`. These are local synthetic tokens, with no claim of
 production signing/authentication. No component composition, auth simulation,
 comparison logic, real server or network dependency is added in this issue.
+
+## Comparison mock (#8)
+
+`mock/comparison.ts` exports `createMockComparison`, the `DataService` subset for
+indicator hierarchy and flow/score row/cell reads. It shares the existing mock
+runner's delay, failure and abort behavior with discovery. Responses retain exact
+decimal lexemes and independent present/absent/missing/unresolved states, with
+warnings only on the affected cell. Inputs and outputs are copied.
+
+Flow rows use the union represented by selected processes; present-zero counts
+as represented. Presence checks use per-process values before shared defaults,
+including explicit absence overrides. Rows sort by the specified flow type order
+then case-insensitive category/subcategory/name and stable flow ID. Score rows
+follow selected indicators' source order even if every selected process has N/A.
+Omitted or false `differences_only` performs presence/metadata work without numeric
+comparison, coercion or scientific calculations. True returns
+`UNSUPPORTED_OPERATION` until #29 adds exact difference predicates.
+
+Row calls accept arbitrarily many selected IDs. Only the row page is returned.
+Cell calls accept process and row/indicator windows, with both dimensions bounded
+by `window_limit` (default 100) and their product by `cell_limit` (default 1000).
+Oversized transport reads fail with `REQUEST_WINDOW_TOO_LARGE`; callers split
+them without reducing selection. Only the requested Cartesian window is emitted.
+
+Session-local comparison tokens bind canonical process/indicator sets, tab and
+immutable revision snapshot. Column reordering reuses the token. Cursor pages
+continue after a stable row identity using that token. A cell window must use
+the same snapshot, a subset of its token's processes and eligible rows, and the
+correct tab. Both prior fixture revisions remain readable; unknown snapshots
+and mixed row/cell snapshots fail safely. Tokens are small local cache handles,
+not production authentication. `token_limit` bounds retained contexts (default
+128); oldest contexts are evicted, and subsequent cell requests using them return
+`STALE_SNAPSHOT`. Reload row metadata to obtain a fresh token.
+
+`createComparisonCatalog(processCount, additionalFlowCount)` builds independent,
+invented comparison data with discovery-compatible IDs. Each process has its own
+reference flow identity/metadata, stable across revisions. Extra rows share values
+without creating a complete cell matrix. The tested large fixture has 320 selected
+processes and 1,324 flow rows per revision, stored as 1,600 sparse process entries
+plus 1,000 shared entries. A 25-row metadata page and a 4-row × 25-process cell
+window each serialize below 25 KB. This is synthetic response-bound evidence,
+not a real-data browser/performance result. Grid/UI checks remain F4/#10; real
+backend, generated contracts and security/integration evidence remain Phase 2.
