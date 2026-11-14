@@ -252,3 +252,67 @@ single-release `branch_path` paging that returns ancestor chains with exact
 in-scope counts. Scenario tests inject `createMockDiscovery` from
 `src/services/mock/process-tree.test.tsx`, because the lint boundary forbids
 mock imports elsewhere; no scenario switch ships in the composed app.
+
+## Flow windows and row summaries (#20)
+
+**Provisional read-summary extension.** `DataService.flowSummaries` is a
+frontend-only provisional method that is not in spec §7.1. It returns whole-selection chart
+metadata for one row window:
+
+- `max_positive` (P): the exact stored lexeme of the largest present positive
+  amount, or `"0"`.
+- `max_negative_magnitude` (N): the exact unsigned lexeme of the most negative
+  present amount, or `"0"`.
+- Positive, negative, present-zero and absent counts over **every** selected process.
+
+The request carries the complete selected `process_ids` (unbounded) and the
+flow-rows `comparison_token`, plus at most `window_limit` row keys. Sending
+the full set keeps a real backend stateless, as spec §7.3 requires: correctness must not
+depend on a cached token. I1 must reconcile this DTO with the generated OpenAPI
+contract, or replace it, through the ADR/spec workflow. This issue introduces no
+production endpoint.
+
+**Mock behaviour.** The mock accepts a summary request only when it matches the
+token exactly:
+
+- the token's tab is flows;
+- the snapshot is identical to the token's;
+- the process set is the token's whole set (a subset is `INVALID_FILTER`);
+- every row belongs to the token's rows.
+
+Unknown or evicted tokens and unknown revisions fail as `STALE_SNAPSHOT`.
+Revision-bound IDs used against another snapshot fail as `UNKNOWN_PROCESS`.
+
+**Extrema and ties.** Extrema use `services/decimal.ts`, which compares
+lexemes exactly (digits and exponents, with `-0` as zero) and never converts to
+floating point. Ties keep the first process in canonical ID order. Because
+the request has no column window, every visible column window sees the same P and N.
+Summaries carry no warnings, since cell warnings stay on the affected cell. They run
+no difference predicate.
+
+**Query helpers in `app/queries.ts`:**
+
+- `flowRowPages`: an infinite cursor query keyed by the request.
+- `flowSummaries`.
+- `flowCellWindow`: splits any visible rows × processes window into batches
+  within `SERVICE_WINDOW` (100) and `SERVICE_CELL_WINDOW` (1000), using
+  `app/cell-batches.ts`.
+  - All batches share one abort signal.
+  - Results merge in batch order.
+  - A batch that answers with a different token or snapshot fails the window
+    as `STALE_SNAPSHOT` rather than mixing revisions.
+
+Batches bound requests, never the selection.
+
+**Obsolete reads.** Query keys include the token and snapshot. An obsolete read loses
+its observer and is aborted, so it cannot replace newer data. Chart geometry
+(#22), virtualization (#23) and grid composition (#24) consume these helpers.
+
+**Test evidence:**
+
+- `services/decimal.test.ts`
+- `app/cell-batches.test.ts`
+- `services/mock/flow-summaries.test.ts`
+- `services/mock/comparison-queries.test.ts`
+
+This is mock evidence, not real-backend performance.
