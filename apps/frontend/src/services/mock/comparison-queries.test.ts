@@ -2,7 +2,11 @@
  * Comparison query helpers (#20) over the injected comparison mock: cursor
  * row pages, batched cell windows, summaries, abort and obsolete results.
  */
-import { QueryClient, QueryObserver } from "@tanstack/react-query";
+import {
+  InfiniteQueryObserver,
+  QueryClient,
+  QueryObserver,
+} from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import {
   createServiceQueries,
@@ -14,10 +18,12 @@ import type {
   DataService,
   FlowCellsRequest,
   FlowRow,
+  RevisionSnapshot,
   ServiceResult,
 } from "../contracts";
 import { createMockComparison } from "./comparison";
 import type { ComparisonOptions } from "./comparison";
+import type { ComparisonCatalog } from "./comparison-fixtures";
 import { createComparisonCatalog } from "./comparison-fixtures";
 
 const catalog = createComparisonCatalog(250, 80);
@@ -278,23 +284,6 @@ describe("responses must answer the requested snapshot and token (QA #20 D1)", (
     expect(await windowError(app, 1)).toBe("STALE_SNAPSHOT");
   });
 
-  it("accepts the requested snapshot in any release order", async () => {
-    const app = setup();
-    app.flowCells.mockImplementation(async (input, options) => {
-      const result = await app.service.flowCells(input, options);
-      return result.ok
-        ? {
-            ok: true,
-            data: {
-              ...result.data,
-              revision_snapshot: [...result.data.revision_snapshot].reverse(),
-            },
-          }
-        : result;
-    });
-    expect(await windowError(app, 1)).toBe("ok");
-  });
-
   it("rejects summaries and row pages answered from another revision or token", async () => {
     const app = setup();
     const page = await firstPage(app);
@@ -343,5 +332,166 @@ describe("responses must answer the requested snapshot and token (QA #20 D1)", (
         (error: unknown) => (error as ServiceQueryError).detail.code,
       );
     expect(rows).toBe("STALE_SNAPSHOT");
+  });
+});
+
+describe("row pages belong to one comparison session (#64 AC1)", () => {
+  it("rejects a later page carrying another token and never appends it", async () => {
+    const app = setup();
+    let calls = 0;
+    app.flowRows.mockImplementation(async (input, options) => {
+      const result = await app.service.flowRows(input, options);
+      calls += 1;
+      return result.ok && calls > 1
+        ? { ok: true, data: { ...result.data, comparison_token: "t2" } }
+        : result;
+    });
+    const options = app.queries.flowRowPages({
+      revision_snapshot: snapshot,
+      process_ids: ids,
+      limit: 25,
+    });
+    const observer = new InfiniteQueryObserver(app.client, options);
+    const unsubscribe = observer.subscribe(() => undefined);
+    await vi.waitFor(() =>
+      expect(observer.getCurrentResult().data?.pages).toHaveLength(1),
+    );
+    const first = observer.getCurrentResult().data!.pages[0];
+    expect(first.next_cursor).not.toBeNull();
+    const next = await observer.fetchNextPage();
+    expect((next.error as ServiceQueryError).detail.code).toBe(
+      "STALE_SNAPSHOT",
+    );
+    const cached = app.client.getQueryData(options.queryKey)!;
+    expect(cached.pages).toEqual([first]);
+    expect(app.flowRows).toHaveBeenCalledTimes(2);
+    unsubscribe();
+  });
+});
+
+/**
+ * Two releases served natively by the mock, which answers refs sorted by
+ * release ID; requests list them in the opposite order (#64 AC2).
+ */
+function twoReleases(): ComparisonCatalog {
+  const base = createComparisonCatalog(40, 30);
+  const active = base.revisions.find(
+    ({ revision }) => revision.revision_id === base.releases[0].revision_id,
+  )!;
+  const revision = {
+    release_id: "00000000-0000-4000-8000-0000000000b0",
+    revision_id: "00000000-0000-4000-8000-0000000000b1",
+  };
+  return {
+    releases: [
+      { ...base.releases[0], ...revision, display_name: "Second release" },
+      ...base.releases,
+    ],
+    revisions: [
+      ...base.revisions,
+      {
+        ...active,
+        revision,
+        processes: active.processes.map((process) => ({
+          ...process,
+          header: {
+            ...process.header,
+            ...revision,
+            id: `b:${process.header.id}`,
+          },
+        })),
+      },
+    ],
+  };
+}
+
+describe("snapshot release order across two releases (#64 AC2)", () => {
+  const multi = twoReleases();
+  const [second, first] = multi.releases.map(({ release_id, revision_id }) => ({
+    release_id,
+    revision_id,
+  }));
+  // Request order is the reverse of the mock's sorted answer.
+  const requested = [first, second];
+  const processIds = multi.revisions
+    .filter(({ revision }) =>
+      requested.some((ref) => ref.revision_id === revision.revision_id),
+    )
+    .flatMap(({ processes }) => processes.slice(0, 3).map((p) => p.header.id));
+
+  async function readAll(app: ReturnType<typeof setup>) {
+    const rows = await app.client.fetchInfiniteQuery({
+      ...app.queries.flowRowPages({
+        revision_snapshot: requested,
+        process_ids: processIds,
+        limit: 10,
+      }),
+      pages: 2,
+    });
+    const token = rows.pages[0].comparison_token;
+    const row_keys = rows.pages.flatMap((page) =>
+      page.items.map((row) => row.row_key),
+    );
+    const input = {
+      revision_snapshot: requested,
+      comparison_token: token,
+      process_ids: processIds,
+      row_keys,
+    };
+    await app.client.fetchQuery(app.queries.flowSummaries(input));
+    await app.client.fetchQuery(app.queries.flowCellWindow(input));
+    return rows;
+  }
+  const code = (error: unknown) => (error as ServiceQueryError).detail.code;
+
+  it("accepts both releases in any order for row pages, summaries and cell windows", async () => {
+    const app = setup({ catalog: multi });
+    const rows = await readAll(app);
+    expect(rows.pages).toHaveLength(2);
+    // The service really answered in another order than requested.
+    expect(rows.pages[0].revision_snapshot).toEqual([second, first]);
+    expect(app.flowSummaries).toHaveBeenCalled();
+    expect(app.flowCells).toHaveBeenCalled();
+  });
+
+  it.each([
+    ["a missing release", (refs: RevisionSnapshot) => refs.slice(1)],
+    [
+      "an extra release",
+      (refs: RevisionSnapshot) => [
+        ...refs,
+        { release_id: "zz-extra", revision_id: "zz-extra-rev" },
+      ],
+    ],
+  ])("still rejects %s on every response kind", async (_, change) => {
+    for (const operation of [
+      "flowRows",
+      "flowSummaries",
+      "flowCells",
+    ] as const) {
+      const app = setup({ catalog: multi });
+      const original = app.service[operation] as (
+        ...args: unknown[]
+      ) => Promise<ServiceResult<{ revision_snapshot: RevisionSnapshot }>>;
+      (app[operation] as ReturnType<typeof vi.fn>).mockImplementation(
+        async (...args: unknown[]) => {
+          const result = await original(...args);
+          return result.ok
+            ? {
+                ok: true,
+                data: {
+                  ...result.data,
+                  revision_snapshot: change(result.data.revision_snapshot),
+                },
+              }
+            : result;
+        },
+      );
+      const error = await readAll(app).then(
+        () => null,
+        (caught: unknown) => caught,
+      );
+      expect([operation, code(error)]).toEqual([operation, "STALE_SNAPSHOT"]);
+    }
   });
 });
