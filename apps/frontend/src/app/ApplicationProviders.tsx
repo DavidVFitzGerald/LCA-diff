@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   createSessionStore,
+  guardAuthService,
   guardDataService,
   ServiceContext,
 } from "./service-context";
@@ -41,7 +42,7 @@ export function ApplicationProviders({
     const session = createSessionStore(runtime.services.auth, client);
     return {
       services: {
-        auth: runtime.services.auth,
+        auth: guardAuthService(runtime.services.auth, session),
         data: guardDataService(runtime.services.data, session),
       },
       mode: runtime.mode,

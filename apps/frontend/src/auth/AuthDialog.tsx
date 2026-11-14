@@ -504,7 +504,8 @@ function VerifyPanel({ user, demo }: { user: AuthUser; demo?: DemoGuidance }) {
           type="button"
           aria-disabled={pending ? true : undefined}
           onClick={() =>
-            void act("signOut", (signal) => services.auth.signOut({ signal }))
+            // Not aborted on unmount: the guarded signout locks first, unmounting this panel.
+            void act("signOut", () => services.auth.signOut())
           }
         >
           Use a different account
