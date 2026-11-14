@@ -1,11 +1,13 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { KeyboardEvent } from "react";
+import type { SearchFields } from "./services/contracts";
 import {
   useAuthState,
   useServiceContext,
   verifiedUid,
 } from "./app/service-context";
 import { AuthDialog } from "./auth/AuthDialog";
+import { ProcessSearch } from "./components/process-search/ProcessSearch";
 import { ProcessTree } from "./components/process-tree/ProcessTree";
 import { SelectedProcesses } from "./components/selected-processes/SelectedProcesses";
 import { SelectionProvider } from "./app/selection";
@@ -27,6 +29,8 @@ function Workspace({ email, signOut }: { email: string; signOut: () => void }) {
   const [processesOpen, setProcessesOpen] = useState(true);
   const [indicatorsOpen, setIndicatorsOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // In-memory search fields; never persisted (#17, D6).
+  const [searchFields, setSearchFields] = useState<SearchFields>({});
   function changeTab(event: KeyboardEvent<HTMLButtonElement>) {
     const next =
       event.key === "Home"
@@ -79,7 +83,11 @@ function Workspace({ email, signOut }: { email: string; signOut: () => void }) {
           </button>
           <section id="process-sidebar" hidden={!processesOpen}>
             <h2 id="process-tree-heading">Processes</h2>
-            <ProcessTree labelledBy="process-tree-heading" />
+            <ProcessSearch onChange={setSearchFields} />
+            <ProcessTree
+              labelledBy="process-tree-heading"
+              fields={searchFields}
+            />
             <SelectedProcesses />
           </section>
         </aside>

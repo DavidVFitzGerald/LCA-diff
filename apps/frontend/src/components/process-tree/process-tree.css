@@ -91,3 +91,8 @@
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.3 2.3 4.7-5' fill='none' stroke='%23fff' stroke-width='1.8'/%3E%3C/svg%3E")
     center / 100% no-repeat;
 }
+.tree-no-results {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.85rem;
+  color: #52675b;
+}

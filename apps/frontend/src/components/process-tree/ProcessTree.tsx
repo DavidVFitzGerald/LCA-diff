@@ -5,13 +5,14 @@ import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
 import type {
   Page,
   Release,
+  SearchFields,
   SearchNode,
   ServiceError,
 } from "../../services/contracts";
 import { ServiceQueryError, useServiceQueries } from "../../app/queries";
 import { selectionKey, useSelection } from "../../app/selection";
 import type { SelectionStore } from "../../app/selection";
-import { loadedLeaves, mergeTree, TREE_PAGE_LIMIT } from "./model";
+import { loadedLeaves, mergeTree, rootKey, TREE_PAGE_LIMIT } from "./model";
 import type {
   BranchPages,
   TreeBranch,
@@ -86,6 +87,7 @@ function BranchLoader({
   branchKey,
   release,
   pathJson,
+  fieldsJson,
   onChange,
   actions,
 }: {
@@ -93,6 +95,8 @@ function BranchLoader({
   release: Release;
   /** Serialized so a rebuilt model never changes the loader inputs. */
   pathJson: string;
+  /** Serialized normalized search fields; "{}" is the unfiltered tree. */
+  fieldsJson: string;
   onChange: (key: string, load: BranchLoad | null) => void;
   actions: Map<string, BranchActions>;
 }) {
@@ -101,10 +105,15 @@ function BranchLoader({
     () => JSON.parse(pathJson) as readonly string[],
     [pathJson],
   );
+  const fields = useMemo(
+    () => JSON.parse(fieldsJson) as SearchFields,
+    [fieldsJson],
+  );
   const query = useInfiniteQuery(
     queries.searchPages({
-      fields: {},
-      branch_path: path,
+      fields,
+      // Filtered searches are root-scoped per release (#17, D4).
+      ...(path.length || fieldsJson === "{}" ? { branch_path: path } : {}),
       revision_snapshot: [
         { release_id: release.release_id, revision_id: release.revision_id },
       ],
@@ -159,14 +168,20 @@ function BranchLoader({
 
 function buildRows(
   model: TreeModel,
-  expanded: ReadonlySet<string>,
+  isOpen: (key: string) => boolean,
   loads: ReadonlyMap<string, BranchLoad>,
+  filtered: boolean,
 ): Row[] {
   const rows: Row[] = [];
+  const complete = (load: BranchLoad | undefined) =>
+    load?.status === "success" && !load.hasNext;
   const walk = (keys: readonly string[], level: number, setsize: number) => {
     keys.forEach((key, index) => {
       const node = model.nodes.get(key)!;
-      const open = node.kind === "branch" && expanded.has(key);
+      const open = node.kind === "branch" && isOpen(key);
+      // Filtered nested branches are filled by their release's root search.
+      const derived =
+        filtered && node.kind === "branch" && node.parent !== null;
       const load = loads.get(key);
       rows.push({
         kind: "node",
@@ -176,12 +191,16 @@ function buildRows(
         posinset: index + 1,
         setsize,
         expanded: open,
-        busy: open && (load?.fetching ?? true),
+        busy: open && !derived && (load?.fetching ?? true),
       });
       if (!open) return;
       const children = model.children.get(key) ?? [];
-      const complete = load?.status === "success" && !load.hasNext;
-      walk(children, level + 1, complete ? children.length : -1);
+      if (derived) {
+        const root = loads.get(rootKey(node.release_id));
+        walk(children, level + 1, complete(root) ? children.length : -1);
+        return;
+      }
+      walk(children, level + 1, complete(load) ? children.length : -1);
       const pseudo = (kind: "more" | "loading" | "empty" | "error") =>
         rows.push({
           kind,
@@ -210,7 +229,19 @@ function parentOf(row: Row): string | null {
   return row.kind === "node" ? row.node.parent : row.branch;
 }
 
-export function ProcessTree({ labelledBy }: { labelledBy: string }) {
+const NO_FILTER = "{}";
+const scopedKey = (filter: string, key: string) => `${filter}\n${key}`;
+
+export function ProcessTree({
+  labelledBy,
+  fields = {},
+}: {
+  labelledBy: string;
+  /** Normalized search fields (#17); empty shows the full lazy tree. */
+  fields?: SearchFields;
+}) {
+  const filter = JSON.stringify(fields);
+  const filtering = filter !== NO_FILTER;
   const queries = useServiceQueries();
   const releasesQuery = useQuery(queries.releases());
   const releases = useMemo(
@@ -220,9 +251,26 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
-  const [loads, setLoads] = useState<ReadonlyMap<string, BranchLoad>>(
+  /** Loads keyed by (filter, branch); unfiltered pages survive a search. */
+  const [allLoads, setLoads] = useState<ReadonlyMap<string, BranchLoad>>(
     () => new Map(),
   );
+  // Branches the user collapsed in the current filtered view (D4).
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [shownFilter, setShownFilter] = useState(filter);
+  if (shownFilter !== filter) {
+    setShownFilter(filter);
+    setCollapsed(new Set());
+  }
+  const loads = useMemo(() => {
+    const view = new Map<string, BranchLoad>();
+    const prefix = scopedKey(filter, "");
+    for (const [key, load] of allLoads)
+      if (key.startsWith(prefix)) view.set(key.slice(prefix.length), load);
+    return view;
+  }, [allLoads, filter]);
   const [active, setActive] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const actions = useRef(new Map<string, BranchActions>()).current;
@@ -254,15 +302,35 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
     modelRef.current = model;
   }, [model]);
 
-  const loadsRef = useRef<ReadonlyMap<string, BranchLoad>>(loads);
-  const onLoad = useCallback((key: string, load: BranchLoad | null) => {
-    const before = loadsRef.current.get(key);
+  const loadsRef = useRef<ReadonlyMap<string, BranchLoad>>(allLoads);
+  const filterRef = useRef(filter);
+  useEffect(() => {
+    filterRef.current = filter;
+    // Drop pages of superseded filters; unfiltered pages are kept (D4).
+    const next = new Map(
+      [...loadsRef.current].filter(
+        ([key]) =>
+          key.startsWith(scopedKey(NO_FILTER, "")) ||
+          key.startsWith(scopedKey(filter, "")),
+      ),
+    );
+    if (next.size !== loadsRef.current.size) {
+      loadsRef.current = next;
+      setLoads(next);
+    }
+  }, [filter]);
+  const onLoad = useCallback((scoped: string, load: BranchLoad | null) => {
+    const [scope, ...rest] = scoped.split("\n");
+    const key = rest.join("\n");
+    // Late reports from a superseded filter never re-enter the view (D3).
+    if (scope !== NO_FILTER && scope !== filterRef.current) return;
+    const before = loadsRef.current.get(scoped);
     const next = new Map(loadsRef.current);
-    if (load) next.set(key, load);
+    if (load) next.set(scoped, load);
     // A collapsed branch keeps its loaded pages (for stable names and counts)
     // for this component's lifetime, which ends on signout or account change.
-    else if (before?.pages.length)
-      next.set(key, {
+    else if (before?.pages.length && scope === NO_FILTER)
+      next.set(scoped, {
         ...before,
         status: "success",
         fetching: false,
@@ -270,10 +338,10 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
         nextFailed: false,
         error: null,
       });
-    else next.delete(key);
+    else next.delete(scoped);
     loadsRef.current = next;
     setLoads(next);
-    if (!load) return;
+    if (!load || scope !== filterRef.current) return;
     const node = modelRef.current.nodes.get(key);
     const label = node ? nodeName(node) : "branch";
     if (load.error && !before?.error)
@@ -284,14 +352,19 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
       );
   }, []);
 
+  const isOpen = (key: string) =>
+    filtering
+      ? model.nodes.get(key)?.kind === "branch" && !collapsed.has(key)
+      : expanded.has(key);
   /** Loaders exist only for expanded branches whose ancestors are all expanded. */
   const loaders: { key: string; node: TreeBranch; release: Release }[] = [];
   const visibleOpen = (key: string): boolean => {
     const node = model.nodes.get(key);
-    if (!node || node.kind !== "branch" || !expanded.has(key)) return false;
+    if (!node || node.kind !== "branch" || !isOpen(key)) return false;
     return node.parent === null || visibleOpen(node.parent);
   };
-  for (const key of expanded)
+  // Filtered: one root-scoped search per expanded release (D4).
+  for (const key of filtering ? model.roots : expanded)
     if (visibleOpen(key)) {
       const node = model.nodes.get(key) as TreeBranch;
       const release = releases.find((r) => r.release_id === node.release_id);
@@ -299,8 +372,17 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
     }
 
   const rows = useMemo(
-    () => buildRows(model, expanded, loads),
-    [model, expanded, loads],
+    () =>
+      buildRows(
+        model,
+        filtering
+          ? (key) =>
+              model.nodes.get(key)?.kind === "branch" && !collapsed.has(key)
+          : (key) => expanded.has(key),
+        loads,
+        filtering,
+      ),
+    [model, expanded, collapsed, loads, filtering],
   );
   const index = useMemo(
     () => new Map(rows.map((row, position) => [row.key, position])),
@@ -369,13 +451,37 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
       element.focus({ preventScroll: true });
   }, [effective, active, index, items]);
 
-  const toggle = (key: string, open?: boolean) =>
-    setExpanded((previous) => {
-      const next = new Set(previous);
-      if (open ?? !next.has(key)) next.add(key);
-      else next.delete(key);
-      return next;
-    });
+  // D5: summary of the current filter once every release root has answered.
+  const rootLoads = model.roots.map((key) => loads.get(key));
+  const settled =
+    filtering &&
+    rootLoads.length > 0 &&
+    rootLoads.every((load) => load?.status === "success");
+  const matches = rootLoads.reduce(
+    (sum, load) => sum + (load?.pages.at(-1)?.total_count ?? 0),
+    0,
+  );
+  const noResults = settled && matches === 0;
+  const liveText = settled
+    ? `${plural(matches)} ${matches === 1 ? "matches" : "match"} your search.`
+    : announcement;
+
+  const toggle = (key: string, open?: boolean) => {
+    if (filtering)
+      setCollapsed((previous) => {
+        const next = new Set(previous);
+        if (open ?? next.has(key)) next.delete(key);
+        else next.add(key);
+        return next;
+      });
+    else
+      setExpanded((previous) => {
+        const next = new Set(previous);
+        if (open ?? !next.has(key)) next.add(key);
+        else next.delete(key);
+        return next;
+      });
+  };
   const activate = (row: Row) => {
     if (row.kind === "node") {
       if (row.node.kind === "branch") toggle(row.key);
@@ -385,9 +491,9 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
         branch: row.branch,
         before: new Set(model.children.get(row.branch) ?? []),
       };
-      actions.get(row.branch)?.next();
+      actions.get(scopedKey(filter, row.branch))?.next();
     } else if (row.kind === "error" && row.load?.error?.retryable)
-      actions.get(row.branch)?.retry();
+      actions.get(scopedKey(filter, row.branch))?.retry();
   };
   const move = (key: string | undefined) => {
     if (key === undefined) return;
@@ -462,12 +568,16 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
 
   return (
     <>
+      {noResults && (
+        <p className="tree-no-results">No processes match your search.</p>
+      )}
       {loaders.map(({ key, node, release }) => (
         <BranchLoader
-          key={key}
-          branchKey={key}
+          key={scopedKey(filter, key)}
+          branchKey={scopedKey(filter, key)}
           release={release}
           pathJson={JSON.stringify(node.path)}
+          fieldsJson={filter}
           onChange={onLoad}
           actions={actions}
         />
@@ -514,6 +624,7 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
                 key={row.key}
                 row={row}
                 model={model}
+                filtering={filtering}
                 active={row.key === effective}
                 checked={
                   row.kind === "node" && row.node.kind === "process"
@@ -535,7 +646,7 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
         </div>
       </div>
       <p className="visually-hidden" aria-live="polite">
-        {announcement}
+        {liveText}
       </p>
     </>
   );
@@ -544,6 +655,7 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
 function TreeRow({
   row,
   model,
+  filtering,
   active,
   checked,
   top,
@@ -552,6 +664,7 @@ function TreeRow({
 }: {
   row: Row;
   model: TreeModel;
+  filtering: boolean;
   active: boolean;
   checked: boolean | undefined;
   top: number;
@@ -621,8 +734,11 @@ function TreeRow({
     );
   if (row.kind === "empty")
     return (
-      <div {...common} aria-label={`No processes in ${label}`}>
-        No processes
+      <div
+        {...common}
+        aria-label={`No ${filtering ? "matching " : ""}processes in ${label}`}
+      >
+        {filtering ? "No matching processes" : "No processes"}
       </div>
     );
   if (row.kind === "error") {
