@@ -44,6 +44,7 @@ The maintainer confirmed the merge; GitHub records no separate APPROVED review.
 | [0002](0002-frontend-first-delivery.md) | Frontend-first delivery through mock and real service adapters | Accepted |
 | [0003](0003-rootless-development-workspace.md) | Rootless development identity with host-owned bind mounts | Accepted |
 | [0004](0004-solo-maintainer-review.md) | Solo-maintainer review with enforced CI | Proposed |
+| [0005](0005-parallel-backend-delivery.md) | Parallel backend delivery in four work units; partially supersedes 0002 | Proposed |
 
 ## PR consistency checklist
 
