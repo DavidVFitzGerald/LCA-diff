@@ -45,8 +45,8 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 | M1 — container development environment | QA passed; runtime/editor evidence merged in PR #35 | M0 baseline merged |
 | M2 — GitHub execution setup | Forms/PR guidance and activation merged; #4 solo protection proposal in review | M0/M1 delivered; main protection waits for approved ADR 0004 |
 | F1 — frontend foundation | Complete: #5–#10 merged; final PR #44 at `9612943`, independent QA and hosted CI passed | M2 activation delivered; protection tracked separately in #4 |
-| F2 — shell and simulated authentication | #11–#14 merged after independent QA and hosted CI (latest PR #48 at `93872b3`); #15 gate evidence prepared, completion awaits its QA, CI and maintainer merge | F1 complete; each task's issue dependencies |
-| F3–F5 — remaining mock frontend journeys | Not started; predecessor gates retained | F2 completion and each task's issue dependencies |
+| F2 — shell and simulated authentication | Complete: #11–#15 merged after independent QA and hosted CI (final PR #49 at `1f82774`) | F1 complete; each task's issue dependencies |
+| F3–F5 — remaining mock frontend journeys | F3: #16 (paged process tree) in progress; later F3–F5 tasks not started; predecessor gates retained | F2 completion and each task's issue dependencies |
 | B1–B4 — Phase 2, backend and ingestion | Not started | Phase 1 gate, then gates below |
 | I1 — real frontend integration | Not started | B2 and validated synthetic publication from B4 |
 | R1–R2 — production readiness and release | Not started | Dependencies below |
@@ -166,8 +166,8 @@ query caches. These checks do not prove real identity/security enforcement.
 are merged after independent QA and hosted CI. #15 consolidates the gate in the
 [F2 verification record](f2-verification.md): browser and component evidence,
 versions, accepted component-only transitions and real-auth checks deferred to
-B2/I1. The F2 milestone is not complete until #15 passes QA, hosted CI and
-maintainer merge.
+B2/I1. #15 passed QA and hosted CI and was merged (PR #49, `1f82774`);
+the F2 milestone is complete.
 
 ### F3 — discovery and process selection
 
