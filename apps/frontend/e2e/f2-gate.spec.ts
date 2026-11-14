@@ -101,7 +101,13 @@ test("verified shell tabs, sidebars, settings and signout work from the keyboard
   // Back through the process sidebar to the header account controls.
   await scores.focus();
   await page.keyboard.press("Shift+Tab");
-  // The process tree (#16) is the sidebar's single tab stop.
+  // The selected-process section (#18): disclosure button; Clear all is
+  // disabled while the selection is empty, so it is skipped.
+  await expectVisibleFocus(
+    page.getByRole("button", { name: "Selected processes (0)" }),
+  );
+  await page.keyboard.press("Shift+Tab");
+  // The process tree (#16) is the sidebar's single tree tab stop.
   await expectVisibleFocus(
     page
       .getByRole("tree", { name: "Processes" })
@@ -116,9 +122,13 @@ test("verified shell tabs, sidebars, settings and signout work from the keyboard
   await expect(
     page.getByRole("button", { name: "Expand processes" }),
   ).toHaveAttribute("aria-expanded", "false");
-  await expect(page.getByRole("heading", { name: "Processes" })).toBeHidden();
+  await expect(
+    page.getByRole("heading", { name: "Processes", exact: true }),
+  ).toBeHidden();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("heading", { name: "Processes" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Processes", exact: true }),
+  ).toBeVisible();
 
   await page.keyboard.press("Shift+Tab");
   const signOut = page.getByRole("button", { name: "Sign out" });
