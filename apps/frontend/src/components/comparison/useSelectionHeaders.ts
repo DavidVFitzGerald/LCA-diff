@@ -54,9 +54,15 @@ export function useSelectionHeaders(
     ),
     combine: (results) => {
       const headers = new Map<string, ProcessHeader>();
-      for (const result of results)
-        for (const header of result.data ?? [])
+      results.forEach((result, index) => {
+        // A failed read has no data and no placeholder (placeholders apply
+        // only while pending), so keep the validated headers already cached:
+        // loaded columns and known differences survive the failure (#21 D1).
+        const { revision, ids } = groups[index];
+        for (const header of result.data ??
+          queries.cachedHeaders(client, revision, ids))
           headers.set(selectionKey(header), header);
+      });
       const failed = results.find((result) => result.error)?.error;
       return {
         headers,

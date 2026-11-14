@@ -333,12 +333,20 @@ one query per selected revision:
 - Headers are immutable per revision and cached per process (a `header` key
   under the same adapter namespace and UID). A changed selection requests only
   uncached IDs, in `SERVICE_WINDOW` batches; already-known headers are shown
-  as placeholder data meanwhile. Bulk selection seeds the same cache through
-  `queries.rememberHeaders`, so bulk-added columns are not fetched twice.
-- Every batch must answer the requested revision (`STALE_SNAPSHOT` otherwise)
-  with exactly the requested IDs (`UNKNOWN_PROCESS` otherwise); nothing from a
-  rejected batch is cached. I1 adapter parity needs `POST /processes/headers`
-  to accept a single-release snapshot and return each requested ID once.
+  as placeholder data meanwhile. If a read fails, the hook keeps showing the
+  cached headers (placeholders apply only while pending), so loaded columns
+  and known differences survive the failure. Bulk selection seeds the same
+  cache through `queries.rememberHeaders`, so bulk-added columns are not
+  fetched twice.
+- Every batch, in both `selectionHeaders` and the bulk `headersFor`, must
+  answer the requested revision (`STALE_SNAPSHOT` otherwise) with exactly the
+  requested IDs, once each (`UNKNOWN_PROCESS` otherwise). A read with any
+  rejected batch fails as a whole, so only validated headers are cached. I1
+  adapter parity needs `POST /processes/headers` to accept a single-release
+  snapshot and return each requested ID once.
+- Header amounts must be valid decimal strings. The mock guarantees this; the
+  real adapter must validate at its boundary (I1), since comparison would
+  otherwise throw during render.
 
 **Display.** Each header shows Process Name, Location, Reference Flow Name,
 Reference Amount (the exact stored lexeme) and Reference Unit. Blank

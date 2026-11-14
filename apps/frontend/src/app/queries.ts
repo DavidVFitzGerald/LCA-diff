@@ -85,6 +85,44 @@ function staleSnapshot(request_id: string) {
     },
   } as const;
 }
+/**
+ * A header batch must answer the requested revision (`STALE_SNAPSHOT`) with
+ * exactly the requested IDs, once each (`UNKNOWN_PROCESS`); otherwise the
+ * whole read fails and nothing from it is cached (#21).
+ */
+function invalidHeaders(
+  ref: RevisionRef,
+  batch: readonly ProcessId[],
+  page: Page<ProcessHeader>,
+) {
+  const stale =
+    mismatch({ revision_snapshot: [ref] }, page) ??
+    (page.items.some(
+      (header) =>
+        header.release_id !== ref.release_id ||
+        header.revision_id !== ref.revision_id,
+    )
+      ? staleSnapshot(page.request_id)
+      : null);
+  if (stale) return stale;
+  const requested = new Set(batch);
+  const returned = new Set(page.items.map(({ id }) => id));
+  if (
+    returned.size === page.items.length &&
+    returned.size === requested.size &&
+    [...requested].every((id) => returned.has(id))
+  )
+    return null;
+  return {
+    ok: false,
+    error: {
+      code: "UNKNOWN_PROCESS",
+      message: "Response does not match the requested processes",
+      request_id: page.request_id,
+      retryable: false,
+    },
+  } as const;
+}
 function capture<T>(input: T): T {
   return input === undefined ? input : (JSON.parse(JSON.stringify(input)) as T);
 }
@@ -120,6 +158,24 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
     if (scope.uid === null) return;
     for (const header of headers)
       client.setQueryData(headerKey(header), header);
+  }
+  /** Validated headers already cached for these IDs of one revision. */
+  function cachedHeaders(
+    client: QueryClient,
+    ref: RevisionRef,
+    ids: readonly ProcessId[],
+  ): ProcessHeader[] {
+    if (scope.uid === null) return [];
+    return ids.flatMap((id) => {
+      const hit = client.getQueryData<ProcessHeader>(
+        headerKey({
+          release_id: ref.release_id,
+          revision_id: ref.revision_id,
+          id,
+        }),
+      );
+      return hit ? [hit] : [];
+    });
   }
   function options<T>(
     operation: keyof DataService,
@@ -203,25 +259,31 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
     },
     /** Headers for any number of IDs in one release, batched by window (#19). */
     headersFor: (revision: RevisionRef, ids: readonly ProcessId[]) => {
-      const snapshot = [capture(revision)];
-      const wanted = [...ids];
+      const ref: RevisionRef = {
+        release_id: revision.release_id,
+        revision_id: revision.revision_id,
+      };
+      const snapshot = [ref];
+      const wanted = [...new Set(ids)];
       return options("headers", ["all", snapshot, wanted], async (signal) => {
         const headers: ProcessHeader[] = [];
         for (let start = 0; start < wanted.length; start += SERVICE_WINDOW) {
+          const batch = wanted.slice(start, start + SERVICE_WINDOW);
           const result = await data.headers(
-            {
-              revision_snapshot: snapshot,
-              process_ids: wanted.slice(start, start + SERVICE_WINDOW),
-            },
+            { revision_snapshot: snapshot, process_ids: batch },
             { signal },
           );
           if (!result.ok) return result;
+          // Validated like `selectionHeaders`: these seed its cache (#21 O1).
+          const invalid = invalidHeaders(ref, batch, result.data);
+          if (invalid) return invalid;
           headers.push(...result.data.items);
         }
         return { ok: true, data: headers } as const;
       });
     },
     rememberHeaders,
+    cachedHeaders,
     /**
      * Headers for the selected processes of one revision (#21). The key is
      * the sorted ID set, so reordering columns never refetches. Headers are
@@ -241,13 +303,7 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
       };
       const snapshot = [ref];
       const wanted = [...new Set(ids)].sort();
-      const cached = () =>
-        wanted.flatMap((id) => {
-          const hit = client.getQueryData<ProcessHeader>(
-            headerKey({ ...ref, id }),
-          );
-          return hit ? [hit] : [];
-        });
+      const cached = () => cachedHeaders(client, ref, wanted);
       const query = options<readonly ProcessHeader[]>(
         "headers",
         ["set", snapshot, wanted],
@@ -262,31 +318,8 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
               { signal },
             );
             if (!result.ok) return result;
-            const stale =
-              mismatch({ revision_snapshot: snapshot }, result.data) ??
-              (result.data.items.some(
-                (header) =>
-                  header.release_id !== ref.release_id ||
-                  header.revision_id !== ref.revision_id,
-              )
-                ? staleSnapshot(result.data.request_id)
-                : null);
-            if (stale) return stale;
-            const returned = new Set(result.data.items.map(({ id }) => id));
-            if (
-              returned.size !== result.data.items.length ||
-              returned.size !== batch.length ||
-              batch.some((id) => !returned.has(id))
-            )
-              return {
-                ok: false,
-                error: {
-                  code: "UNKNOWN_PROCESS",
-                  message: "Response does not match the requested processes",
-                  request_id: result.data.request_id,
-                  retryable: false,
-                },
-              } as const;
+            const invalid = invalidHeaders(ref, batch, result.data);
+            if (invalid) return invalid;
             fetched.push(...result.data.items);
           }
           rememberHeaders(client, fetched);
