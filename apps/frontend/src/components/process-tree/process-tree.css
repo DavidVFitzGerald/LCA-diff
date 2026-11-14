@@ -1,6 +1,6 @@
 .process-tree {
   position: relative;
-  height: calc(100dvh - 260px);
+  height: calc(100dvh - 480px);
   min-height: 12rem;
   overflow: auto;
   border: 1px solid #d4ded7;
@@ -77,4 +77,17 @@
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+.tree-check {
+  flex: 0 0 0.85rem;
+  height: 0.85rem;
+  border: 1.5px solid #52675b;
+  border-radius: 3px;
+  background: #fff;
+}
+.tree-check.checked {
+  border-color: #166a4a;
+  background: #166a4a
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.3 2.3 4.7-5' fill='none' stroke='%23fff' stroke-width='1.8'/%3E%3C/svg%3E")
+    center / 100% no-repeat;
 }

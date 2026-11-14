@@ -9,8 +9,16 @@ import type {
   ServiceError,
 } from "../../services/contracts";
 import { ServiceQueryError, useServiceQueries } from "../../app/queries";
+import { selectionKey, useSelection } from "../../app/selection";
+import type { SelectionStore } from "../../app/selection";
 import { loadedLeaves, mergeTree, TREE_PAGE_LIMIT } from "./model";
-import type { BranchPages, TreeBranch, TreeModel, TreeNode } from "./model";
+import type {
+  BranchPages,
+  TreeBranch,
+  TreeModel,
+  TreeNode,
+  TreeProcess,
+} from "./model";
 import "./process-tree.css";
 
 export const TREE_ROW_HEIGHT = 32;
@@ -226,6 +234,11 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
   const scrollTarget = useRef<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const items = useRef(new Map<string, HTMLDivElement>()).current;
+  const { entries: selected, store: selection } = useSelection();
+  const selectedKeys = useMemo(
+    () => new Set(selected.map(selectionKey)),
+    [selected],
+  );
 
   const model = useMemo(() => {
     const loaded: BranchPages[] = [...loads.values()].map((load) => ({
@@ -366,6 +379,7 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
   const activate = (row: Row) => {
     if (row.kind === "node") {
       if (row.node.kind === "branch") toggle(row.key);
+      else toggleSelection(selection, row.node, releases);
     } else if (row.kind === "more" && !row.load?.fetchingNext) {
       pendingMore.current = {
         branch: row.branch,
@@ -413,8 +427,13 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
       case "Enter":
         activate(row);
         break;
+      case " ":
+        // Space toggles process selection; branch bulk selection is #19.
+        if (row.kind !== "node" || row.node.kind !== "process") return;
+        activate(row);
+        break;
       default:
-        return; // Space stays unbound for selection (#18/#19).
+        return;
     }
     event.preventDefault();
   }
@@ -496,6 +515,11 @@ export function ProcessTree({ labelledBy }: { labelledBy: string }) {
                 row={row}
                 model={model}
                 active={row.key === effective}
+                checked={
+                  row.kind === "node" && row.node.kind === "process"
+                    ? selectedKeys.has(selectionKey(row.node))
+                    : undefined
+                }
                 top={item.index * TREE_ROW_HEIGHT}
                 register={(element) => {
                   if (element) items.set(row.key, element);
@@ -521,6 +545,7 @@ function TreeRow({
   row,
   model,
   active,
+  checked,
   top,
   register,
   onClick,
@@ -528,6 +553,7 @@ function TreeRow({
   row: Row;
   model: TreeModel;
   active: boolean;
+  checked: boolean | undefined;
   top: number;
   register: (element: HTMLDivElement | null) => void;
   onClick: () => void;
@@ -557,11 +583,18 @@ function TreeRow({
         aria-setsize={row.setsize}
         aria-expanded={branch ? row.expanded : undefined}
         aria-busy={branch && row.busy ? true : undefined}
+        aria-checked={checked}
         title={nodeName(node)}
       >
         <span className="tree-chevron" aria-hidden="true">
           {branch ? (row.expanded ? "▾" : "▸") : ""}
         </span>
+        {checked !== undefined && (
+          <span
+            className={`tree-check${checked ? " checked" : ""}`}
+            aria-hidden="true"
+          />
+        )}
         <span className="tree-label">
           {node.label}
           {branch && node.version && (
@@ -620,4 +653,20 @@ function TreeRow({
       </span>
     </div>
   );
+}
+
+function toggleSelection(
+  selection: SelectionStore,
+  node: TreeProcess,
+  releases: readonly Release[],
+) {
+  const release = releases.find((r) => r.release_id === node.release_id);
+  if (!release) return;
+  selection.toggle({
+    release_id: node.release_id,
+    revision_id: release.revision_id,
+    id: node.id,
+    name: node.label,
+    geography: node.geography,
+  });
 }
