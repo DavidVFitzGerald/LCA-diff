@@ -46,7 +46,7 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 | M2 — GitHub execution setup | Forms/PR guidance and activation merged; #4 solo protection proposal in review | M0/M1 delivered; main protection waits for approved ADR 0004 |
 | F1 — frontend foundation | Complete: #5–#10 merged; final PR #44 at `9612943`, independent QA and hosted CI passed | M2 activation delivered; protection tracked separately in #4 |
 | F2 — shell and simulated authentication | Complete: #11–#15 merged after independent QA and hosted CI (final PR #49 at `1f82774`) | F1 complete; each task's issue dependencies |
-| F3–F5 — remaining mock frontend journeys | F3: #16 (paged process tree) merged (PR #50); #18 (ordered selection) merged (PR #53); #17 (search) in progress; later F3–F5 tasks not started; predecessor gates retained | F2 completion and each task's issue dependencies |
+| F3–F5 — remaining mock frontend journeys | F3: #16 (paged process tree, PR #50), #18 (ordered selection, PR #53) and #17 (search, PR #54) merged; #19 (bulk selection, F3 gate) in progress; F4–F5 not started; predecessor gates retained | F2 completion and each task's issue dependencies |
 | B1–B4 — Phase 2, backend and ingestion | Not started | Phase 1 gate, then gates below |
 | I1 — real frontend integration | Not started | B2 and validated synthetic publication from B4 |
 | R1–R2 — production readiness and release | Not started | Dependencies below |

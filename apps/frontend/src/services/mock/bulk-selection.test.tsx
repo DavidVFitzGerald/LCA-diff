@@ -63,6 +63,7 @@ const big = () =>
 async function open(path: (string | RegExp)[]) {
   await tree();
   for (const name of path) {
+    await waitFor(() => expect(item(name)).toBeVisible());
     act(() => item(name).focus());
     key("ArrowRight");
     await waitFor(() =>
@@ -79,7 +80,7 @@ describe("bulk branch selection", () => {
     const app = mount({ catalog: big() });
     await open([/^Big v1/, /^t, 270/, /^road, 260/]);
     expect(
-      screen.getByRole("treeitem", {
+      await screen.findByRole("treeitem", {
         name: "Load more in road (50 of 260 loaded)",
       }),
     ).toBeVisible();
@@ -321,6 +322,32 @@ describe("bulk action states", () => {
       expect(heading()).toHaveTextContent("Selected processes (10)"),
     );
     expect(listed()[0]).toBe("Rail 0002 — CH Big v1");
+  });
+
+  it("recovers a shared tri-state matching set after Cancel", async () => {
+    mount({
+      catalog: big(),
+      scenario: {
+        latency_ms: (op) => (op === "resolveSelection" ? 300 : 0),
+      },
+    });
+    await open([/^Big v1/, /^t, 270/, /^rail, 10/]);
+    fireEvent.click(item("Rail 0001 — CH"));
+    type("Process Name", "rail");
+    await waitFor(() =>
+      expect(item(/^Big v1, 10/)).toHaveAttribute("aria-busy"),
+    );
+    // The all-matches resolve shares the in-flight matching-set read.
+    fireEvent.click(screen.getByRole("button", { name: "Select all matches" }));
+    fireEvent.click(
+      within(status() as HTMLElement).getByRole("button", { name: "Cancel" }),
+    );
+    await waitFor(
+      () => expect(item(/^Big v1, 10/)).not.toHaveAttribute("aria-busy"),
+      { timeout: 2000 },
+    );
+    expect(item(/^rail, 10/)).toHaveAttribute("aria-checked", "mixed");
+    expect(heading()).toHaveTextContent("Selected processes (1)");
   });
 
   it("hides Retry for non-retryable failures", async () => {

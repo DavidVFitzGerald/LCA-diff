@@ -60,7 +60,12 @@ export function useBulkSelection() {
     if (!run) return;
     run.cancelled = true;
     current.current = null;
-    for (const queryKey of run.keys) void client.cancelQueries({ queryKey });
+    // A tri-state matching-set query may share a key: let active observers
+    // refetch what the cancelled bulk read aborted.
+    for (const queryKey of run.keys)
+      void client
+        .cancelQueries({ queryKey })
+        .then(() => client.refetchQueries({ queryKey, type: "active" }));
   }, [client]);
   useEffect(() => cancel, [cancel]);
 
