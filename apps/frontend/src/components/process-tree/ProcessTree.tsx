@@ -529,8 +529,9 @@ export function ProcessTree({
     ),
     busy:
       filtering &&
-      selectedReleases.includes(node.release_id) &&
-      matchSetFor.get(node.release_id) === undefined,
+      matchSets[selectedReleases.indexOf(node.release_id)]?.isPending ===
+        true &&
+      matchSets[selectedReleases.indexOf(node.release_id)]?.isFetching === true,
   });
   const releaseLabel = (release: Release) =>
     `${release.display_name} ${release.version}`;
@@ -541,7 +542,9 @@ export function ProcessTree({
     const release = releases.find((r) => r.release_id === node.release_id);
     if (!release || !node.count) return;
     runBulk({
-      kind: branchState(node).state === "true" ? "deselect" : "select",
+      // Decided from the resolved scope at run time, never from a
+      // possibly-pending or failed tri-state read (QA F-1).
+      kind: "toggle",
       label: node.parent === null ? releaseLabel(release) : node.label,
       fields,
       scopes: [{ release, scope: "branch", branch_path: node.path }],
@@ -679,6 +682,23 @@ export function ProcessTree({
           </button>
         </div>
       )}
+      {filtering &&
+        selectedReleases.map((release_id, position) => {
+          const query = matchSets[position];
+          const release = releases.find((r) => r.release_id === release_id);
+          if (!query?.isError || !release) return null;
+          return (
+            <p key={release_id} className="bulk-failed match-set-failed">
+              <span>
+                Could not check which selected processes match the search in{" "}
+                {releaseLabel(release)}; its checkbox states may be incomplete.
+              </span>
+              <button type="button" onClick={() => void query.refetch()}>
+                Retry
+              </button>
+            </p>
+          );
+        })}
       <BulkStatusArea
         status={bulk.status}
         onCancel={bulk.cancel}
@@ -757,6 +777,7 @@ export function ProcessTree({
                         : "false"
                       : branchState(row.node).state
                 }
+                checkDisabled={bulkRunning}
                 checkBusy={
                   row.kind === "node" &&
                   row.node.kind === "branch" &&
@@ -799,6 +820,7 @@ function TreeRow({
   active,
   checked,
   checkBusy,
+  checkDisabled,
   onCheck,
   top,
   register,
@@ -810,6 +832,7 @@ function TreeRow({
   active: boolean;
   checked: CheckState | undefined;
   checkBusy: boolean;
+  checkDisabled: boolean;
   onCheck: (() => void) | undefined;
   top: number;
   register: (element: HTMLDivElement | null) => void;
@@ -848,7 +871,7 @@ function TreeRow({
         </span>
         {checked !== undefined && (
           <span
-            className={`tree-check${checked === "true" ? " checked" : checked === "mixed" ? " mixed" : ""}`}
+            className={`tree-check${checked === "true" ? " checked" : checked === "mixed" ? " mixed" : ""}${onCheck && checkDisabled ? " disabled" : ""}`}
             aria-hidden="true"
             onClick={
               onCheck

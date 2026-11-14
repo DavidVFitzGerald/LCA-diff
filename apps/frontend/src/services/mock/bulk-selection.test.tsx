@@ -265,7 +265,7 @@ describe("bulk action states", () => {
     await open([/^Big v1/, /^t, 270/]);
     check(/^road, 260/);
     await waitFor(() =>
-      expect(status()).toHaveTextContent("Selecting processes in road…"),
+      expect(status()).toHaveTextContent("Updating processes in road…"),
     );
     const signal = app.resolveSelection.mock.calls[0][1]!.signal!;
     check(/^rail, 10/); // a second bulk action is ignored while one runs
@@ -302,7 +302,7 @@ describe("bulk action states", () => {
     check(/^rail, 10/);
     await waitFor(() =>
       expect(status()).toHaveTextContent(
-        "Selection unchanged: could not select processes in rail. Synthetic TEMPORARILY_UNAVAILABLE",
+        "Selection unchanged: could not update processes in rail. Synthetic TEMPORARILY_UNAVAILABLE",
       ),
     );
     expect(heading()).toHaveTextContent("Selected processes (1)");
@@ -311,7 +311,7 @@ describe("bulk action states", () => {
     );
     await waitFor(() =>
       expect(status()).toHaveTextContent(
-        "Selection unchanged: could not select processes in rail. Synthetic RELEASE_UNAVAILABLE",
+        "Selection unchanged: could not update processes in rail. Synthetic RELEASE_UNAVAILABLE",
       ),
     );
     expect(heading()).toHaveTextContent("Selected processes (1)");
@@ -387,5 +387,178 @@ describe("bulk action states", () => {
     await tree();
     expect(heading()).toHaveTextContent("Selected processes (0)");
     expect(status()).toBeEmptyDOMElement();
+  });
+});
+
+/** 300 road leaves: "Road even" (150) and "Aodd road" (150). */
+const mixed = () =>
+  catalog([
+    {
+      id: "r1",
+      name: "Big",
+      version: "v1",
+      leaves: [
+        ...many(150, ["t", "road"], "Road even"),
+        ...many(150, ["t", "road"], "Aodd road"),
+      ],
+    },
+  ]);
+
+describe("bulk selection regressions (QA F-1–F-3)", () => {
+  it("bulk-selects a filtered branch beyond the loaded page and keeps hidden selections", async () => {
+    geometry.tree = 32 * 10;
+    const app = mount({ catalog: mixed() });
+    await open([/^Big v1/, /^t, 300/, /^road, 300/]);
+    fireEvent.click(item("Aodd road 0003 — CH"));
+    type("Process Name", "even");
+    await waitFor(() => expect(item(/^road, 150/)).toBeVisible());
+    await settle();
+    expect(screen.queryAllByRole("treeitem").length).toBeLessThan(40);
+    check(/^road, 150/);
+    await waitFor(() =>
+      expect(heading()).toHaveTextContent("Selected processes (151)"),
+    );
+    const resolves = requests(app.resolveSelection).filter(
+      (r) => r.scope === "branch",
+    );
+    expect(resolves).toHaveLength(2);
+    for (const request of resolves)
+      expect(request).toMatchObject({ fields: { process_name: "even" } });
+    expect(listed().slice(0, 3)).toEqual([
+      "Aodd road 0003 — CH Big v1",
+      "Road even 0000 — CH Big v1",
+      "Road even 0001 — CH Big v1",
+    ]);
+    await waitFor(() =>
+      expect(item(/^road, 150/)).toHaveAttribute("aria-checked", "true"),
+    );
+    check(/^road, 150/);
+    await waitFor(() =>
+      expect(heading()).toHaveTextContent("Selected processes (1)"),
+    );
+    expect(listed()).toEqual(["Aodd road 0003 — CH Big v1"]);
+  });
+
+  it("explains a failed matching-set read, never stays busy and still toggles correctly", async () => {
+    let fail = false;
+    mount({
+      catalog: mixed(),
+      wrap: (discovery) => ({
+        resolveSelection: async (...args) =>
+          fail && args[0].scope === "all_matching"
+            ? failure("TEMPORARILY_UNAVAILABLE", true)
+            : discovery.resolveSelection(...args),
+      }),
+    });
+    await open([/^Big v1/, /^t, 300/]);
+    check(/^road, 300/);
+    await waitFor(() =>
+      expect(heading()).toHaveTextContent("Selected processes (300)"),
+    );
+    fail = true;
+    type("Process Name", "road");
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          /^Could not check which selected processes match the search in Big v1/,
+        ),
+      ).toBeVisible(),
+    );
+    await waitFor(() =>
+      expect(item(/^Big v1/)).not.toHaveAttribute("aria-busy"),
+    );
+    await settle();
+    expect(item(/^Big v1/)).not.toHaveAttribute("aria-busy");
+    // The toggle resolves its own scope: all 300 are selected, so it deselects.
+    act(() => item(/^road, 300/).focus());
+    key(" ");
+    await waitFor(() =>
+      expect(heading()).toHaveTextContent("Selected processes (0)"),
+    );
+    expect(status()).toHaveTextContent("Deselected 300 processes in road.");
+    key(" ");
+    await waitFor(() =>
+      expect(heading()).toHaveTextContent("Selected processes (300)"),
+    );
+    // Retry recovers the exact scope-relative state.
+    fail = false;
+    fireEvent.click(
+      screen
+        .getByText(/^Could not check which selected processes match/)
+        .closest("p")!
+        .querySelector("button")!,
+    );
+    await waitFor(() =>
+      expect(item(/^road, 300/)).toHaveAttribute("aria-checked", "true"),
+    );
+    expect(
+      screen.queryByText(/^Could not check which selected processes match/),
+    ).toBeNull();
+  });
+
+  it("keeps the starting scope when the filter changes during a run", async () => {
+    const app = mount({
+      catalog: mixed(),
+      scenario: { latency_ms: (op) => (op === "resolveSelection" ? 200 : 0) },
+    });
+    await tree();
+    type("Process Name", "even");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Select all matches" }),
+      ).toBeEnabled(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Select all matches" }));
+    await waitFor(() => expect(app.resolveSelection).toHaveBeenCalled());
+    type("Process Name", "odd");
+    await waitFor(
+      () => expect(heading()).toHaveTextContent("Selected processes (150)"),
+      { timeout: 5000 },
+    );
+    expect(listed().every((text) => text.startsWith("Road even"))).toBe(true);
+  });
+
+  it("applies nothing when the account changes mid-action", async () => {
+    const app = mount({
+      catalog: mixed(),
+      scenario: { latency_ms: (op) => (op === "resolveSelection" ? 300 : 0) },
+    });
+    await open([/^Big v1/, /^t, 300/]);
+    check(/^road, 300/);
+    await waitFor(() => expect(app.resolveSelection).toHaveBeenCalled());
+    const signal = app.resolveSelection.mock.calls[0][1]!.signal!;
+    app.emit(verified("account-b"));
+    await tree();
+    await waitFor(() => expect(signal.aborted).toBe(true));
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    await settle();
+    expect(heading()).toHaveTextContent("Selected processes (0)");
+  });
+
+  it("cancels during the details phase, marks branch checkboxes busy and allows a new action", async () => {
+    mount({
+      catalog: mixed(),
+      scenario: { latency_ms: (op) => (op === "headers" ? 10_000 : 0) },
+    });
+    await open([/^Big v1/, /^t, 300/]);
+    check(/^road, 300/);
+    await waitFor(() =>
+      expect(status()).toHaveTextContent("loading details for 300 found"),
+    );
+    expect(item(/^road, 300/).querySelector(".tree-check")).toHaveClass(
+      "disabled",
+    );
+    fireEvent.click(
+      within(status() as HTMLElement).getByRole("button", { name: "Cancel" }),
+    );
+    await settle();
+    expect(heading()).toHaveTextContent("Selected processes (0)");
+    expect(item(/^road, 300/).querySelector(".tree-check")).not.toHaveClass(
+      "disabled",
+    );
+    check(/^road, 300/);
+    await waitFor(() =>
+      expect(status()).toHaveTextContent("Updating processes in road"),
+    );
   });
 });

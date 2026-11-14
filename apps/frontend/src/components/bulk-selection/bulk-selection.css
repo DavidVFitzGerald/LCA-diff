@@ -24,3 +24,15 @@
     linear-gradient(#166a4a, #166a4a) center / 60% 2px no-repeat,
     #fff;
 }
+.tree-check.disabled {
+  opacity: 0.45;
+  cursor: progress;
+}
+.match-set-failed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+}

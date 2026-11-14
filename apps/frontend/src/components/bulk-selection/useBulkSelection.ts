@@ -18,7 +18,8 @@ export interface BulkScope {
   readonly branch_path?: readonly string[];
 }
 export interface BulkAction {
-  readonly kind: "select" | "deselect";
+  /** `toggle` deselects when every resolved ID is selected, else selects. */
+  readonly kind: "select" | "deselect" | "toggle";
   /** Human-readable scope, e.g. "road" or "all matches". */
   readonly label: string;
   readonly fields: SearchFields;
@@ -102,7 +103,18 @@ export function useBulkSelection() {
           resolved += ids.length;
           setStatus({ state: "running", action, resolved, phase: "resolving" });
         }
-        if (action.kind === "deselect") {
+        const deselect =
+          action.kind === "deselect" ||
+          (action.kind === "toggle" &&
+            resolved > 0 &&
+            perRelease.every(({ release, ids }) =>
+              ids.every((id) =>
+                store.isSelected(
+                  selectionKey({ release_id: release.release_id, id }),
+                ),
+              ),
+            ));
+        if (deselect) {
           const keys = perRelease.flatMap(({ release, ids }) =>
             ids.map((id) =>
               selectionKey({ release_id: release.release_id, id }),

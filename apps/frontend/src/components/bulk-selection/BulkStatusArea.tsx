@@ -1,6 +1,17 @@
 import type { BulkStatus } from "./useBulkSelection";
 import "./bulk-selection.css";
 
+const VERB = {
+  select: "Selecting",
+  deselect: "Deselecting",
+  toggle: "Updating",
+} as const;
+const INFINITIVE = {
+  select: "select",
+  deselect: "deselect",
+  toggle: "update",
+} as const;
+
 /** Progress, cancellation and outcome of the current bulk action (#19, D7). */
 export function BulkStatusArea({
   status,
@@ -18,8 +29,7 @@ export function BulkStatusArea({
       {status.state === "running" && (
         <p className="bulk-running">
           <span>
-            {status.action.kind === "select" ? "Selecting" : "Deselecting"}{" "}
-            processes in {status.action.label}…{" "}
+            {VERB[status.action.kind]} processes in {status.action.label}…{" "}
             {status.phase === "details"
               ? `loading details for ${status.resolved} found`
               : `${status.resolved} found`}
@@ -32,9 +42,8 @@ export function BulkStatusArea({
       {status.state === "failed" && (
         <p className="bulk-failed">
           <span>
-            Selection unchanged: could not{" "}
-            {status.action.kind === "select" ? "select" : "deselect"} processes
-            in {status.action.label}. {status.message}
+            Selection unchanged: could not {INFINITIVE[status.action.kind]}{" "}
+            processes in {status.action.label}. {status.message}
           </span>
           {status.retryable && (
             <button type="button" onClick={onRetry}>
