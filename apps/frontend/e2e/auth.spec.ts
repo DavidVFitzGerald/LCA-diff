@@ -132,7 +132,7 @@ test("registration rejects duplicates and unlocks only after simulated verificat
   expect(problems).toEqual([]);
 });
 
-test("unverified accounts stay locked and can switch to another account", async ({
+test("@smoke unverified accounts stay locked and can switch to another account", async ({
   page,
   baseURL,
 }) => {

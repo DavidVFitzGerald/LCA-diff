@@ -1,5 +1,8 @@
 # F2 shell verification — issue #11
 
+> Status update: #11 is merged; consolidated F2 gate evidence is in
+> [f2-verification.md](f2-verification.md).
+
 Status: engineering implementation prepared on `feat/f2-locked-shell`, based on
 merged PR #44 (`9612943`). Independent QA, hosted CI and maintainer review/merge
 remain required; no F2 milestone PASS is claimed here.
