@@ -3,8 +3,7 @@
 `contracts.ts` defines the replaceable, transport-independent boundary for
 specification §§6–7. UI code will depend on `Services`, never HTTP, Firebase,
 or fixture imports. Discovery/selection and comparison mocks are implemented in
-#7/#8. Composition/query integration follows in #9, and auth lifecycle execution
-in #12.
+#7/#8 and composed in #9. Full auth lifecycle execution follows in #12.
 
 All methods are asynchronous. Expected failures return `ServiceResult` with safe
 machine codes, correlation IDs and retryability; messages contain no raw provider
@@ -135,3 +134,41 @@ plus 1,000 shared entries. A 25-row metadata page and a 4-row × 25-process cell
 window each serialize below 25 KB. This is synthetic response-bound evidence,
 not a real-data browser/performance result. Grid/UI checks remain F4/#10; real
 backend, generated contracts and security/integration evidence remain Phase 2.
+
+## Application composition and queries (#9)
+
+`app/composition.ts` is the single concrete adapter selection point. Only the
+explicit `VITE_SERVICE_MODE=mock` value is supported; missing/invalid/real values
+produce a visible safe startup error. No failure chooses mocks implicitly.
+`ApplicationProviders` creates one stable TanStack Query client and the typed
+services context. Components use `useServices`, `useAuthState` and
+`useServiceQueries`; tests may inject any contract-compatible services object.
+
+The technical placeholder auth observer transitions asynchronously from resolving
+to unauthenticated; account actions are explicitly unsupported until #12. The
+default technical page shows local demo status without initiating dataset queries.
+Protected service methods are guarded at the provider boundary, including direct
+calls, and query options remain disabled until an observed verified UID exists.
+Logout, verification loss and account changes clear protected query caches and
+abort pending work; the rendered query no longer retains prior-account results.
+Direct pending service responses also check the authentication epoch before
+delivering success. These local guards do not establish real backend security.
+
+Query helpers forward TanStack's `AbortSignal` and turn structured service
+failures into `ServiceQueryError`, rather than caching an error envelope as data.
+Keys include adapter namespace, verified UID, operation and a copied serializable
+request (including release/revision snapshots, windows and cursors). Request
+array order remains part of the key, preserving header/cell response ordering;
+difference-specific canonical cache reuse is reserved for F5.
+
+ESLint rejects concrete service imports outside the exact composition module,
+while permitting DTO imports. It also rejects direct transport globals, common
+HTTP/auth SDK imports and dynamic import/require bypasses outside services.
+Negative lint tests exercise fixture imports, HTTP/Firebase access and indirect
+global fetch forms. Existing mock modules remain isolated behind the services
+boundary; no real adapter, credentials or product auth UI is introduced.
+
+TanStack behavior follows its official
+[query cancellation](https://tanstack.com/query/latest/docs/framework/react/guides/query-cancellation)
+and [query key](https://tanstack.com/query/latest/docs/framework/react/guides/query-keys)
+contracts. The pinned version and lockfile are resolved in the rootless workspace.
