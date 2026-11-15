@@ -103,12 +103,17 @@ describe("windowed Flows grid (#23)", { timeout: 20000 }, () => {
     render();
     await selectAll();
     scrollTo(300 * STANDARD_ROW_HEIGHT);
-    await waitFor(() =>
-      expect(
-        [...grid().querySelectorAll<HTMLElement>('[role="row"]')].some(
-          (row) => parseFloat(row.style.height) > STANDARD_ROW_HEIGHT,
-        ),
-      ).toBe(true),
+    // Paging to row 300 takes four row pages and their summaries. Like the
+    // file's other deep-scroll waits, allow 10 s: the 1 s default timed out
+    // when another large-workload file ran in parallel (#25).
+    await waitFor(
+      () =>
+        expect(
+          [...grid().querySelectorAll<HTMLElement>('[role="row"]')].some(
+            (row) => parseFloat(row.style.height) > STANDARD_ROW_HEIGHT,
+          ),
+        ).toBe(true),
+      { timeout: 10000 },
     );
     for (const row of grid().querySelectorAll<HTMLElement>('[role="row"]')) {
       const index = Number(row.getAttribute("aria-rowindex")) - 1;
