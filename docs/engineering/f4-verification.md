@@ -2,39 +2,52 @@
 
 Status: engineering evidence on branch `feat/f4-flows-gate`.
 
-- **Checks SHA.** Every check in the current results ran at `0265639`. That
-  commit merges `main` at `cc67a45`, which includes the #75, #77 and #79
-  fixes, and aligns `f4-gate.spec.ts` with #75.
+- **Checks SHA.** Every check in the current results ran at `1b4fd1b`.
+  - `1b4fd1b` merges `main` at `f0e2f9c`, which adds only backend commits since
+    `cc67a45`.
+  - It also gives the hold test a measured hold budget, after the QA FAIL
+    round.
 - **Docs-only commit.** The commit that adds this revision of the document
   changes documentation only.
-- **Earlier round.** The first round ran at `4f8e8c8`, which is based on
-  `main` at `0a8bc4b`. It is kept below as history.
+- **Earlier rounds.** Two earlier rounds are kept below as history:
+  - the first round at `4f8e8c8`;
+  - the QA FAIL round at `ba912b4`, whose checks ran at `0265639`.
 
 The #26 handoff records the delivered SHA and the independent QA verdict.
 
-**Gate result: engineering checks pass.** At `0265639`, every check passes:
+**Gate result: engineering checks pass at `1b4fd1b`.** That covers:
 
 - the static checks and the build;
-- three full unit runs;
+- three consecutive full unit runs, with load recorded;
 - `@smoke`;
-- the full suite in both projects, locally and in a hosted `workflow_dispatch`
-  run.
+- the full browser suite in both projects, locally and in a hosted
+  `workflow_dispatch` run.
 
-The three blockers from the first round are resolved on `main`:
+**Remaining risk (#76).** With the hold file running in parallel, the
+deep-scroll test's internal 10 s `waitFor` reached **97 %** (9.7 s) in an
+instrumented run. Without the hold file it reached 73–77 %. It passed in
+every run at `1b4fd1b`, but QA saw it time out in 3 of 6 runs at `ba912b4`.
+Its budget is not changed here. PM or the coordinator decides whether #76
+must land before this gate.
+
+The first round's blockers are resolved on `main`:
 
 - #75: PR #84, a test workaround for a Playwright Firefox defect.
 - #77: PR #83, the sidebar layout.
 - #79: PR #80, bundled Inter.
 
-Two follow-ups remain open: #76, test-budget headroom (two tests are still
-above 75 % of their limit), and #85, reverting the #75 workaround. F4 is
-complete only after QA passes and the coordinator merges this PR.
+These follow-ups remain open: #76 (test-budget headroom) and #85 (revert the
+#75 workaround). F4 is complete only after QA passes and the coordinator
+merges this PR.
 
 This is mock evidence only. It does not prove real authentication,
 authorization, API performance, adapter parity or data security. The
-remaining gates are B2, I1, R2 and #34. This PR changes no product code,
-specification or contract, and has no ADR. It changes no dependencies and no
-test limits; the merge from `main` brings in the fixes listed above.
+remaining gates are B2, I1, R2 and #34.
+
+This PR changes no product code, specification or contract, and has no ADR.
+It changes no dependencies. The only test limit it changes is the new hold
+test's own internal hold budget, which was raised from 15 s to 25 s (see
+AC5). The merges from `main` bring in the fixes listed above.
 
 ## Environment and commands
 
@@ -45,49 +58,74 @@ test limits; the merge from `main` brings in the fixes listed above.
   Chromium 159.0.8154.6 and Firefox 159.0 (the Playwright builds), Vitest 5.1.0.
   Inter is bundled since #79.
 - **Host.** 8 cores and 14 GB, shared with other Compose projects. The load
-  average was 1.9–4.7 during the unit runs. All timings are observations
-  under this load, not thresholds.
+  average is recorded per run below. All timings are observations under that
+  load, not thresholds.
 
 ```sh
 COMPOSE_PROJECT_NAME=lca-diff-f4-gate FRONTEND_PORT=5193 ./dev up
 COMPOSE_PROJECT_NAME=lca-diff-f4-gate FRONTEND_PORT=5193 ./dev check
 docker compose -p lca-diff-f4-gate exec -T workspace bash -lc 'cd apps/frontend && npm ci --no-audit --no-fund && npm run format:check && npm run lint && npm run typecheck && npm run build'
-docker compose -p lca-diff-f4-gate exec -T workspace bash -lc 'cd apps/frontend && for i in 1 2 3; do npx vitest run --reporter=verbose || exit 1; done'
-docker compose -p lca-diff-f4-gate exec -T workspace bash -lc 'cd apps/frontend && npx vitest run --reporter=verbose src/services/mock/flows-grid-hold.test.tsx'
-docker compose -p lca-diff-f4-gate exec -T workspace bash -lc 'cd apps/frontend && npm run test:e2e -- --grep @smoke --reporter=list'
-docker compose -p lca-diff-f4-gate exec -T workspace bash -lc 'cd apps/frontend && npm run test:e2e -- --reporter=list'
-docker compose -p lca-diff-f4-gate exec -T workspace bash -lc 'cd apps/frontend && npm run test:e2e -- --project=firefox e2e/column-operations.spec.ts e2e/f4-gate.spec.ts --reporter=list'
+for i in 1 2 3; do cat /proc/loadavg; docker compose -p lca-diff-f4-gate exec -T workspace bash -lc 'cd apps/frontend && npx vitest run --reporter=verbose'; done
+docker compose -p lca-diff-f4-gate exec -T workspace bash -lc 'cd apps/frontend && npm run test:e2e -- --grep @smoke'
+docker compose -p lca-diff-f4-gate exec -T workspace bash -lc 'cd apps/frontend && npm run test:e2e'
+docker compose -p lca-diff-f4-gate exec -T workspace bash -lc 'cd apps/frontend && npm run test:e2e -- --project=firefox e2e/column-operations.spec.ts e2e/f4-gate.spec.ts'
 COMPOSE_PROJECT_NAME=lca-diff-f4-gate ./dev down
 ```
 
-## Results (AC7), at `0265639`
+## Results (AC7), at `1b4fd1b`
 
-| Check                                                              | Result                                                                                                                                                            |
-| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `./dev check`; frozen `npm ci` (236 packages, lockfile unchanged)  | PASS                                                                                                                                                              |
-| format:check, lint, typecheck, build                               | PASS                                                                                                                                                              |
-| Unit tests, three consecutive full runs                            | PASS, 405 tests in 32 files each time (88.5 s, 98.6 s, 98.1 s). No 1 s `waitFor` timeout and no #51 flake. Two tests are above 75 % of their limit (#76; see AC6) |
-| test:e2e `@smoke`                                                  | PASS, 14 cases (7 per project), including the F4 gate                                                                                                             |
-| test:e2e full                                                      | PASS, 66 of 66 (33 per project). This includes #77's sidebar and #79's font checks                                                                                |
-| Firefox, column operations and F4 gate run explicitly              | PASS, 4 of 4                                                                                                                                                      |
-| Hosted `quality` on PR #78 (`pull_request`: unit, build, `@smoke`) | PASS ([run 43756598407](https://github.com/DavidVFitzGerald/LCA-diff/actions/runs/43756598407)). The backend workflows on the PR also pass                        |
-| Hosted full suite (`workflow_dispatch`)                            | PASS: unit 405/405 and e2e 66/66 ([run 43756599203](https://github.com/DavidVFitzGerald/LCA-diff/actions/runs/43756599203))                                       |
+| Check                                                             | Result                                                                                                                                                                   |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `./dev check`; frozen `npm ci` (236 packages, lockfile unchanged) | PASS                                                                                                                                                                     |
+| format:check, lint, typecheck, build                              | PASS                                                                                                                                                                     |
+| Unit run 1 (load at start/end 1.45/3.32)                          | PASS, 405/405 in 92.9 s; hold 9.2 s                                                                                                                                      |
+| Unit run 2 (load 3.32/4.14)                                       | PASS, 405/405 in 101.4 s; hold 14.7 s                                                                                                                                    |
+| Unit run 3 (load 4.14/4.70)                                       | PASS, 405/405 in 103.2 s; hold 14.4 s                                                                                                                                    |
+| test:e2e `@smoke`                                                 | PASS, 14 of 14                                                                                                                                                           |
+| test:e2e full                                                     | PASS, 66 of 66 (33 per project)                                                                                                                                          |
+| Firefox, column operations and F4 gate run explicitly             | PASS, 4 of 4                                                                                                                                                             |
+| Hosted `quality` on PR #78 (`pull_request`)                       | PASS: unit 405/405, `@smoke` 14/14 ([run 43762464690](https://github.com/DavidVFitzGerald/LCA-diff/actions/runs/43762464690)). The backend workflows on the PR also pass |
+| Hosted full suite (`workflow_dispatch`)                           | PASS: unit 405/405 (hold 5.1 s) and e2e 66/66 ([run 43762465426](https://github.com/DavidVFitzGerald/LCA-diff/actions/runs/43762465426))                                 |
+
+All three unit runs were consecutive, with no timeouts and no #51 flake.
+
+In runs 2 and 3 the hold took 14.7 s and 14.4 s. That is 98 % and 96 % of
+the old 15 s hold budget: it would have passed, but only just.
 
 ### Remaining shortcut (#75, #85)
 
 Playwright 1.65.1's Firefox build (`firefox-1572`) crashes the content
 process on a named role query on the Flows tabpanel. The upstream issue is
-microsoft/playwright#43967. The crash is still present on the pinned
+microsoft/playwright#43967, and the crash is still present on the pinned
 version.
 
-- `f4-gate.spec.ts` and `column-operations.spec.ts` therefore locate the
-  panel by `#panel-flows` instead of by role and name.
+- `f4-gate.spec.ts` and `column-operations.spec.ts` locate the panel by
+  `#panel-flows` instead of by role and name.
 - Both still assert that the panel has the `tabpanel` role and the accessible
   name "Flows".
 - Inside the panel, the headers are found by role: the "Process columns" list
   and the named `group`s.
-- The CSS-scoped header locators from the first round are gone.
 - #85 tracks reverting this once Playwright is fixed.
+
+### History: QA FAIL round at `ba912b4` (checks at `0265639`)
+
+QA reported FAIL on AC6 and AC7 at `ba912b4`
+([comment](https://github.com/DavidVFitzGerald/LCA-diff/issues/26#issuecomment-6901151062)).
+
+- **The hold test.** Its internal `waitFor({ timeout: 15000 })` timed out in
+  4 of 6 full unit runs. The hold took 14–15 s under parallel load.
+- **The deep-scroll test.** Its internal 10 s `waitFor` timed out in 3 of 6
+  runs.
+- **Control runs.** Two runs that excluded the hold file passed 404/404.
+- **No product defect.** All AC1–AC5 content checks, browser checks and
+  hosted runs passed.
+- **Engineering's own runs.** My three runs at `0265639` had passed, with a
+  hold of up to 14.0 s (93 % of 15 s). The AC6 table did not list internal
+  `waitFor` budgets.
+
+**Resolution in `1b4fd1b`.** The hold budget is now 25 s, derived from
+measurement (see AC5). The internal budgets are now in AC6. The deep-scroll
+risk is recorded above under #76.
 
 ### History: first round at `4f8e8c8` (FAIL)
 
@@ -118,8 +156,8 @@ scroll. Scrolling and sidebar resizing are exercised in the large and
 | Header × removal                                  | `f4-gate.spec.ts`; `column-operations.spec.ts:134`                                                                                                                   | PASS     | PASS    |
 | Selected-list removal                             | `flows-composition.spec.ts:119` (N → 0, then 0 → 1); `selection.spec.ts`                                                                                             | PASS     | PASS    |
 
-Status: PASS in both projects, locally and in the hosted full run, at
-`0265639`. In the first round, Firefox failed `column-operations` (#75) and
+Status: PASS in both projects, locally and in the hosted full runs, at
+`0265639` and `1b4fd1b`. In the first round, Firefox failed `column-operations` (#75) and
 the hosted run failed the layout cases (#79).
 
 ### AC2: the F4 `@smoke` gate
@@ -217,20 +255,48 @@ Neither probe changes a committed test or limit.
   at the top.
 
 **Elapsed** is measured with `performance.now()` from the deselection until
-the grid is no longer busy. It is recorded, not asserted. Figures are at
-`0265639`, with the first round's in brackets.
+the grid is no longer busy. It is recorded, not asserted. The main figures
+are at `1b4fd1b`. Figures in brackets are at `0265639`.
 
-| Run                 | Hold elapsed      | Whole test           |
-| ------------------- | ----------------- | -------------------- |
-| File alone          | 6.8 s (6.3–6.4 s) | 10.8 s (10.2–10.3 s) |
-| Full parallel run 1 | 8.9 s (14.8 s)    | 16.2 s (16.8 s)      |
-| Full parallel run 2 | 14.0 s (14.8 s)   | 21.3 s (22.4 s)      |
-| Full parallel run 3 | 13.8 s (9.4 s)    | 21.2 s (23.0 s)      |
+| Run                    | Load at start | Hold elapsed                                     | Whole test      |
+| ---------------------- | ------------- | ------------------------------------------------ | --------------- |
+| File alone (`0265639`) | —             | 6.8 s                                            | 10.8 s          |
+| Full parallel run 1    | 1.45          | 9.2 s (8.9 s)                                    | 16.7 s (16.2 s) |
+| Full parallel run 2    | 3.32          | 14.7 s (14.0 s)                                  | 22.3 s (21.3 s) |
+| Full parallel run 3    | 4.14          | 14.4 s (13.8 s)                                  | 22.6 s (21.2 s) |
+| QA's runs at `ba912b4` | 2.0–4.4       | 14.3 s and 15.1 s when passing; > 15 s in 4 of 6 | up to 23.1 s    |
 
-- Mock latency alone accounts for 2.3 s (23 × 100 ms). The rest is jsdom
-  rendering plus mock computation for 208 processes per page.
+**Hold budget.** The hold's `waitFor` budget is now 25 s. It was 15 s.
+
+- **Cost per page.** An uncommitted probe called the mock's `flowRows` for
+  the 23 pages directly, with no latency. Each page cost 115–173 ms
+  (median about 120 ms). The mock rebuilds the represented-row union for the
+  208 remaining processes on every page.
+- **Total cost.** Each page therefore costs about 225 ms: 100 ms of latency
+  plus that mock work. Over 23 pages that is about 5.2 s before jsdom
+  rendering. Under parallel load, the hold ran 1.3–2.4 times longer than in
+  the file-alone run.
+- **Old budget.** At 15 s, the hold was at 93–101 % of its budget under
+  parallel load.
+- **New budget.** 25 s gives about 1.7 times the worst passing hold (15.1 s).
+  Setup takes up to 8 s (from the whole-test time minus the hold), so setup,
+  the hold and the settle step still fit inside the 40 s test limit.
+- **What did not change.** The hold's behaviour, the exact 23-page assertion,
+  the sampled row count and anchor, and the logged elapsed time are all
+  unchanged. Only this test's own budget was raised; no other test's limit
+  changed.
+- **Load reduction considered, not used.** Fewer processes would change the
+  measured scenario (220 selected, 12 removed, 23 pages). The setup reads
+  (`selectAll`, then settling at row 150) are what put the grid deep before
+  the removal, so they cannot be dropped. The final `settled()` call takes
+  about 1 s.
+
+Other notes:
+
+- Mock latency alone accounts for 2.3 s (23 × 100 ms). The rest is mock
+  computation and jsdom rendering. jsdom has no fonts.
 - The page count (23) and the rows (2,225 → 2,213) are unchanged by the
-  merge. jsdom has no fonts.
+  merges.
 - This scenario differs from #69's earlier estimate of about 18 pages and
   2.5 s. Here 220 processes are selected, 12 are removed, and the new
   comparison has 2,213 rows.
@@ -240,46 +306,75 @@ whether to bound the hold (O11). Real-API cost belongs to I1/R2.
 
 ### AC6: budgets and headroom
 
-The table covers the tests with a limit of 20 s or more. Where a test has no
-limit of its own, the limit comes from its `describe` block. Runs are the
-three full parallel runs at `0265639`; the last column gives the first
-round's maximum.
+**Test limits.** The first table covers the tests with a limit of 20 s or
+more. Where a test has no limit of its own, the limit comes from its
+`describe` block.
 
-| Test                                                                        | Limit | Run 1  | Run 2  | Run 3  | Max %    | First round |
-| --------------------------------------------------------------------------- | ----- | ------ | ------ | ------ | -------- | ----------- |
-| `selection.test.tsx` › bounds mounted list items for 300 selections         | 30 s  | 18.9 s | 23.9 s | 24.7 s | **82 %** | 89 %        |
-| `flows-grid.test.tsx` › deep scrolling pages rows in bounded steps…         | 20 s  | 12.7 s | 15.0 s | 15.1 s | **76 %** | 84 %        |
-| `flows-grid.test.tsx` › mounts only the viewport window…                    | 20 s  | 5.4 s  | 5.5 s  | 5.5 s  | 28 %     | 32 %        |
-| `flows-grid.test.tsx` › sizes mixed-sign rows…                              | 20 s  | 5.5 s  | 6.5 s  | 7.4 s  | 37 %     | 43 %        |
-| `flows-grid.test.tsx` › names rows by all seven identifying fields…         | 20 s  | 4.0 s  | 5.4 s  | 5.2 s  | 27 %     | 29 %        |
-| `flows-grid.test.tsx` › keeps one tab stop…                                 | 20 s  | 2.4 s  | 3.9 s  | 3.6 s  | 20 %     | 18 %        |
-| `flows-grid.test.tsx` › keeps focus on a loading cell…                      | 30 s  | 8.1 s  | 8.6 s  | 8.8 s  | 29 %     | 31 %        |
-| `flows-grid.test.tsx` › D1, D2 removed or added while deep                  | 40 s  | 8.7 s  | 9.2 s  | 9.6 s  | 24 %     | 26 %        |
-| `flows-grid.test.tsx` › D2, D3 adds processes above the view                | 40 s  | 7.9 s  | 9.0 s  | 8.7 s  | 23 %     | 23 %        |
-| `flows-grid.test.tsx` › D3 single removal                                   | 40 s  | 10.6 s | 10.7 s | 10.9 s | 27 %     | 27 %        |
-| `flows-grid.test.tsx` › D4 scroll during update                             | 40 s  | 15.6 s | 15.9 s | 15.9 s | 40 %     | 44 %        |
-| `flows-grid.test.tsx` › reorders columns without re-reading rows (D1)       | 20 s  | 2.5 s  | 3.0 s  | 2.4 s  | 15 %     | 13 %        |
-| `flows-grid.test.tsx` › header strip aligned                                | 20 s  | 1.6 s  | 2.5 s  | 1.6 s  | 13 %     | 9 %         |
-| `flows-grid-columns.test.tsx` › reorders by keyboard and pointer…           | 20 s  | 7.2 s  | 7.7 s  | 7.7 s  | 39 %     | 43 %        |
-| `flows-grid-columns.test.tsx` › moves a column to an off-screen end         | 20 s  | 4.1 s  | 4.4 s  | 4.5 s  | 23 %     | 27 %        |
-| `flows-grid-columns.test.tsx` › tab stop to the next column on removal      | 40 s  | 14.1 s | 19.7 s | 20.6 s | 52 %     | 55 %        |
-| `flows-grid-columns.test.tsx` › top flow kept on × while deep               | 40 s  | 11.7 s | 14.5 s | 13.7 s | 36 %     | 36 %        |
-| `flows-grid-columns.test.tsx` › reads nothing while paused (O2)             | 40 s  | 11.7 s | 11.2 s | 12.0 s | 30 %     | 34 %        |
-| `flows-grid-columns.test.tsx` › unfetched flows unknown (O1)                | 40 s  | 5.9 s  | 7.0 s  | 7.3 s  | 18 %     | 17 %        |
-| `flows-grid-anchoring.test.tsx` › O9 focus on removal of the focused column | 40 s  | 17.5 s | 20.9 s | 21.2 s | 53 %     | 61 %        |
-| `flows-grid-anchoring.test.tsx` › O8 later recorded flow                    | 40 s  | 4.0 s  | 6.4 s  | 6.6 s  | 17 %     | 19 %        |
-| `flows-grid-anchoring.test.tsx` › O8 every recorded flow removed            | 40 s  | 9.8 s  | 14.1 s | 14.5 s | 36 %     | 37 %        |
-| `flows-grid-anchoring.test.tsx` › #69 error during the hold, Retry          | 40 s  | 9.6 s  | 10.6 s | 10.4 s | 27 %     | 29 %        |
-| `flows-grid-anchoring.test.tsx` › #69 fails again after Retry               | 40 s  | 9.4 s  | 10.5 s | 10.0 s | 26 %     | 28 %        |
-| `flows-grid-anchoring.test.tsx` › #69 selection change during the error     | 40 s  | 8.5 s  | 8.4 s  | 8.9 s  | 22 %     | 23 %        |
-| `flows-grid-anchoring.test.tsx` › #69 first-page error (O12)                | 40 s  | 4.9 s  | 4.9 s  | 5.1 s  | 13 %     | 12 %        |
-| `flows-grid-anchoring.test.tsx` › #69 error outside a hold                  | 40 s  | 8.0 s  | 8.3 s  | 7.8 s  | 21 %     | 22 %        |
-| `flows-grid-hold.test.tsx` › hold reads every row page (new)                | 40 s  | 16.2 s | 21.3 s | 21.2 s | 53 %     | 58 %        |
-| `composition.test.tsx` › serves the large synthetic workload…               | 20 s  | 5.6 s  | 6.4 s  | 6.5 s  | 33 %     | 35 %        |
+- Runs are the three consecutive full parallel runs at `1b4fd1b`, with load
+  averages of 1.45, 3.32 and 4.14 at the start.
+- The last column gives the maximum at `0265639`.
+
+| Test                                                                        | Limit | Run 1  | Run 2  | Run 3  | Max %    | `0265639` |
+| --------------------------------------------------------------------------- | ----- | ------ | ------ | ------ | -------- | --------- |
+| `selection.test.tsx` › bounds mounted list items for 300 selections         | 30 s  | 21.1 s | 26.7 s | 26.6 s | **89 %** | 82 %      |
+| `flows-grid.test.tsx` › deep scrolling pages rows in bounded steps…         | 20 s  | 12.9 s | 16.1 s | 16.1 s | **81 %** | 76 %      |
+| `flows-grid.test.tsx` › mounts only the viewport window…                    | 20 s  | 5.4 s  | 5.5 s  | 5.7 s  | 29 %     | 28 %      |
+| `flows-grid.test.tsx` › sizes mixed-sign rows…                              | 20 s  | 6.3 s  | 7.6 s  | 7.3 s  | 38 %     | 37 %      |
+| `flows-grid.test.tsx` › names rows by all seven identifying fields…         | 20 s  | 3.8 s  | 5.5 s  | 5.5 s  | 28 %     | 27 %      |
+| `flows-grid.test.tsx` › keeps one tab stop…                                 | 20 s  | 2.8 s  | 3.5 s  | 4.7 s  | 24 %     | 20 %      |
+| `flows-grid.test.tsx` › keeps focus on a loading cell…                      | 30 s  | 8.7 s  | 8.7 s  | 10.0 s | 33 %     | 29 %      |
+| `flows-grid.test.tsx` › D1, D2 removed or added while deep                  | 40 s  | 9.5 s  | 10.4 s | 9.9 s  | 26 %     | 24 %      |
+| `flows-grid.test.tsx` › D2, D3 adds processes above the view                | 40 s  | 8.3 s  | 9.7 s  | 8.2 s  | 24 %     | 23 %      |
+| `flows-grid.test.tsx` › D3 single removal                                   | 40 s  | 10.6 s | 10.2 s | 11.3 s | 28 %     | 27 %      |
+| `flows-grid.test.tsx` › D4 scroll during update                             | 40 s  | 15.6 s | 16.4 s | 16.4 s | 41 %     | 40 %      |
+| `flows-grid.test.tsx` › reorders columns without re-reading rows (D1)       | 20 s  | 2.9 s  | 2.4 s  | 2.1 s  | 15 %     | 15 %      |
+| `flows-grid.test.tsx` › header strip aligned                                | 20 s  | 2.5 s  | 1.6 s  | 2.4 s  | 13 %     | 13 %      |
+| `flows-grid-columns.test.tsx` › reorders by keyboard and pointer…           | 20 s  | 7.7 s  | 8.1 s  | 8.6 s  | 43 %     | 39 %      |
+| `flows-grid-columns.test.tsx` › moves a column to an off-screen end         | 20 s  | 4.2 s  | 5.1 s  | 5.0 s  | 26 %     | 23 %      |
+| `flows-grid-columns.test.tsx` › tab stop to the next column on removal      | 40 s  | 15.4 s | 20.9 s | 21.1 s | 53 %     | 52 %      |
+| `flows-grid-columns.test.tsx` › top flow kept on × while deep               | 40 s  | 11.9 s | 13.8 s | 14.8 s | 37 %     | 36 %      |
+| `flows-grid-columns.test.tsx` › reads nothing while paused (O2)             | 40 s  | 11.1 s | 13.4 s | 11.9 s | 34 %     | 30 %      |
+| `flows-grid-columns.test.tsx` › unfetched flows unknown (O1)                | 40 s  | 6.3 s  | 6.4 s  | 6.6 s  | 17 %     | 18 %      |
+| `flows-grid-anchoring.test.tsx` › O9 focus on removal of the focused column | 40 s  | 19.3 s | 22.1 s | 22.9 s | 57 %     | 53 %      |
+| `flows-grid-anchoring.test.tsx` › O8 later recorded flow                    | 40 s  | 4.0 s  | 7.0 s  | 6.7 s  | 18 %     | 17 %      |
+| `flows-grid-anchoring.test.tsx` › O8 every recorded flow removed            | 40 s  | 10.2 s | 14.0 s | 15.2 s | 38 %     | 36 %      |
+| `flows-grid-anchoring.test.tsx` › #69 error during the hold, Retry          | 40 s  | 9.7 s  | 11.0 s | 11.0 s | 28 %     | 27 %      |
+| `flows-grid-anchoring.test.tsx` › #69 fails again after Retry               | 40 s  | 9.8 s  | 10.3 s | 10.4 s | 26 %     | 26 %      |
+| `flows-grid-anchoring.test.tsx` › #69 selection change during the error     | 40 s  | 8.0 s  | 8.8 s  | 9.8 s  | 25 %     | 22 %      |
+| `flows-grid-anchoring.test.tsx` › #69 first-page error (O12)                | 40 s  | 5.3 s  | 4.7 s  | 5.7 s  | 14 %     | 13 %      |
+| `flows-grid-anchoring.test.tsx` › #69 error outside a hold                  | 40 s  | 7.8 s  | 8.7 s  | 7.5 s  | 22 %     | 21 %      |
+| `flows-grid-hold.test.tsx` › hold reads every row page (new)                | 40 s  | 16.7 s | 22.3 s | 22.6 s | 57 %     | 53 %      |
+| `composition.test.tsx` › serves the large synthetic workload…               | 20 s  | 5.8 s  | 7.2 s  | 6.2 s  | 36 %     | 33 %      |
+
+**Internal `waitFor` budgets.** A test can time out on an internal `waitFor`
+well before it reaches its own limit, as QA found. The second table lists
+these budgets.
+
+- **How they were measured.** A temporary wrapper around Testing Library's
+  `waitFor` logged each call's budget and elapsed time. It is not committed;
+  `git status` was clean afterwards.
+- **Runs.**
+  - One run of the large-workload unit directory (`src/services/mock/`,
+    195 tests, 94 s, load 3.4–4.0), with the hold file included.
+  - Two control runs of the same directory without the hold file (194 tests
+    each, load 3.0–4.7).
+- **What the figures show.** Each figure is the maximum elapsed time for that
+  call site across those runs. The hold row uses the three full runs.
+
+| Call site (budget)                                                                                | Max elapsed                                              | % of budget                            |
+| ------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------- |
+| `flows-grid.test.tsx:76`, deep scroll to row 1,500 (10 s)                                         | **9.7 s** with the hold file; 7.3 s and 7.7 s without it | **97 %** (73–77 % without)             |
+| `flows-grid-hold.test.tsx`, hold until not busy (25 s; was 15 s)                                  | 14.7 s (full run 2)                                      | 59 % (it would have been 98 % of 15 s) |
+| `flows-grid-anchoring.test.tsx:184`, default `waitFor` (1 s)                                      | 0.69 s                                                   | 69 %                                   |
+| `flows-grid-harness.ts` `settled` / `settledAt` (15 s)                                            | 7.3 s                                                    | 49 %                                   |
+| `flows-grid.test.tsx:206` (15 s)                                                                  | 5.9 s                                                    | 40 %                                   |
+| `flows-grid.test.tsx:220` (10 s)                                                                  | 3.8 s                                                    | 38 %                                   |
+| Other `flows-grid*.test.tsx` 10 s waits (`:88/116/175/226/273/287/295/308`, anchoring `:204/286`) | ≤ 2.1 s                                                  | ≤ 21 %                                 |
+| `flows-grid-harness.ts` `selectAll` (5 s)                                                         | 1.1 s                                                    | 22 %                                   |
 
 The large e2e tests use Playwright's 30 s default limit, except the
 50-process cases, which set 60 s. Times are from the local full run at
-`0265639`.
+`0265639`. At `1b4fd1b` the local full run passed 66/66 in 3.5 min.
 
 | Test                                                    | Limit | Chromium  | Firefox   |
 | ------------------------------------------------------- | ----- | --------- | --------- |
@@ -289,23 +384,25 @@ The large e2e tests use Playwright's 30 s default limit, except the
 | `column-operations.spec.ts:337` off-screen keyboard end | 30 s  | 3.8 s     | 4.6 s     |
 | `flows-composition.spec.ts:358` 50 processes (× 2)      | 60 s  | 7.5–7.9 s | 9.3–9.6 s |
 
-**Above 75 %.** Two tests are still over:
+**Above 75 %.** These are all tracked in follow-up #76, which is still open.
 
-- the 300-selection test, at 82 % (previously 17.6 s at #69, 21.2 s at #25,
-  and 89 % in the first round);
-- the deep-scroll test, at 76 %.
+- **The 300-selection test, at 89 % of its 30 s limit.** It was 82 % at
+  `0265639`. Earlier figures: 17.6 s at #69 and 21.2 s at #25.
+- **The deep-scroll test, at 81 % of its 20 s limit.**
+- **The deep-scroll test's internal 10 s `waitFor`, at 97 %.** This is the
+  riskiest budget. It peaks when the hold file runs in parallel. QA's control
+  runs at `ba912b4` passed with deep-scroll at 16.2 s and 16.6 s, and the
+  first-round control run without the hold file measured 85 % and 76 %. So
+  the pressure exists without #26's added workload on this shared host, but
+  #26 adds to it.
 
-Both are tracked in follow-up #76, which is still open. A first-round control
-run without the new hold file measured 85 % and 76 %, so the pressure exists
-without #26's added workload on this shared host.
-
-In the three runs no 1 s `waitFor` timed out and no load-induced test timed
-out. No limit was raised.
+The deep-scroll budget is not changed here; that belongs to #76. In the three
+runs at `1b4fd1b`, no `waitFor` and no test timed out.
 
 ### AC8: coverage and honesty
 
-See the two coverage tables below. The first round's failures are kept as
-FAIL in its history table and were not counted as passing; the open #76
+See the two coverage tables below. The first round's failures and the QA FAIL
+round at `ba912b4` are kept as history and were not counted as passing; the open #76
 headroom items are shown as such.
 
 ### AC9: handoff
@@ -357,8 +454,8 @@ headroom items are shown as such.
   - #79: label overflow with the CI fonts, fixed by bundling Inter in PR #80.
 - #85: revert the `#panel-flows` workaround in `column-operations.spec.ts`
   and `f4-gate.spec.ts` once Playwright is fixed.
-- #76: budget headroom. The 300-selection test (82 %) and the deep-scroll
-  test (76 %) are still above 75 % of their limit.
+- #76: budget headroom. The 300-selection test (89 %) and the deep-scroll
+  test (81 %, and 97 % of its internal 10 s `waitFor`) are above 75 %.
 - O11: the maintainer decides whether to bound the hold. O13: no change.
 - #51 (the AuthDialog flake; it did not occur in these runs) and #52 (tree
   ARIA positions) remain open.
