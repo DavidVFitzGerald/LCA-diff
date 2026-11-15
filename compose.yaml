@@ -23,6 +23,32 @@ services:
     environment:
       LCA_DATABASE_URL: postgresql+psycopg://lca_migrator:local-migration-only@postgres/lca
       LCA_TEST_DATABASE_URL: postgresql+psycopg://lca_migrator:local-migration-only@postgres/lca
+      LCA_API_TEST_DATABASE_URL: postgresql+psycopg://lca_api:local-read-only@postgres/lca
+      LCA_AUTH_TEST_HOST: auth:9099
+  api:
+    profiles: [api]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      LCA_ENVIRONMENT: local
+      LCA_DATABASE_URL: postgresql+psycopg://lca_api:local-read-only@postgres/lca
+      LCA_FIREBASE_PROJECT_ID: demo-lca
+      LCA_AUTH_EMULATOR_HOST: auth:9099
+      LCA_TOKEN_SECRET: local-comparison-token-secret-not-for-production
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  auth:
+    profiles: [auth, api]
+    build:
+      context: .
+      dockerfile: apps/api/emulator/Dockerfile
+    ports:
+      - "127.0.0.1:${AUTH_PORT:-9099}:9099"
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
   postgres:
     profiles: [backend]
     image: postgres:17-bookworm@sha256:40865bc877a289da75963d97d72b59633f639fc5af7a4e856bfa3714cae5b536

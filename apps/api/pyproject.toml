@@ -1,0 +1,15 @@
+[project]
+name = "lca-api"
+version = "0.1.0"
+requires-python = ">=3.14,<3.15"
+dependencies = ["lca-shared", "fastapi==0.162.0", "uvicorn==0.54.0", "firebase-admin==7.7.0"]
+
+[project.scripts]
+lca-openapi = "lca_api.openapi:main"
+
+[tool.uv.sources]
+lca-shared = { workspace = true }
+
+[build-system]
+requires = ["hatchling==1.33.0"]
+build-backend = "hatchling.build"

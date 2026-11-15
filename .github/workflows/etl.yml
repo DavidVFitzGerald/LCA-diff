@@ -1,0 +1,40 @@
+name: ETL
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  etl-quality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      COMPOSE_PROJECT_NAME: lca-etl-ci
+      FRONTEND_PORT: 5191
+      AIRFLOW_PORT: 8091
+      LCA_PRIVATE_INPUT_DIR: ${{ github.workspace }}/private/ci-input
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Prepare disposable CI container ownership
+        run: |
+          mkdir -p private/ci-input
+          echo "LCA_ETL_UID=$(id -u)" >> "$GITHUB_ENV"
+          echo "LCA_ETL_GID=$(id -g)" >> "$GITHUB_ENV"
+      - name: Build and start isolated ETL containers
+        run: docker compose -f compose.yaml -f compose.etl.yaml --profile backend --profile etl up --detach --build --wait postgres etl
+      - name: Frozen tools and migrations inside ETL container
+        run: |
+          docker compose -f compose.yaml -f compose.etl.yaml exec -T etl bash -c 'uv lock --check && uv sync --frozen --all-packages && env LCA_DATABASE_URL=postgresql+psycopg://lca_migrator:local-migration-only@postgres/lca uv run --frozen alembic upgrade head'
+      - name: Golden Spark and PostgreSQL import, failure audits and source unit checks
+        run: docker compose -f compose.yaml -f compose.etl.yaml exec -T etl bash -c 'uv run --frozen --package lca-etl pytest data_pipeline/tests -m "unit or etl"'
+      - name: Start private Airflow orchestration
+        run: docker compose -f compose.yaml -f compose.etl.yaml --profile backend --profile etl --profile airflow up --detach airflow-init airflow-api airflow-scheduler airflow-dag-processor
+      - name: Real manual DAG through maintainer CLI
+        run: docker compose -f compose.yaml -f compose.etl.yaml exec -T etl bash -c 'uv run --frozen --package lca-etl python scripts/wait_etl_services.py && make backend-test-airflow'
+      - name: Stop disposable services
+        if: always()
+        run: docker compose -f compose.yaml -f compose.etl.yaml down --volumes
