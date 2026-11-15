@@ -1,5 +1,40 @@
 .PHONY: help dev-build dev-up dev-shell dev-check dev-down dev-logs
 .PHONY: format lint typecheck test test-unit test-e2e frontend-build
+.PHONY: backend-format backend-format-check backend-lint backend-typecheck backend-test-unit backend-test-integration backend-migrate backend-compat test-integration
+.PHONY: backend-test-etl backend-test-airflow import
+
+backend-test-etl backend-test-airflow import:
+	@test "$${LCA_DEV_CONTAINER:-}" = 1 || { echo 'Run this target inside ./dev etl-shell.' >&2; exit 1; }
+	@case "$@" in \
+	  backend-test-etl) uv run --frozen --package lca-etl pytest data_pipeline/tests -m etl ;; \
+	  backend-test-airflow) uv run --frozen --package lca-etl pytest data_pipeline/tests -m airflow ;; \
+	  import) test -n "$(MANIFEST)" && uv run --frozen --package lca-etl lca-import run --manifest "$(MANIFEST)" --wait ;; \
+	esac
+
+backend-format backend-format-check backend-lint backend-typecheck backend-test-unit backend-test-integration backend-migrate backend-compat:
+	@test "$${LCA_DEV_CONTAINER:-}" = 1 || { echo 'Run this target inside ./dev shell.' >&2; exit 1; }
+	@case "$@" in \
+  backend-format) uv run --frozen ruff format packages/python apps/api db/migrations scripts data_pipeline ;; \
+  backend-format-check) uv run --frozen ruff format --check packages/python apps/api db/migrations scripts data_pipeline ;; \
+  backend-lint) uv run --frozen ruff check packages/python apps/api db/migrations scripts data_pipeline ;; \
+	  backend-typecheck) uv run --frozen mypy ;; \
+	  backend-test-unit) uv run --frozen pytest -m unit ;; \
+  backend-test-integration) uv run --frozen pytest -m 'integration and not etl and not airflow' ;; \
+	  backend-migrate) uv run --frozen alembic upgrade head ;; \
+	  backend-compat) uv run --frozen python scripts/backend_compat.py ;; \
+	esac
+
+test-integration: backend-test-integration
+
+.PHONY: backend-test-api backend-test-auth backend-openapi backend-openapi-check
+backend-test-api backend-test-auth backend-openapi backend-openapi-check:
+	@test "$${LCA_DEV_CONTAINER:-}" = 1 || { echo 'Run this target inside ./dev shell.' >&2; exit 1; }
+	@case "$@" in \
+	  backend-test-api) uv run --frozen pytest -m api ;; \
+	  backend-test-auth) uv run --frozen pytest -m auth ;; \
+	  backend-openapi) uv run --frozen lca-openapi ;; \
+	  backend-openapi-check) uv run --frozen lca-openapi --check ;; \
+	esac
 
 # Development tools run only inside the workspace; host callers use ./dev shell.
 format lint typecheck test test-unit test-e2e frontend-build:

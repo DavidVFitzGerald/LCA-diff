@@ -216,3 +216,96 @@ test.describe("a session invalidated before reload returns to the locked modal",
     });
   }
 });
+
+/**
+ * Process sidebar height (#77): the sidebar is a flex column whose tree takes
+ * the remaining height (with its 12rem minimum), so with an empty selection
+ * it fits a 1280 × 720 viewport and is not a scroll container (Firefox would
+ * otherwise add it as a tab stop). At a shorter viewport the content exceeds
+ * the height and the sidebar must still scroll internally.
+ */
+test.describe("process sidebar height (#77)", () => {
+  async function measure(page: Page) {
+    return page
+      .getByRole("complementary", { name: "Process selection" })
+      .evaluate((sidebar) => {
+        const tree = sidebar.querySelector('[role="tree"]')!;
+        const rem = parseFloat(
+          getComputedStyle(document.documentElement).fontSize,
+        );
+        return {
+          scrollHeight: sidebar.scrollHeight,
+          clientHeight: sidebar.clientHeight,
+          treeHeight: tree.getBoundingClientRect().height,
+          treeMinimum: 12 * rem,
+          pageScrollHeight: document.documentElement.scrollHeight,
+          viewportHeight: window.innerHeight,
+        };
+      });
+  }
+  async function signInWithTree(page: Page) {
+    await signInVerified(page);
+    await expect(
+      page
+        .getByRole("tree", { name: "Processes" })
+        .getByRole("treeitem")
+        .first(),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Selected processes (0)" }),
+    ).toBeVisible();
+  }
+
+  test("fits a 1280 × 720 viewport with an empty selection", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await signInWithTree(page);
+    const size = await measure(page);
+    expect(size.scrollHeight).toBeLessThanOrEqual(size.clientHeight);
+    expect(size.treeHeight).toBeGreaterThanOrEqual(size.treeMinimum);
+    expect(size.pageScrollHeight).toBeLessThanOrEqual(size.viewportHeight);
+  });
+
+  test("scrolls internally and keeps the selected list reachable at 1280 × 560", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 560 });
+    await signInWithTree(page);
+    const sidebar = page.getByRole("complementary", {
+      name: "Process selection",
+    });
+    const size = await measure(page);
+    expect(size.scrollHeight).toBeGreaterThan(size.clientHeight);
+    expect(size.treeHeight).toBeGreaterThanOrEqual(size.treeMinimum);
+
+    await page
+      .getByRole("tree", { name: "Processes" })
+      .locator('[role="treeitem"][tabindex="0"]')
+      .focus();
+    await page.keyboard.press("Tab");
+    const toggle = page.getByRole("button", { name: "Selected processes (0)" });
+    await expectVisibleFocus(toggle);
+    const [box, frame] = await Promise.all([
+      toggle.boundingBox(),
+      sidebar.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          top: rect.top + element.clientTop,
+          height: element.clientHeight,
+        };
+      }),
+    ]);
+    expect(box!.y).toBeGreaterThanOrEqual(frame.top);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(frame.top + frame.height);
+    expect(
+      await sidebar.evaluate((element) => element.scrollTop),
+    ).toBeGreaterThan(0);
+    expect(
+      await page.evaluate(() => [
+        window.scrollY,
+        document.documentElement.scrollHeight <= window.innerHeight,
+      ]),
+    ).toEqual([0, true]);
+  });
+});
