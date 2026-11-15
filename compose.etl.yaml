@@ -4,7 +4,7 @@ x-etl: &etl
     context: .
     dockerfile: data_pipeline/Dockerfile
   init: true
-  user: "0:0"
+  user: "${LCA_ETL_UID:-0}:${LCA_ETL_GID:-0}"
   working_dir: /workspaces/lca-diff
   cap_drop: [ALL]
   security_opt: [no-new-privileges:true]
@@ -30,6 +30,7 @@ x-etl: &etl
     AIRFLOW__CORE__PARALLELISM: "2"
     AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: "1"
     AIRFLOW__LOGGING__LOGGING_LEVEL: WARNING
+    UV_CACHE_DIR: /tmp/lca-uv-cache
     AIRFLOW__LOGGING__LOG_FILENAME_TEMPLATE: "{{ ti.dag_id }}/{{ ti.run_id }}/{{ ti.task_id }}/{{ try_number }}.log"
 services:
   etl:

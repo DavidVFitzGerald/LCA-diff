@@ -442,6 +442,16 @@ def reports(
         )
         is not None
     )
+    publication = connection.execute(
+        select(db.release_publication.c.active_revision_id).where(
+            db.release_publication.c.database_release_id
+            == select(db.release_revision.c.database_release_id)
+            .where(db.release_revision.c.id == revision_id)
+            .scalar_subquery()
+        )
+    ).scalar_one_or_none()
+    counts["active_revision_id"] = str(publication) if publication is not None else None
+    counts["candidate_active"] = publication == revision_id
     counts["revision_id"] = str(revision_id)
     counts["run_id"] = str(run_id)
     frozen = json.loads((Path(prepared["directory"]) / "frozen_manifest.json").read_bytes())

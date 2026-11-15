@@ -9,10 +9,11 @@ from urllib.parse import unquote, urlparse
 from uuid import UUID
 
 from lca_shared.db import schema as db
-from sqlalchemy import Connection, select
+from sqlalchemy import Connection, func, select
 
 from lca_etl.intake import immutable_copy, sha256, write_json
 from lca_etl.models import Manifest
+from lca_etl.reports import gate
 
 
 def json_value(value: Any) -> Any:
@@ -31,9 +32,69 @@ def build_artifact(
     manifest: Manifest,
     prepared: dict[str, Any],
 ) -> Path:
+    # Caller starts a repeatable-read transaction. Revision-owned writes acquire
+    # this same row lock, so the semantic gate and every exported relation refer
+    # to one coherent candidate snapshot.
+    revision = (
+        connection.execute(
+            select(db.release_revision)
+            .where(db.release_revision.c.id == revision_id)
+            .with_for_update()
+        )
+        .mappings()
+        .one()
+    )
+    if revision["status"] != "ready" or revision["published_at"] is not None:
+        raise ValueError("Only an unpublished ready candidate can produce a promotion artifact")
+    gate(connection, revision_id, run_id)
+    if connection.scalar(
+        select(func.count())
+        .select_from(db.validation_issue)
+        .where(
+            db.validation_issue.c.revision_id == revision_id,
+            db.validation_issue.c.severity == "CRITICAL",
+            db.validation_issue.c.resolution_state == "unresolved",
+        )
+    ):
+        raise ValueError("Candidate changed or fails readiness under the export snapshot")
     directory = Path(prepared["directory"])
     artifact = directory / "artifact"
     artifact.mkdir(parents=True, exist_ok=True)
+    required_reports = (
+        "run.json",
+        "validation_issues.csv",
+        "lcia_workbook_issues.csv",
+        "lcia_header_issues.csv",
+        "process_match_report.csv",
+        "score_basis_report.csv",
+        "excluded_processes.csv",
+        "aggregation_report.csv",
+        "release_manifest.json",
+        "summary.md",
+    )
+    if any(not (directory / "reports" / name).is_file() for name in required_reports):
+        raise ValueError("A required private import report is missing")
+    if any(
+        not (directory / "rules" / name).is_file()
+        for name in ("validation.json", "score_basis.json")
+    ):
+        raise ValueError("Frozen resolution rule files are missing")
+    recorded_counts = json.loads((directory / "reports" / "run.json").read_bytes())
+    for table in (
+        db.source_object,
+        db.stg_bafu_process,
+        db.stg_bafu_exchange,
+        db.stg_bafu_lcia_row,
+        db.process,
+        db.process_flows,
+        db.flow_provenance,
+        db.lcia_score,
+    ):
+        actual = connection.scalar(
+            select(func.count()).select_from(table).where(table.c.revision_id == revision_id)
+        )
+        if recorded_counts.get(table.name) != actual:
+            raise ValueError("Candidate/report counts changed before the coherent export snapshot")
     objects = []
     source_map = {}
     for source in connection.execute(
@@ -77,7 +138,7 @@ def build_artifact(
     selections = [
         (db.database_release, db.database_release.c.id == release_id),
         (db.release_revision, db.release_revision.c.id == revision_id),
-        (db.import_run, db.import_run.c.id == run_id),
+        (db.import_run, db.import_run.c.revision_id == revision_id),
         (db.source_object, db.source_object.c.revision_id == revision_id),
         (db.resolution_rule, db.resolution_rule.c.database_release_id == release_id),
         (db.validation_issue, db.validation_issue.c.revision_id == revision_id),
@@ -117,6 +178,8 @@ def build_artifact(
                     # Portable archive reference; B4 rewrites this only in an
                     # unpublished target after independently checking object hash.
                     row["storage_uri"] = "artifact://" + source_map[str(row["id"])]
+                if table is db.import_run:
+                    row["report_uri"] = "artifact://reports"
                 stream.write(
                     json.dumps(row, sort_keys=True, ensure_ascii=False, default=json_value) + "\n"
                 )
@@ -140,6 +203,12 @@ def build_artifact(
         "representative": prepared["representative"],
         "release": manifest.release.model_dump(mode="json"),
         "pipeline_version": "0.1.0",
+        "readiness": {
+            "status": "ready",
+            "unresolved_critical": 0,
+            "reports": list(required_reports),
+            "counts": json.loads((directory / "reports" / "run.json").read_bytes()),
+        },
         "tables": tables,
         "objects": objects,
     }

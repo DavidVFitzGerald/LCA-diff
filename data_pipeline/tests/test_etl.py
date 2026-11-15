@@ -4,10 +4,11 @@ import csv
 import importlib.util
 import json
 import os
+import subprocess
 import zipfile
 from decimal import Decimal
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from fixtures import fixture
@@ -191,6 +192,11 @@ def test_golden_spark_postgres_and_failed_audit(tmp_path: Path) -> None:
     ]
     assert all(row["stg_bafu_exchange_id"] is None for row in exported)
     assert execute(manifest)["reused"] is True
+    # Recover a missing finalized artifact after an interrupted artifact-write
+    # step without rerunning or altering the already verified scientific data.
+    (artifact_dir / "manifest.json").unlink()
+    assert execute(manifest)["reused"] is True
+    assert (artifact_dir / "manifest.json").is_file()
     failed, _ = run_fixture(tmp_path / "failed", invalid=True, spark=True)
     assert failed["status"] == "rejected" and failed["counts"]["unresolved_critical"] >= 2
     with (Path(failed["directory"]) / "reports" / "lcia_workbook_issues.csv").open(
@@ -211,3 +217,25 @@ def test_manual_dag_uses_real_pipeline() -> None:
     dag = module.bafu_import_dag
     assert dag.schedule is None and dag.max_active_runs == 1
     assert set(dag.task_ids) == {"freeze_sources", "build_candidate", "verify_reports_artifact"}
+    shared = Path.cwd() / "private" / "airflow-tests" / str(uuid4())
+    fixture(shared)
+    command = subprocess.run(
+        [
+            "lca-import",
+            "run",
+            "--manifest",
+            str(shared / "manifest.json"),
+            "--wait",
+            "--timeout",
+            "180",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=200,
+    )
+    assert command.returncode == 0, command.stdout + command.stderr
+    result = json.loads(command.stdout.strip().splitlines()[-1])
+    assert result["state"] == "success"
+    candidate = json.loads((Path(result["directory"]) / "result.json").read_bytes())
+    assert candidate["status"] == "ready"
+    assert candidate["counts"]["process"] == 6

@@ -54,7 +54,11 @@ def airflow_run(manifest_path: Path, *, wait: bool, timeout: int) -> dict[str, A
             state = subprocess.run(
                 ["airflow", "dags", "state", DAG_ID, run_id], capture_output=True, text=True
             )
-            value = state.stdout.strip().splitlines()[-1] if state.stdout.strip() else ""
+            value = (
+                state.stdout.strip().splitlines()[-1].split(",", 1)[0].strip()
+                if state.stdout.strip()
+                else ""
+            )
             if value in ("success", "failed"):
                 return {
                     "dag_id": DAG_ID,

@@ -225,7 +225,9 @@ def _execute(manifest: Manifest, *, use_spark: bool = True) -> dict[str, Any]:
                 if sha256(artifact) != expected:
                     raise ValueError("Existing completed artifact was modified")
             else:
-                with database.connect() as connection:
+                with database.connect().execution_options(
+                    isolation_level="REPEATABLE READ"
+                ) as connection:
                     build_artifact(connection, release_id, revision_id, run_id, manifest, prepared)
         database.dispose()
         return {
@@ -340,7 +342,9 @@ def _execute(manifest: Manifest, *, use_spark: bool = True) -> dict[str, Any]:
         }
         write_json(directory / "result.json", result)
         if status == "ready":
-            with database.connect() as connection:
+            with database.connect().execution_options(
+                isolation_level="REPEATABLE READ"
+            ) as connection:
                 build_artifact(connection, release_id, revision_id, run_id, manifest, prepared)
         event("IMPORT_FINISHED", run_id=run_id, revision_id=revision_id)
         database.dispose()
