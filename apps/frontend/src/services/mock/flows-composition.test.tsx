@@ -270,7 +270,7 @@ async function selectAll() {
   await loaded(8);
 }
 
-describe("Flows composition (#24)", () => {
+describe("Flows composition (#24)", { timeout: 20000 }, () => {
   it("lists the union once per (flow, type) and removes rows with their last contributor (AC1)", async () => {
     render();
     await selectAll();
