@@ -166,6 +166,7 @@ describe("F2 shell", () => {
   it("renders verified account controls, keyboard tabs, collapsible sidebars and signout", async () => {
     const app = mount(verified);
     const flows = await screen.findByRole("tab", { name: "Flows" });
+    await waitFor(() => expectInitialQueries(app.data));
     expect(document.querySelector(".shell")).not.toHaveAttribute("inert");
     expect(screen.getByText("shell@example.invalid")).toBeVisible();
     expect(
