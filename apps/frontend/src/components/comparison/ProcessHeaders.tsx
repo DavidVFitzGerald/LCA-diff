@@ -10,7 +10,6 @@ import {
 import type { KeyboardEvent, PointerEvent, RefObject } from "react";
 import { flushSync } from "react-dom";
 import {
-  AutoScrollActivator,
   DndContext,
   DragOverlay,
   PointerSensor,
@@ -192,6 +191,9 @@ const HeaderCell = memo(function HeaderCell({
 const OVERSCAN = 4;
 /** Pointer travel (px) before a press becomes a drag; clicks stay clicks. */
 const DRAG_DISTANCE = 8;
+/** Edge auto-scroll: the end zones (a fraction of the strip) and px per frame. */
+const EDGE_ZONE = 0.12;
+const EDGE_SPEED = 24;
 /** dnd-kit's own (assertive) live region stays silent; ours is polite. */
 const SILENT: Announcements = {
   onDragStart: () => undefined,
@@ -211,7 +213,8 @@ const SILENT: Announcements = {
  *
  * Column operations (#25) change only the shared selection store, so both
  * tabs see one order: drag a header (dnd-kit pointer sensor with an
- * activation distance, edge auto-scroll, Escape cancels), pick it up with
+ * activation distance and Escape to cancel, plus edge auto-scroll of the
+ * strip), pick it up with
  * Space/Enter and move it with the arrows, Home and End, or remove it with
  * its × button. Operations are announced in the workspace's polite region.
  */
@@ -445,9 +448,38 @@ export function ProcessHeaders({
       update();
     };
     document.addEventListener("pointermove", move, { passive: true });
-    // Edge auto-scroll moves the strip under a still pointer.
+    // Auto-scroll moves the strip under a still pointer.
     scroller?.addEventListener("scroll", update, { passive: true });
+    // Edge auto-scroll: near (or beyond) either end of the strip, scroll
+    // it every frame, faster closer to the edge. The grid keeps the cells
+    // in sync with the strip's scroll position.
+    const loop = { frame: 0 };
+    const step = () => {
+      const at = pointer.current;
+      if (scroller && at) {
+        const rect = scroller.getBoundingClientRect();
+        const zone = rect.width * EDGE_ZONE;
+        const push =
+          at.x > rect.right - zone
+            ? (at.x - rect.right + zone) / zone
+            : at.x < rect.left + zone
+              ? (at.x - rect.left - zone) / zone
+              : 0;
+        const max = scroller.scrollWidth - scroller.clientWidth;
+        if (push !== 0 && max > 0) {
+          const delta = Math.max(-1, Math.min(1, push)) * EDGE_SPEED;
+          const next = Math.max(
+            0,
+            Math.min(max, scroller.scrollLeft + Math.round(delta)),
+          );
+          if (next !== scroller.scrollLeft) scroller.scrollLeft = next;
+        }
+      }
+      loop.frame = requestAnimationFrame(step);
+    };
+    loop.frame = requestAnimationFrame(step);
     return () => {
+      cancelAnimationFrame(loop.frame);
       document.removeEventListener("pointermove", move);
       scroller?.removeEventListener("scroll", update);
     };
@@ -504,11 +536,9 @@ export function ProcessHeaders({
   return (
     <DndContext
       sensors={sensors}
-      autoScroll={{
-        activator: AutoScrollActivator.Pointer,
-        threshold: { x: 0.12, y: 0 },
-        canScroll: (element) => element === scrollerRef.current,
-      }}
+      // dnd-kit scrolls only user-scrollable ancestors; in a grid the strip
+      // has no scrollbar (it follows the cells), so it is scrolled above.
+      autoScroll={false}
       accessibility={{
         announcements: SILENT,
         screenReaderInstructions: { draggable: "" },
