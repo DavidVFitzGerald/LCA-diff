@@ -104,15 +104,119 @@ describe("mock comparison scientific states", () => {
     const sorted = data(
       await finish(createMockComparison({ catalog: shuffled }).flowRows(base)),
     );
-    expect(sorted.items.map((row) => row.flow_id)).toEqual([
-      FIXTURE_IDS.reference,
-      FIXTURE_IDS.referenceGamma,
-      FIXTURE_IDS.referenceBeta,
-      FIXTURE_IDS.technosphere,
-      FIXTURE_IDS.water,
-      FIXTURE_IDS.airLow,
-      FIXTURE_IDS.airHigh,
+    expect(sorted.items.map((row) => row.row_key)).toEqual([
+      flowRowKey(FIXTURE_IDS.reference, "Reference"),
+      flowRowKey(FIXTURE_IDS.referenceGamma, "Reference"),
+      flowRowKey(FIXTURE_IDS.referenceBeta, "Reference"),
+      flowRowKey(FIXTURE_IDS.technosphere, "Technosphere"),
+      flowRowKey(FIXTURE_IDS.reference, "Technosphere"),
+      flowRowKey(FIXTURE_IDS.water, "Ecosphere Input"),
+      flowRowKey(FIXTURE_IDS.airLow, "Ecosphere Output"),
+      flowRowKey(FIXTURE_IDS.airHigh, "Ecosphere Output"),
     ]);
+  });
+
+  it("keeps one flow ID under two types as two rows, each removed with its last contributor (#24)", async () => {
+    const service = createMockComparison();
+    const rowsFor = async (processIds: string[]) =>
+      data(await finish(service.flowRows({ ...base, process_ids: processIds })))
+        .items;
+    const reference = flowRowKey(FIXTURE_IDS.reference, "Reference");
+    const input = flowRowKey(FIXTURE_IDS.reference, "Technosphere");
+    // Alpha's reference flow is also Gamma's Technosphere input.
+    const all = await rowsFor(ids);
+    const both = all.filter((row) => row.flow_id === FIXTURE_IDS.reference);
+    expect(both.map((row) => row.row_key)).toEqual([reference, input]);
+    expect(both.map((row) => row.flow_type)).toEqual([
+      "Reference",
+      "Technosphere",
+    ]);
+    const rows = await finish(
+      service.flowRows({ ...base, process_ids: ids }),
+    ).then(data);
+    const cells = data(
+      await finish(
+        service.flowCells({
+          revision_snapshot: current,
+          process_ids: ids,
+          row_keys: [reference, input],
+          comparison_token: rows.comparison_token,
+        }),
+      ),
+    ).cells;
+    const value = (processId: string, key: string) =>
+      cells.find((c) => c.process_id === processId && c.row_key === key);
+    expect(value(ids[0], reference)).toMatchObject({ present: true });
+    expect(value(ids[0], input)).toMatchObject({ present: false });
+    expect(value(ids[2], reference)).toMatchObject({ present: false });
+    expect(value(ids[2], input)).toMatchObject({
+      present: true,
+      amount: "3.5",
+    });
+    // Deselecting Gamma (the input's last contributor) removes only that row;
+    // deselecting Alpha removes only the Reference row.
+    const withoutGamma = (await rowsFor([ids[0], ids[1]])).map(
+      (row) => row.row_key,
+    );
+    expect(withoutGamma).toContain(reference);
+    expect(withoutGamma).not.toContain(input);
+    const withoutAlpha = (await rowsFor([ids[1], ids[2]])).map(
+      (row) => row.row_key,
+    );
+    expect(withoutAlpha).toContain(input);
+    expect(withoutAlpha).not.toContain(reference);
+  });
+
+  it("sorts identifying fields case-insensitively, not by code point (#24)", async () => {
+    const rows = data(
+      await finish(createMockComparison().flowRows(base)),
+    ).items.filter((row) => row.flow_type === "Ecosphere Output");
+    const subcategories = rows.map((row) => row.subcategory);
+    expect(subcategories).toEqual(["lower atmosphere", "Upper atmosphere"]);
+    // A case-sensitive (code point) order would differ.
+    expect([...subcategories].sort()).toEqual([
+      "Upper atmosphere",
+      "lower atmosphere",
+    ]);
+  });
+
+  it("places the synthetic unresolved-reference fallback warning on one cell only (#24)", async () => {
+    const service = createMockComparison();
+    const rows = data(await finish(service.flowRows(base)));
+    const cells = data(
+      await finish(
+        service.flowCells({
+          revision_snapshot: current,
+          process_ids: ids,
+          row_keys: rows.items.map((row) => row.row_key),
+          comparison_token: rows.comparison_token,
+        }),
+      ),
+    ).cells;
+    const fallback = cells.filter((cell) =>
+      cell.warnings.some(
+        (warning) => warning.code === "UNRESOLVED_REFERENCE_FALLBACK",
+      ),
+    );
+    expect(fallback).toHaveLength(1);
+    const [cell] = fallback;
+    expect(cell).toMatchObject({
+      process_id: ids[1],
+      row_key: flowRowKey(FIXTURE_IDS.technosphere, "Technosphere"),
+      present: true,
+      amount: "20",
+    });
+    expect(cell.warnings).toHaveLength(1);
+    expect(cell.warnings[0].message).toMatch(/not verified.*fallback/);
+    // Another selected process has a present value on the same row.
+    const others = cells.filter(
+      (other) =>
+        other.row_key === cell.row_key && other.process_id !== cell.process_id,
+    );
+    expect(others.some((other) => other.present)).toBe(true);
+    expect(
+      others.flatMap((other) => other.warnings.map((w) => w.code)),
+    ).not.toContain("UNRESOLVED_REFERENCE_FALLBACK");
   });
 
   it("preserves exact decimals, signed zero, absence, valid zero, N/A states and cell warnings", async () => {
@@ -129,7 +233,7 @@ describe("mock comparison scientific states", () => {
         }),
       ),
     );
-    expect(flows.cells).toHaveLength(21);
+    expect(flows.cells).toHaveLength(24);
     expect(JSON.parse(JSON.stringify(flows.cells))).toEqual(flows.cells);
     const at = (
       processId: string,
@@ -146,7 +250,7 @@ describe("mock comparison scientific states", () => {
       amount: "-80.000000000000000000000001",
       warnings: [{ code: "AGGREGATED_DUPLICATES" }],
     });
-    expect(at(ids[1], FIXTURE_IDS.technosphere, "Technosphere")).toMatchObject({
+    expect(at(ids[2], FIXTURE_IDS.technosphere, "Technosphere")).toMatchObject({
       present: true,
       amount: "20",
       warnings: [],
@@ -435,14 +539,14 @@ describe("mock comparison snapshots and bounded windows", () => {
     const large = createComparisonCatalog(320, 1000);
     const revision = large.revisions[1];
     expect(revision.processes).toHaveLength(320);
-    expect(revision.flow_rows).toHaveLength(1324);
+    expect(revision.flow_rows).toHaveLength(1325);
     expect(Object.keys(revision.shared_flows)).toHaveLength(1000);
     expect(
       revision.processes.reduce(
         (count, process) => count + Object.keys(process.flows).length,
         0,
       ),
-    ).toBe(1600);
+    ).toBe(1920);
     const service = createMockComparison({
       catalog: large,
       window_limit: 25,
@@ -451,7 +555,7 @@ describe("mock comparison snapshots and bounded windows", () => {
     const selectedIds = revision.processes.map((process) => process.header.id);
     const query = { ...base, process_ids: selectedIds, limit: 25 };
     const first = data(await finish(service.flowRows(query)));
-    expect(first.total_count).toBe(1324);
+    expect(first.total_count).toBe(1325);
     expect(first.items).toHaveLength(25);
     expect(first.comparison_token.length).toBeLessThan(64);
     expect(JSON.stringify(first).length).toBeLessThan(25000);

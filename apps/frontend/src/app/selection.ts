@@ -19,6 +19,8 @@ export interface SelectedProcess {
   readonly id: ProcessId;
   readonly name: string;
   readonly geography: string;
+  /** Category path, for scope-relative parent checkbox state (#19). */
+  readonly path: readonly string[];
 }
 export const selectionKey = (entry: {
   readonly release_id: ReleaseId;
@@ -33,6 +35,10 @@ export interface SelectionStore {
   /** Appends when absent; selecting again is a no-op. */
   select(entry: SelectedProcess): void;
   deselect(key: string): void;
+  /** Appends absent entries in the given order with one notification. */
+  selectMany(entries: readonly SelectedProcess[]): void;
+  /** Removes every listed key with one notification. */
+  deselectMany(keys: Iterable<string>): void;
   toggle(entry: SelectedProcess): void;
   clear(): void;
   /** Moves an entry to an index of the current order (F4 column reorder). */
@@ -40,6 +46,9 @@ export interface SelectionStore {
 }
 
 /** In-memory ordered selection with no product cap and no persistence (D7). */
+const freeze = (entry: SelectedProcess): SelectedProcess =>
+  Object.freeze({ ...entry, path: Object.freeze([...entry.path]) });
+
 export function createSelectionStore(): SelectionStore {
   let entries: readonly SelectedProcess[] = [];
   let keys = new Set<string>();
@@ -64,7 +73,22 @@ export function createSelectionStore(): SelectionStore {
       if (keys.has(key)) return;
       // Appends reuse the key set: O(1) per key instead of re-deriving all keys.
       keys.add(key);
-      commit([...entries, Object.freeze({ ...entry })], keys);
+      commit([...entries, freeze(entry)], keys);
+    },
+    selectMany(added) {
+      const fresh: SelectedProcess[] = [];
+      for (const entry of added) {
+        const key = selectionKey(entry);
+        if (keys.has(key)) continue;
+        keys.add(key);
+        fresh.push(freeze(entry));
+      }
+      if (fresh.length) commit([...entries, ...fresh], keys);
+    },
+    deselectMany(removed) {
+      const drop = new Set([...removed].filter((key) => keys.has(key)));
+      if (drop.size)
+        commit(entries.filter((entry) => !drop.has(selectionKey(entry))));
     },
     deselect(key) {
       if (!keys.has(key)) return;

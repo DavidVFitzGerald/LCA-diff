@@ -64,13 +64,37 @@ p {
 .account-controls span {
   font-size: 0.85rem;
 }
+/* The page is exactly viewport-tall (#24, O3): the sidebars and the
+   comparison scroll internally, so page scroll never moves grid headers. */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+.app > .shell {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.app-header,
+.demo-marker,
+.settings {
+  flex: 0 0 auto;
+}
 .workspace {
   display: flex;
-  min-height: calc(100dvh - 115px);
+  flex: 1;
+  min-height: 0;
 }
 .sidebar {
   flex: 0 0 auto;
   max-width: 240px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Contains absolutely positioned (e.g. visually hidden) descendants, so
+     they scroll with the sidebar instead of extending the page. */
+  position: relative;
   padding: 1.25rem;
   background: #f0f4ef;
   border-inline: 1px solid #dde5df;
@@ -160,4 +184,17 @@ p {
   button {
     transition: background-color 0.12s;
   }
+}
+/* The comparison pane fills the workspace so the windowed grid scrolls
+   internally while headers stay pinned (#23). */
+.comparison {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.comparison > [role="tabpanel"]:not([hidden]) {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }

@@ -15,7 +15,10 @@ export interface DemoGuidance {
   readonly verified_email: string;
   readonly unverified_email: string;
   readonly registration_example: string;
+  /** Synthetic fixture set; `large` is the #23 windowing workload. */
+  readonly scenario: MockScenarioName;
 }
+export type MockScenarioName = "default" | "large";
 export interface ApplicationRuntime {
   readonly mode: "mock" | "test";
   readonly services: Services;
@@ -159,6 +162,7 @@ export function guardDataService(
     "indicatorTree",
     "flowRows",
     "flowCells",
+    "flowSummaries",
     "scoreRows",
     "scoreCells",
     "health",

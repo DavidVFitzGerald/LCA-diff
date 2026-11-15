@@ -39,6 +39,8 @@ export interface ComparisonCatalog {
 export function createComparisonCatalog(
   processCount = 3,
   additionalFlowCount = 0,
+  /** Per-process mixed signs, zeros and absences for generated rows (#23). */
+  varied = false,
 ): ComparisonCatalog {
   if (!Number.isSafeInteger(additionalFlowCount) || additionalFlowCount < 0)
     throw new TypeError("Invalid synthetic row count");
@@ -70,20 +72,29 @@ export function createComparisonCatalog(
             flow_id,
           ],
         });
-        shared_flows[row_key] = {
-          present: true,
-          amount: decimalString(
-            index % 2 === 0
-              ? "0.000000000000000000000123456789"
-              : "-100000000000000000000.0000001",
-          ),
-          warnings: [],
-        };
+        if (!varied)
+          shared_flows[row_key] = {
+            present: true,
+            amount: decimalString(
+              index % 2 === 0
+                ? "0.000000000000000000000123456789"
+                : "-100000000000000000000.0000001",
+            ),
+            warnings: [],
+          };
       }
       const processes = discovery.revisions[revisionIndex].headers.map(
         (header, index): ComparisonProcess => {
           const template = fixture.headers[index % fixture.headers.length];
           const flows: Record<string, FixtureFlowValue> = {};
+          if (varied)
+            for (let row = 0; row < additionalFlowCount; row += 1) {
+              const value = variedValue(index, row);
+              if (value)
+                flows[
+                  flowRowKey(`synthetic-extra-flow:${row}`, "Ecosphere Output")
+                ] = value;
+            }
           for (const cell of fixture.flow_cells.filter(
             (cell) => cell.process_id === template.id,
           )) {
@@ -142,5 +153,35 @@ export function createComparisonCatalog(
         indicator_tree: fixture.indicator_tree,
       };
     }),
+  };
+}
+
+/**
+ * Deterministic synthetic amount for generated row `row` of process
+ * `process` (#23 large scenario): row families are mixed-sign,
+ * negative-only, positive-only, sparse, lopsided (tiny negatives against
+ * large positives) and all-zero, with scattered absences and present zeros.
+ * Exact lexemes such as `345e-3`; invented, not inventory data.
+ */
+export function variedValue(
+  process: number,
+  row: number,
+): FixtureFlowValue | null {
+  const family = row % 6;
+  if ((process * 7 + row * 3) % 10 === 0) return null;
+  if (family === 3 && process % 17 !== row % 17) return null;
+  const zero = family === 5 || (process + row) % 23 === 0;
+  const digits = 100 + ((process * 31 + row * 17) % 900);
+  const negative =
+    family === 1 ||
+    (family === 0 && (process + row) % 3 === 0) ||
+    (family === 4 && process % 2 === 1);
+  const exponent = family === 4 ? (negative ? -8 : 2) : (row % 9) - 6;
+  return {
+    present: true,
+    amount: decimalString(
+      zero ? "0" : `${negative ? "-" : ""}${digits}e${exponent}`,
+    ),
+    warnings: [],
   };
 }
