@@ -43,15 +43,13 @@ def bafu_import() -> None:
 
     @task
     def verify_reports_artifact(result: dict[str, Any]) -> None:
-        import hashlib
+        from lca_etl.artifact import verify_artifact
 
         if result["status"] != "ready":
             raise RuntimeError("Candidate rejected; all private audit reports remain available")
         directory = Path(result["directory"])
         artifact = directory / "artifact" / "manifest.json"
-        expected = (artifact.parent / "manifest.sha256").read_text().split()[0]
-        if hashlib.sha256(artifact.read_bytes()).hexdigest() != expected:
-            raise ValueError("Candidate artifact failed checksum verification")
+        verify_artifact(artifact)
         if not (directory / "reports" / "lcia_workbook_issues.csv").is_file():
             raise ValueError("Required workbook audit is missing")
 
