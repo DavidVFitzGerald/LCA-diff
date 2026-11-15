@@ -365,7 +365,7 @@ geography, reference-flow name or unit shows `—` with the accessible text
 "not specified"; nothing is invented. Long values ellipsize; the header's
 accessible description and a hover/focus overlay give the full identity,
 including release, revision and process ID. Columns are a single roving tab
-stop (arrows, Home, End).
+stop (arrows, Home, End). Column operations are described under #25 below.
 
 **Widths.** `components/comparison/model.ts` documents the per-tab bounds
 within spec §6.3: Flows 120–240 px, Scores 110–230 px, using
@@ -553,7 +553,8 @@ invented, not inventory data.
   the test's `flowRows` spy (`flows-grid-harness.ts`). The mock scenario and
   URL scenarios are unchanged. The suite is split into two files because each
   large-workload test adds about 100 MB to the worker heap, and one file of 20
-  exceeds the worker's heap limit.
+  exceeds the worker's heap limit. Column operations on this workload are in
+  `services/mock/flows-grid-columns.test.tsx` (#25).
 - `app/composition.test.tsx`: scenario validation.
 - `e2e/flows-grid.spec.ts`: Chromium checks for the DOM bounds, sticky
   alignment, sidebar collapse and resize, and keyboard. In Chromium at
@@ -615,3 +616,90 @@ moves the grid headers.
   criterion.
 - `e2e/flows-composition.spec.ts`: Chromium checks at 1440 × 900 and
   1280 × 800 with the sidebar open.
+
+## Column operations (#25)
+
+Process headers (`ProcessHeaders`, shared by Flows and Scores) reorder and
+remove columns through the shared `SelectionStore` only (`move`,
+`deselect`). No component keeps a tab-local order, so the headers, both
+tabs' grids and the Selected list always show one order. Order changes read
+nothing new for the selection set: row pages, summaries and headers are
+keyed by the sorted ID set, so the `comparison_token` is unchanged. Cell
+tiles are read only for column compositions not already cached, and values
+are never recreated.
+
+**Pointer drag.** `@dnd-kit/core` 6.3.1 (MIT, React 19 compatible via its
+`>=16.8` peer range) supplies the pointer sensor. A press becomes a drag
+only after 8 px of travel, so a click, focus or hover behaves as before.
+The `×` button is never a drag handle. While dragging:
+
+- An overlay follows the pointer, and an outline marks the column the
+  header would land on.
+- The drop index comes from the pointer and the strip's geometry, so a
+  column that is not mounted can be a target.
+- Near either end of the strip (12% of its width), the strip scrolls every
+  frame, up to 24 px. The strip scrolls itself rather than using dnd-kit's
+  auto-scroll, because in a grid it has no scrollbar. The grid keeps the
+  cells in sync with it.
+
+Releasing over a column calls `store.move` once. Releasing outside the
+strip, over the column's own position, or pressing Escape changes nothing.
+After a move, focus stays on the moved header. dnd-kit's own assertive live
+region is left silent.
+
+**Keyboard.** Each header's accessible description ends with these
+instructions:
+
+- **Space** or **Enter** picks up the focused header.
+- While it is picked up, **Left/Right arrow** moves it one position,
+  **Home/End** to the first or last position. Each step is a `store.move`,
+  and focus stays on the moved header, scrolled into view.
+- **Space** or **Enter** drops it. **Escape** cancels and restores its
+  position from before the pick-up. Moving focus away drops it where it is.
+- When nothing is picked up, the arrows, Home and End move focus between
+  headers as before.
+
+**Removal.** Each header has a real `×` button. It is shown on hover and
+`:focus-within` without changing the header size (space is always
+reserved). Its accessible name is `Remove column <name — geography>`,
+disambiguated like the Selected list's buttons (`uniqueSelectionLabels`),
+which are named `Remove … from selection`. Only the active header's `×` is
+tabbable, so it adds one tab stop. Activating it deselects the process
+everywhere, including the tree checkbox, and the next row query drops rows
+it alone contributed. Focus moves to the next header, else the previous
+one. When it was the last column, focus moves to the tab's empty state
+(the element marked `data-empty-focus`), never the body.
+
+**Announcements.** Pick-up, each move ("position n of N"), drop, cancel
+and removal ("Removed … from selection") go to one polite live region
+(`app/announcer.ts`). It is mounted inside the UID-keyed workspace, so it
+survives the headers unmounting, and signout discards its text.
+
+**Grid.** Removing the grid's active column moves its single tab stop to
+the same flow in the neighbouring column (by index, the next column, else
+the previous one). A removal while scrolled deep goes through the #69
+hold, so the top flow keeps its offset, including through row-page errors
+and Retry.
+
+**Limitations.** Touch drag is not supported: a touch pan scrolls instead.
+Keyboard reorder and the `×` work on touch devices with a keyboard or
+assistive technology. Saved order is #31.
+
+**Evidence:**
+
+- `services/mock/comparison-headers.test.tsx`: the `×` name, button and tab
+  stop; removal focus and announcements; keyboard pick-up, move, drop,
+  cancel and blur; pointer drag, the activation threshold, Escape and
+  outside drops; one order in both tabs; F3 append rules after manual
+  changes.
+- `services/mock/flows-grid-columns.test.tsx` (large workload): no row,
+  summary or header reads, busy state or invalidation for UI reorders;
+  uncached tiles only, with identical values; an off-screen keyboard
+  reorder; the active column removed; × removal while deep; and × removal
+  through a paused hold with a scroll (O2) and after a first-page error
+  (O1).
+- `e2e/column-operations.spec.ts` (Chromium): pointer drag with alignment
+  and unchanged values, `×` visibility, Flows → Scores → Flows, keyboard
+  reorder and `×` removal by pointer and keyboard with Selected-list and
+  tree parity, edge auto-scroll drag and an off-screen keyboard reorder in
+  the large scenario.
