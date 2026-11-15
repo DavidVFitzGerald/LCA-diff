@@ -530,5 +530,61 @@ invented, not inventory data.
 - `app/composition.test.tsx`: scenario validation.
 - `e2e/flows-grid.spec.ts`: Chromium checks for the DOM bounds, sticky
   alignment, sidebar collapse and resize, and keyboard. In Chromium at
-  1440 × 900, the 2,224 × 220 workload mounts at most about 25 rows and 440
+  1440 × 900, the 2,225 × 220 workload mounts at most about 25 rows and 440
   cells.
+
+## Flows composition (#24)
+
+The Flows tab renders the service's rows as served: the union of represented
+`(flow_id, flow_type)` identities, already in the specified order. Components
+never re-sort, filter or derive rows from names or signs. A row disappears
+when its last contributing process is deselected, because the next row query
+no longer returns it. An empty selection keeps the grid unmounted, so the
+empty state never shows a stale "Updating…" status or row count.
+
+**Fixture additions.**
+
+- Alpha's reference flow is also a present Technosphere input of Gamma
+  (`3.5 km`). The same flow ID under two types is two rows with distinct
+  `row_key`s and their own cells.
+- The upper-atmosphere emission's subcategory is `Upper atmosphere`. Sorting
+  is case-insensitive, so it follows `lower atmosphere`; a code-point sort
+  would reverse them.
+
+**Cell warnings.** `FlowCell.warnings` render on the affected cell only, with
+generic UI: no per-code logic.
+
+- A bordered `!` badge in the cell's top-right padding marks the cell, using
+  more than colour alone. It is positioned outside the layout, so bar
+  geometry, row height and value labels are unchanged.
+- Hover or keyboard focus shows the tooltip: the full value, then each
+  warning message.
+- The cell's accessible name ends with `Warning: <messages>.`
+- Other cells in the row, the identity rowheader, the process headers and
+  row summaries carry no warning.
+
+**Provisional mock warning code.** `UNRESOLVED_REFERENCE_FALLBACK` marks a
+Technosphere exchange whose source reference was not verified and that uses
+an isolated fallback flow (spec §§5.4, 6.4). The fixture places it on Beta's
+recovered-material cell (`20`), on a row where Alpha (`-80…`, with its own
+`AGGREGATED_DUPLICATES` warning) and Gamma (`20`) also have values. The code
+is a provisional mock contract choice; I1 reconciles it with the ETL's public
+warning codes.
+
+**Identity block readability.** Type values show compact labels (`Ref`,
+`Tech`, `Eco in`, `Eco out`), with the full type in the field's `title` and the
+rowheader's accessible name. Header labels may wrap to two lines. Each inner
+column has a pixel minimum, and the Flows block's minimum width (410 px) fits
+them. The block remains bounded at 36% of the grid, up to 560 px. The page is
+exactly viewport-tall: the sidebars scroll internally, so page scroll never
+moves the grid headers.
+
+**Evidence:**
+
+- `services/mock/comparison.test.ts`: same ID under two types, case-insensitive
+  order and fallback placement.
+- `components/comparison/SignedValueCell.test.tsx`: warning rendering.
+- `services/mock/flows-composition.test.tsx`: the App journey for each
+  criterion.
+- `e2e/flows-composition.spec.ts`: Chromium checks at 1440 × 900 and
+  1280 × 800 with the sidebar open.
