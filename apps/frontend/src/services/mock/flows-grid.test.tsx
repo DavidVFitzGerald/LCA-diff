@@ -212,7 +212,9 @@ async function settledAt(row: number) {
   await settled();
 }
 
-describe("windowed Flows grid (#23)", () => {
+// Explicit budget: under a full parallel run the first mount of the large
+// workload can exceed the 5 s default (#24 observed 4.6–5.9 s; ~2.5 s alone).
+describe("windowed Flows grid (#23)", { timeout: 20000 }, () => {
   it("mounts only the viewport window of 220 × 2,000+ and reads bounded windows", async () => {
     const app = render();
     await selectAll();
