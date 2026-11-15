@@ -58,7 +58,12 @@ describe("Flows grid hold measurement (#26 O11)", { timeout: 20000 }, () => {
         }
         expect(grid()).not.toHaveAttribute("aria-busy");
       },
-      { timeout: 15000 },
+      // The hold's cost is 23 × (100 ms latency + ~125 ms of mock row-union
+      // work per page for 208 processes) plus rendering: 6.3–6.8 s alone,
+      // 8.9–15.1 s in full parallel runs, where a 15 s budget timed out in
+      // 4 of 6 QA runs (#26). 25 s keeps setup (≤ 8 s) + hold + settle
+      // inside the 40 s test limit. The elapsed time is logged below.
+      { timeout: 25000 },
     );
     const elapsed = performance.now() - start;
     const pages = app.pageReads.filter((read) => read.processes === remaining);
