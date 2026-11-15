@@ -54,7 +54,10 @@ Backend issues are published: B1 [#57](https://github.com/DavidVFitzGerald/LCA-d
 B2 [#58](https://github.com/DavidVFitzGerald/LCA-diff/issues/58),
 B3 [#59](https://github.com/DavidVFitzGerald/LCA-diff/issues/59),
 B4 [#60](https://github.com/DavidVFitzGerald/LCA-diff/issues/60).
-B1 foundation implementation is in PR #61; independent QA/merge remain pending.
+B1 foundation PR #61 passed independent QA at `d3a2389` and hosted CI; merge
+remains pending. B2 PR #70 passed independent QA at `44471c6` and all three hosted
+checks; B3 implementation is in progress. These are delivered branch results,
+not claims of merged milestones.
 
 | Milestone | Status | Dependency |
 | --- | --- | --- |
@@ -63,8 +66,8 @@ B1 foundation implementation is in PR #61; independent QA/merge remain pending.
 | M2 — GitHub execution setup | Forms/PR guidance and activation merged; #4 solo protection proposal in review | M0/M1 delivered; main protection waits for approved ADR 0004 |
 | F1 — frontend foundation | Complete: #5–#10 merged; final PR #44 at `9612943`, independent QA and hosted CI passed | M2 activation delivered; protection tracked separately in #4 |
 | F2 — shell and simulated authentication | Complete: #11–#15 merged after independent QA and hosted CI (final PR #49 at `1f82774`) | F1 complete; each task's issue dependencies |
-| F3–F5 — remaining mock frontend journeys | F3: #16 (paged process tree) merged (PR #50); #18 (ordered selection) merged (PR #53); #17 (search) in progress; later F3–F5 tasks not started; predecessor gates retained | F2 completion and each task's issue dependencies |
-| B1–B4 — Phase 2, backend and ingestion | B1 #57 in PR #61, QA/merge pending; B2 #58 and B3 #59 await B1; B4 #60 awaits B3/B2 | M1/M2 and accepted ADR 0005, then milestone gates below |
+| F3–F5 — remaining mock frontend journeys | F3 complete: #16–#19 merged after independent QA and hosted CI (final PR #62 at `d3fddb1`). F4: #20 (flow windows and row summaries) in progress; later F4–F5 tasks not started; predecessor gates retained | F2 completion and each task's issue dependencies |
+| B1–B4 — Phase 2, backend and ingestion | B1 #57 / PR #61 and B2 #58 / PR #70 passed QA/CI, awaiting merge; B3 #59 implementing; B4 #60 awaits B3 delivery | M1/M2 and accepted ADR 0005, then milestone gates below |
 | I1 — real frontend integration | Not started | Phase 1 gate, B2 and validated synthetic publication from B4 |
 | R1–R2 — production readiness and release | Not started | Dependencies below |
 
@@ -315,6 +318,9 @@ Depends on the Phase 1 gate, B2 and B4. Generate frontend DTOs from FastAPI Open
 drift checks; replace provisional types deliberately and verify mock/real adapter
 parity. Implement the HTTP/Firebase adapter behind the existing services boundary,
 then select it through explicit configuration. Never silently fall back to mocks.
+Reconcile the provisional frontend-only `flowSummaries` read summary (#20,
+`apps/frontend/src/services/README.md`) with the generated OpenAPI contract: B2
+provides an equivalent stateless endpoint or the spec/ADR workflow replaces it.
 
 Gate: complete UI journeys work against the real API and a published synthetic
 release with emulator-backed auth. Verify no protected calls before login,
@@ -368,19 +374,19 @@ Missing data/license/evidence blocks release, not unrelated synthetic developmen
 The issue bodies will carry detailed checks. This table prevents milestone-level
 scope loss; test numbers refer to the 19 mandatory behaviors in §9.2.
 
-| Contract | Milestones owning delivery and evidence | §9.2 behaviors |
-| --- | --- | --- |
-| Governance, stack, environment, tiered CI (§§0, 3, 9) | M0–M2; F1/B1 introduce checks; R1–R2 complete gates | All applicable checks |
-| UI, identity state and account isolation (§§6.1, 6.8, 8) | F2/F5 mock; B2/I1 real; R2 acceptance | 13, 17 |
-| Search, bulk selection, ordering, grid, warnings (§§6.2–6.4, 9.1) | F3–F5; B2/I1; R2 benchmarks | 17–18 |
-| Scores, signed bars, exact differences (§§6.5–6.7) | F1/F4/F5; B2/I1 | 7, 15–16 |
-| Schema, decimals, isolation, provenance (§4) | B1/B3/B4; B2/I1 wire precision | 2–3, 11–12, 14 |
-| XML mapping, duplicates, reference resolution, exclusion (§§1–2, 5.1–5.5) | B3; R2 full manifest | 1–6 |
-| Workbook matching, verified basis, full-row audits (§§5.6–5.8) | B3; R2 audit signoff | 7–10 |
-| Read API, snapshots, errors, auth (§7) | F1 provisional; B2 authoritative; B4/I1 integration | 12–18 |
-| Configuration/logs, security, publish/operations (§§5.8, 8) | B1–B4; I1; R1–R2 | 12–14, 19 |
-| Future insertion points without future features (§10) | F1/B1/B3/B2 as applicable; inspect at I1 | Review against DESIGN-NOW scope |
-| Conservative defaults and external verification (§11) | B3/R2 data gates; R1 licensing/operations | Relevant failure/gating cases |
+| Contract                                                                  | Milestones owning delivery and evidence             | §9.2 behaviors                  |
+| ------------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------- |
+| Governance, stack, environment, tiered CI (§§0, 3, 9)                     | M0–M2; F1/B1 introduce checks; R1–R2 complete gates | All applicable checks           |
+| UI, identity state and account isolation (§§6.1, 6.8, 8)                  | F2/F5 mock; B2/I1 real; R2 acceptance               | 13, 17                          |
+| Search, bulk selection, ordering, grid, warnings (§§6.2–6.4, 9.1)         | F3–F5; B2/I1; R2 benchmarks                         | 17–18                           |
+| Scores, signed bars, exact differences (§§6.5–6.7)                        | F1/F4/F5; B2/I1                                     | 7, 15–16                        |
+| Schema, decimals, isolation, provenance (§4)                              | B1/B3/B4; B2/I1 wire precision                      | 2–3, 11–12, 14                  |
+| XML mapping, duplicates, reference resolution, exclusion (§§1–2, 5.1–5.5) | B3; R2 full manifest                                | 1–6                             |
+| Workbook matching, verified basis, full-row audits (§§5.6–5.8)            | B3; R2 audit signoff                                | 7–10                            |
+| Read API, snapshots, errors, auth (§7)                                    | F1 provisional; B2 authoritative; B4/I1 integration | 12–18                           |
+| Configuration/logs, security, publish/operations (§§5.8, 8)               | B1–B4; I1; R1–R2                                    | 12–14, 19                       |
+| Future insertion points without future features (§10)                     | F1/B1/B3/B2 as applicable; inspect at I1            | Review against DESIGN-NOW scope |
+| Conservative defaults and external verification (§11)                     | B3/R2 data gates; R1 licensing/operations           | Relevant failure/gating cases   |
 
 ## Published frontend issues and session handoffs
 

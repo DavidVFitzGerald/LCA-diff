@@ -244,6 +244,34 @@ export interface CellsResponse<T> extends SnapshotResponse {
   readonly cells: readonly T[];
   readonly comparison_token: string;
 }
+/**
+ * Provisional frontend-only read summary (#20): whole-selection chart extrema
+ * for one row window, independent of the visible process-column window. I1
+ * reconciles it with the generated OpenAPI contract.
+ */
+export interface FlowSummariesRequest extends SnapshotRequest {
+  readonly comparison_token: string;
+  /** The complete selected set (unbounded), so servers need no token state. */
+  readonly process_ids: readonly ProcessId[];
+  /** One row window, bounded by the transport window. */
+  readonly row_keys: readonly FlowRowKey[];
+}
+export interface FlowRowSummary {
+  readonly row_key: FlowRowKey;
+  /** P: exact lexeme of the largest present positive amount, or "0". */
+  readonly max_positive: DecimalString;
+  /** N: exact unsigned lexeme of the most negative present amount, or "0". */
+  readonly max_negative_magnitude: DecimalString;
+  readonly positive_count: number;
+  readonly negative_count: number;
+  /** Present exact zeros, distinct from absences. */
+  readonly zero_count: number;
+  readonly absent_count: number;
+}
+export interface FlowSummariesResponse extends SnapshotResponse {
+  readonly summaries: readonly FlowRowSummary[];
+  readonly comparison_token: string;
+}
 export interface DataService {
   identity(options?: RequestOptions): Promise<ServiceResult<Identity>>;
   releases(options?: RequestOptions): Promise<ServiceResult<Page<Release>>>;
@@ -271,6 +299,10 @@ export interface DataService {
     input: FlowCellsRequest,
     options?: RequestOptions,
   ): Promise<ServiceResult<CellsResponse<FlowCell>>>;
+  flowSummaries(
+    input: FlowSummariesRequest,
+    options?: RequestOptions,
+  ): Promise<ServiceResult<FlowSummariesResponse>>;
   scoreRows(
     input: ScoreRowsRequest,
     options?: RequestOptions,

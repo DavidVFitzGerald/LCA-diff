@@ -252,3 +252,339 @@ single-release `branch_path` paging that returns ancestor chains with exact
 in-scope counts. Scenario tests inject `createMockDiscovery` from
 `src/services/mock/process-tree.test.tsx`, because the lint boundary forbids
 mock imports elsewhere; no scenario switch ships in the composed app.
+
+## Flow windows and row summaries (#20)
+
+**Provisional read-summary extension.** `DataService.flowSummaries` is a
+frontend-only provisional method that is not in spec §7.1. It returns whole-selection chart
+metadata for one row window:
+
+- `max_positive` (P): the exact stored lexeme of the largest present positive
+  amount, or `"0"`.
+- `max_negative_magnitude` (N): the exact unsigned lexeme of the most negative
+  present amount, or `"0"`.
+- Positive, negative, present-zero and absent counts over **every** selected process.
+
+The request carries the complete selected `process_ids` (unbounded) and the
+flow-rows `comparison_token`, plus at most `window_limit` row keys. Sending
+the full set keeps a real backend stateless, as spec §7.3 requires: correctness must not
+depend on a cached token. I1 must reconcile this DTO with the generated OpenAPI
+contract, or replace it, through the ADR/spec workflow. This issue introduces no
+production endpoint.
+
+**Mock behaviour.** The mock accepts a summary request only when it matches the
+token exactly:
+
+- the token's tab is flows;
+- the snapshot is identical to the token's;
+- the process set is the token's whole set (a subset is `INVALID_FILTER`);
+- every row belongs to the token's rows.
+
+Unknown or evicted tokens and unknown revisions fail as `STALE_SNAPSHOT`.
+Revision-bound IDs used against another snapshot fail as `UNKNOWN_PROCESS`.
+
+**Extrema and ties.** Extrema use `services/decimal.ts`, which compares
+lexemes exactly (digits and exponents, with `-0` as zero) and never converts to
+floating point, and uses BigInt exponents, so any exponent `decimalString`
+accepts compares exactly. Ties keep the first process in canonical ID order. Because
+the request has no column window, every visible column window sees the same P and N.
+Summaries carry no warnings, since cell warnings stay on the affected cell. They run
+no difference predicate.
+
+**Query helpers in `app/queries.ts`:**
+
+- `flowRowPages`: an infinite cursor query keyed by the request.
+- `flowSummaries`.
+- `flowCellWindow`: splits any visible rows × processes window into batches
+  within `SERVICE_WINDOW` (100) and `SERVICE_CELL_WINDOW` (1000), using
+  `app/cell-batches.ts`.
+  - All batches share one abort signal.
+  - Results merge in batch order.
+  - Every batch, including a lone one, must answer with the requested token
+    and snapshot (release order does not matter). Otherwise the window fails
+    as `STALE_SNAPSHOT` rather than caching another revision under the request key.
+  - `flowSummaries` and `flowRowPages` responses are checked the same way.
+  - Every later `flowRowPages` page must also carry the first page's
+    `comparison_token` (#64). The page param holds the cursor and the token of
+    the page it continues, so a page from another comparison session fails as
+    `STALE_SNAPSHOT` and is never appended to the cached pages.
+  - Release-order tolerance is tested against a two-release mock catalog: the
+    mock answers refs sorted by release ID, and requests list them in the
+    reverse order. A missing or extra release is still rejected for row pages,
+    summaries and cell windows.
+
+Batches bound requests, never the selection.
+
+**Obsolete reads.** Query keys include the token and snapshot. An obsolete read loses
+its observer and is aborted, so it cannot replace newer data. Chart geometry
+(#22), virtualization (#23) and grid composition (#24) consume these helpers.
+
+**Test evidence:**
+
+- `services/decimal.test.ts`
+- `app/cell-batches.test.ts`
+- `services/mock/flow-summaries.test.ts`
+- `services/mock/comparison-queries.test.ts`
+
+This is mock evidence, not real-backend performance.
+
+## Process headers and comparability (#21)
+
+`components/comparison/ComparisonHeader` renders the shared metadata header for
+a tab from the canonical ordered selection (`app/selection.ts`); it owns no
+order. Flows mounts it now; Scores mounts the same component in #28.
+
+**Headers query.** `queries.selectionHeaders(revision, ids, client)` issues
+one query per selected revision:
+
+- The key is the sorted ID set, so column reordering never refetches.
+- Headers are immutable per revision and cached per process (a `header` key
+  under the same adapter namespace and UID). A changed selection requests only
+  uncached IDs, in `SERVICE_WINDOW` batches; already-known headers are shown
+  as placeholder data meanwhile. If a read fails, the hook keeps showing the
+  cached headers (placeholders apply only while pending), so loaded columns
+  and known differences survive the failure. Per-process entries have no
+  observers, so they are kept for the session (`gcTime: Infinity`) instead of
+  expiring after 5 minutes; signout or account change clears them with the
+  rest of the client. Bulk selection seeds the same
+  cache through `queries.rememberHeaders`, so bulk-added columns are not
+  fetched twice.
+- Every batch, in both `selectionHeaders` and the bulk `headersFor`, must
+  answer the requested revision (`STALE_SNAPSHOT` otherwise) with exactly the
+  requested IDs, once each (`UNKNOWN_PROCESS` otherwise). A read with any
+  rejected batch fails as a whole, so only validated headers are cached. I1
+  adapter parity needs `POST /processes/headers` to accept a single-release
+  snapshot and return each requested ID once.
+- Header amounts must be valid decimal strings. The mock guarantees this; the
+  real adapter must validate at its boundary (I1), since comparison would
+  otherwise throw during render.
+
+**Display.** Each header shows Process Name, Location, Reference Flow Name,
+Reference Amount (the exact stored lexeme) and Reference Unit. Blank
+geography, reference-flow name or unit shows `—` with the accessible text
+"not specified"; nothing is invented. Long values ellipsize; the header's
+accessible description and a hover/focus overlay give the full identity,
+including release, revision and process ID. Columns are a single roving tab
+stop (arrows, Home, End).
+
+**Widths.** `components/comparison/model.ts` documents the per-tab bounds
+within spec §6.3: Flows 120–240 px, Scores 110–230 px, using
+`clamp(available / count, min, max)`. Columns are windowed horizontally
+(`@tanstack/react-virtual`, overscan 4), and the active column stays mounted.
+#23 shares this column window with the cell grid.
+
+**Comparability warning.** It is shown, without blocking or confirmation,
+when any loaded reference amount differs exactly (`services/decimal.ts`, so
+`1`, `1.0` and `1e0` agree) or any unit differs as an exact string. While
+headers load, it reports only differences already known and never claims the
+bases are equal. Values are never rescaled. `services/decimal` is the one
+transport-free services module the UI lint boundary now allows besides
+`contracts`.
+
+**Test evidence:**
+
+- `components/comparison/model.test.ts`
+- `services/mock/comparison-headers.test.tsx`
+- `e2e/process-headers.spec.ts` (Chromium; also run in Firefox)
+
+Large-selection windowing and invalid responses are component-level evidence;
+the composed app has no large browser scenario yet (#23).
+
+## Signed bars and value labels (#22)
+
+`components/comparison/geometry.ts` derives row geometry from the
+whole-selection extrema in `FlowRowSummary` (`max_positive` P,
+`max_negative_magnitude` N), never from mounted cells. With H = 40 px and
+M = max(P, N):
+
+| Row           | Chart height    | Zero axis (from top) |
+| ------------- | --------------- | -------------------- |
+| Positive only | H               | H (bottom)           |
+| Negative only | H               | 0 (top)              |
+| Mixed         | H × (P + N) / M | H × P / M            |
+| M = 0         | H               | 2 px baseline        |
+
+Bars run from data y = 0 with height H × |value| / M and never cross zero.
+M is chosen by exact magnitude comparison. Nonzero values get a 1 px
+minimum so none is invisible; when the row has less than 1 px on that side
+of zero (a lopsided mixed row), the hairline extends into the padding
+rather than across the axis. Each row also exposes `rowHeight` (chart
+height plus 6 px padding above and below) for the #23 virtualizer.
+
+**Exact digits.** Floats are used for pixels only, and only through
+`decimalRatio` in `services/decimal.ts`. It scales the significant digits of
+each operand by its own exponent, so `1e-300` and `1e999` never overflow into
+invalid geometry.
+
+**Labels and tooltips.**
+
+- Labels come from `formatDecimal`: the value only, in fixed notation for
+  [1e-3, 1e6) and scientific otherwise, rounded half-up from the exact digits.
+- They sit just above zero, or below it when every populated value is
+  non-positive.
+- They use a translucent chip and never change geometry.
+- Hover or focus shows `displayDecimal`, the full stored lexeme. Zeros show
+  unsigned, so `-0` and `0` display alike.
+
+**Cell states.** `SignedValueCell` is the one component for Flows and Scores:
+
+- `present`: a zero shows `0` with no bar.
+- `absent`: visually blank, with visually-hidden "No flow" text for assistive
+  technology.
+- `unavailable`: shows `N/A` with its reason in the description, and no bar.
+
+**Colour and sign.** Positive bars are green and negative bars red, with
+opacity rising monotonically with |value| / M. The sign is also in the label
+and in the accessible name ("…, negative").
+
+**Test evidence:**
+
+- `services/decimal-display.test.ts`
+- `components/comparison/geometry.test.ts`
+- `components/comparison/SignedValueCell.test.tsx`
+
+Browser assertions arrive when #23/#24 mount the cells in the grid.
+
+## Windowed comparison grid (#23)
+
+`components/comparison/ComparisonGrid.tsx` is the shared grid for Flows (now)
+and Scores (#28). One scroll container virtualizes both rows and process
+columns with TanStack Virtual:
+
+- **Window.** Only the viewport plus overscan (6 rows, 4 columns) is mounted.
+  The active cell stays mounted as the single roving tab stop.
+- **Row heights.** Heights come from whole-row summaries (`rowGeometry`,
+  rounded up to whole px). They are applied with `resizeItem`; view anchoring
+  (below) keeps content steady when rows above change height. Rows are keyed
+  by index, so a loading row or cell and its
+  loaded data share one DOM node and keep focus. Cached heights are
+  corrected, scroll-anchored, as summaries arrive; they are never reset.
+- **Selection changes.** Rows are read for the canonical sorted process set,
+  so reordering columns re-reads no rows or summaries. While a changed
+  selection loads, the previous comparison stays shown (`aria-busy`, with an
+  "Updating the comparison…" status). Nothing is read with the old token
+  (#23 QA D1).
+- **View anchoring.** The grid anchors the view on flows itself; the
+  virtualizer's own size adjustment is off. After every scroll it records up
+  to 12 loaded rows from the viewport top with their layout starts. After any
+  layout change (corrected heights, a new row set), it finds the first
+  recorded flow still present and scrolls by exactly how far that flow's
+  start moved. Rows added, removed or resized above therefore never shift
+  the flows being read, and the relative adjustment never undoes a scroll in
+  progress, including one made while the comparison updates. Rows load in
+  order, so finding a later recorded flow means earlier ones were removed.
+  When all recorded flows are gone, the grid re-anchors on what is in view.
+  The grid reports its anchor flows to `useFlowGrid` (`anchorKeys`). On a
+  selection change, the previous comparison stays shown (busy, reading
+  nothing) until an anchor flow is loaded in the new one, or no pages remain.
+  The new rows therefore never appear at a stale position. The active cell
+  follows its flow and process by key. While the grid owns keyboard focus,
+  focus moves back to the active cell whenever its node now shows another
+  flow or process (#23 QA D2–D4).
+- **Stripes.** Alternating backgrounds follow the row index.
+- **Identifying block.** A bounded sticky left block, 36% of the grid width
+  clamped to 300–560 px, holds compact inner columns. For Flows these are the
+  seven fields in order: Type, Flow Name, Location, Process Name, Category,
+  Subcategory, Unit. The row header's accessible name holds every field in
+  full.
+- **Headers.** The process header strip from #21 stays above the grid, so it
+  is vertically pinned. Its horizontal scroll is kept in sync with the cells
+  in both directions, and both scrollers reserve the same scrollbar gutter.
+- **Keyboard.** The grid exposes `role="grid"`, `aria-rowcount` and
+  `aria-colcount`. Rows carry `aria-rowindex`, the row header is a
+  `rowheader`, and value cells are `gridcell`s with `aria-colindex`; each
+  cell's accessible name starts with its process name. Keys:
+  - Arrows move one cell.
+  - Home/End go to the row's first or last cell.
+  - Ctrl+Home/End go to the first or last cell of the grid.
+  - PageUp/PageDown move by roughly one viewport.
+    Focus always moves to a mounted cell.
+
+**Data** (`useFlowGrid.ts`) is read for the window only:
+
+- Cursor row pages of 100 load only as far as the mounted rows need, plus 25
+  rows of lookahead.
+- One whole-selection summary request runs per loaded row page that
+  intersects the window.
+- Cells are read as fixed tiles of 50 rows × 20 processes (at most 1,000
+  cells each), so scrolling within a tile reuses it.
+- Tiles and summaries that leave the window lose their observers, and their
+  in-flight reads are aborted.
+
+**Large synthetic scenario.** `?mock-scenario=large` is read only at the
+composition root, and only in explicit `VITE_SERVICE_MODE=mock`. It serves
+220 processes and 2,000 generated rows with deterministic per-process
+mixed-sign, negative-only, positive-only, sparse, lopsided and all-zero
+families, plus scattered absences and present zeros. The values are
+invented, not inventory data.
+
+- Any other value, or any scenario outside mock mode, is a configuration
+  error. There is never a fallback.
+- The demo banner names the scenario.
+
+**Evidence:**
+
+- `components/comparison/grid-model.test.ts`
+- `services/mock/flows-grid.test.tsx`: request and DOM bounds, cancellation,
+  heights and stripes, keyboard, focus retention.
+- `app/composition.test.tsx`: scenario validation.
+- `e2e/flows-grid.spec.ts`: Chromium checks for the DOM bounds, sticky
+  alignment, sidebar collapse and resize, and keyboard. In Chromium at
+  1440 × 900, the 2,225 × 220 workload mounts at most about 25 rows and 440
+  cells.
+
+## Flows composition (#24)
+
+The Flows tab renders the service's rows as served: the union of represented
+`(flow_id, flow_type)` identities, already in the specified order. Components
+never re-sort, filter or derive rows from names or signs. A row disappears
+when its last contributing process is deselected, because the next row query
+no longer returns it. An empty selection keeps the grid unmounted, so the
+empty state never shows a stale "Updating…" status or row count.
+
+**Fixture additions.**
+
+- Alpha's reference flow is also a present Technosphere input of Gamma
+  (`3.5 km`). The same flow ID under two types is two rows with distinct
+  `row_key`s and their own cells.
+- The upper-atmosphere emission's subcategory is `Upper atmosphere`. Sorting
+  is case-insensitive, so it follows `lower atmosphere`; a code-point sort
+  would reverse them.
+
+**Cell warnings.** `FlowCell.warnings` render on the affected cell only, with
+generic UI: no per-code logic.
+
+- A bordered `!` badge in the cell's top-right padding marks the cell, using
+  more than colour alone. It is positioned outside the layout, so bar
+  geometry, row height and value labels are unchanged.
+- Hover or keyboard focus shows the tooltip: the full value, then each
+  warning message.
+- The cell's accessible name ends with `Warning: <messages>.`
+- Other cells in the row, the identity rowheader, the process headers and
+  row summaries carry no warning.
+
+**Provisional mock warning code.** `UNRESOLVED_REFERENCE_FALLBACK` marks a
+Technosphere exchange whose source reference was not verified and that uses
+an isolated fallback flow (spec §§5.4, 6.4). The fixture places it on Beta's
+recovered-material cell (`20`), on a row where Alpha (`-80…`, with its own
+`AGGREGATED_DUPLICATES` warning) and Gamma (`20`) also have values. The code
+is a provisional mock contract choice; I1 reconciles it with the ETL's public
+warning codes.
+
+**Identity block readability.** Type values show compact labels (`Ref`,
+`Tech`, `Eco in`, `Eco out`), with the full type in the field's `title` and the
+rowheader's accessible name. Header labels may wrap to two lines. Each inner
+column has a pixel minimum, and the Flows block's minimum width (410 px) fits
+them. The block remains bounded at 36% of the grid, up to 560 px. The page is
+exactly viewport-tall: the sidebars scroll internally, so page scroll never
+moves the grid headers.
+
+**Evidence:**
+
+- `services/mock/comparison.test.ts`: same ID under two types, case-insensitive
+  order and fallback placement.
+- `components/comparison/SignedValueCell.test.tsx`: warning rendering.
+- `services/mock/flows-composition.test.tsx`: the App journey for each
+  criterion.
+- `e2e/flows-composition.spec.ts`: Chromium checks at 1440 × 900 and
+  1280 × 800 with the sidebar open.

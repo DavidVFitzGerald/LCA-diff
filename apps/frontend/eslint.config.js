@@ -25,6 +25,9 @@ const serviceImports = [
   "**/services/**",
   "!**/services/contracts",
   "!**/services/contracts.ts",
+  // Transport-free exact decimal helpers shared by UI comparisons (#21).
+  "!**/services/decimal",
+  "!**/services/decimal.ts",
 ];
 const importRule = (patterns) => [
   "error",

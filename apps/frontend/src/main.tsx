@@ -7,6 +7,11 @@ if (!root) throw new Error("Frontend mount target #root is missing");
 
 createRoot(root).render(
   <StrictMode>
-    <Bootstrap mode={import.meta.env.VITE_SERVICE_MODE} />
+    <Bootstrap
+      mode={import.meta.env.VITE_SERVICE_MODE}
+      scenario={new URLSearchParams(window.location.search).get(
+        "mock-scenario",
+      )}
+    />
   </StrictMode>,
 );
