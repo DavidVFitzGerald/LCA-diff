@@ -91,20 +91,17 @@ three schema-description HTML files. The actual representative command was:
 ./dev etl-run uv run --frozen --package lca-etl lca-import run-local --manifest data_pipeline/examples/bafu-private-representative.json
 ```
 
-That source run at `9fe44e5` processed **five XML processes and all 11,947 workbook
-rows**, producing 38 staged exchanges, 38 flow/provenance rows and 235 score
-records: **141 valid, 94 unresolved-basis N/A**. Five workbook rows matched;
-11,942 rows were intentionally unmatched because only five XML files were selected.
-The 28 isolated technosphere fallbacks are likewise expected from that small
-subset, and are **not evidence of missing references in the full supplied corpus**.
-There were zero unresolved critical issues in the representative candidate.
+The representative source run and subsequent payload verification completed.
+Detailed processing counts, source inventory, identifiers, paths, checksums and
+findings remain only in the ignored `private/b3-private-evidence.json` and private
+run artifacts. Original archives were verified unchanged; generated storage is
+owner-only. No provider rows, scores or derived processing inventory are included
+in this public handoff or public CI.
 
-Its private audit has **11,944 flagged rows, each with all 51 original A:AY
-columns**. All 36 exported table/object payloads were subsequently verified by
-checksum/size, the generated directory is 0700, and all three original ZIP hashes
-remain unchanged. Detailed paths/checksums/counts are retained only in the
-ignored `private/b3-private-evidence.json` and private run artifacts. No original
-provider rows or score payloads are included here or in public CI.
+Unmatched workbook rows and isolated reference fallbacks in a representative
+subset must not be presented as defects in the complete supplied corpus.
+Unverified score bases remain explicitly N/A; a representative candidate does not
+establish full import or release completeness.
 
 The schema HTML and workbook Info sheet do not prove quantitative conversion
 bases for unit discrepancies or non-unit XML references; no real conversion
