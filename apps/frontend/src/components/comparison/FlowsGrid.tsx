@@ -1,10 +1,13 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { FlowRow } from "../../services/contracts";
+import type { FlowRow, FlowType } from "../../services/contracts";
 import { ComparisonGrid } from "./ComparisonGrid";
 import type { GridColumn } from "./ComparisonGrid";
 import { ComparisonHeader } from "./ComparisonHeader";
 import type { ComparisonLayout } from "./ComparisonHeader";
-import { leadingWidth as boundedLeadingWidth } from "./grid-model";
+import {
+  leadingWidth as boundedLeadingWidth,
+  LEADING_BOUNDS,
+} from "./grid-model";
 import type { IndexRange } from "./grid-model";
 import { SignedValueCell } from "./SignedValueCell";
 import { PENDING_ROW } from "./geometry";
@@ -12,27 +15,61 @@ import type { CellAttributes } from "./SignedValueCell";
 import { useFlowGrid } from "./useFlowGrid";
 import { selectionKey } from "../../app/selection";
 
-/** The seven Flows identifying fields, in specified order (spec §6.4). */
-const FLOW_FIELDS = [
-  { label: "Type", value: (row: FlowRow) => row.flow_type, share: 0.9 },
-  { label: "Flow Name", value: (row: FlowRow) => row.name, share: 2 },
-  { label: "Location", value: (row: FlowRow) => row.location, share: 0.8 },
+/**
+ * Compact visible Type labels for the bounded block (#24, O2); the full
+ * type stays in the field's title and the rowheader's accessible name.
+ */
+const TYPE_LABELS: Readonly<Record<FlowType, string>> = {
+  Reference: "Ref",
+  Technosphere: "Tech",
+  "Ecosphere Input": "Eco in",
+  "Ecosphere Output": "Eco out",
+};
+
+/**
+ * The seven Flows identifying fields, in specified order (spec §6.4). Each
+ * inner column has a minimum (px) that keeps its header label (single words;
+ * multi-word labels wrap to two lines) and compact values legible (#24, O2).
+ */
+const FLOW_FIELDS: readonly {
+  readonly label: string;
+  readonly value: (row: FlowRow) => string | null;
+  readonly display?: (row: FlowRow) => string;
+  readonly min: number;
+  readonly share: number;
+}[] = [
+  {
+    label: "Type",
+    value: (row) => row.flow_type,
+    display: (row) => TYPE_LABELS[row.flow_type] ?? row.flow_type,
+    min: 46,
+    share: 0.9,
+  },
+  { label: "Flow Name", value: (row) => row.name, min: 56, share: 2 },
+  { label: "Location", value: (row) => row.location, min: 50, share: 0.8 },
   {
     label: "Process Name",
-    value: (row: FlowRow) => row.process_name,
+    value: (row) => row.process_name,
+    min: 50,
     share: 1.6,
   },
-  { label: "Category", value: (row: FlowRow) => row.category, share: 1.1 },
+  { label: "Category", value: (row) => row.category, min: 52, share: 1.1 },
   {
     label: "Subcategory",
-    value: (row: FlowRow) => row.subcategory,
+    value: (row) => row.subcategory,
+    min: 70,
     share: 1.1,
   },
-  { label: "Unit", value: (row: FlowRow) => row.unit, share: 0.6 },
-] as const;
-const template = FLOW_FIELDS.map((field) => `minmax(0, ${field.share}fr)`).join(
-  " ",
-);
+  { label: "Unit", value: (row) => row.unit, min: 28, share: 0.6 },
+];
+const template = FLOW_FIELDS.map(
+  (field) => `minmax(${field.min}px, ${field.share}fr)`,
+).join(" ");
+/**
+ * Flows block bounds: the shared share and maximum, with a minimum that
+ * fits every inner column minimum plus gaps and padding.
+ */
+const FLOWS_LEADING_BOUNDS = { ...LEADING_BOUNDS, min: 410 } as const;
 
 /** Width of an element's content box, tracked through resizes. */
 function useWidth() {
@@ -70,12 +107,12 @@ function IdentityLabels() {
 /**
  * Windowed Flows grid (#23): process headers, a bounded sticky block of the
  * seven identifying fields and signed value cells, reading only the mounted
- * row/column window. Flows semantics beyond the window (union, warnings,
- * empty states) are #24.
+ * row/column window. Rows are the service's union in service order; each
+ * cell shows only its own service-supplied warnings (#24).
  */
 export function FlowsGrid() {
   const { ref, width } = useWidth();
-  const leading = boundedLeadingWidth(width);
+  const leading = boundedLeadingWidth(width, FLOWS_LEADING_BOUNDS);
   return (
     <div ref={ref} className="comparison-frame">
       <ComparisonHeader
@@ -144,7 +181,7 @@ function FlowsBody({
         {values.map((value, i) =>
           value ? (
             <span key={FLOW_FIELDS[i].label} title={value}>
-              {value}
+              {FLOW_FIELDS[i].display?.(row) ?? value}
             </span>
           ) : (
             <span key={FLOW_FIELDS[i].label} className="identity-empty">
@@ -171,6 +208,7 @@ function FlowsBody({
               ? { kind: "present", amount: value.amount }
               : { kind: "absent" }
         }
+        warnings={geometry ? value?.warnings : undefined}
         cell={cell}
       />
     );

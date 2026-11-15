@@ -98,6 +98,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Header labels may wrap to two lines rather than truncate (#24, O2). */
+.comparison-corner .identity-fields > span {
+  white-space: normal;
+  line-height: 1.25;
+}
 .identity-fields > .identity-empty {
   color: #8a9a91;
 }
