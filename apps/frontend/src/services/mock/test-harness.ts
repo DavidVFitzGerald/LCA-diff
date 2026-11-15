@@ -210,6 +210,17 @@ export function mount(
   // Discovery catalogs here have no comparison data: the Flows grid (#23)
   // sees an empty comparison unless a test overrides the comparison reads.
   const emptyComparison: Partial<DataService> = {
+    async indicatorTree(input) {
+      return {
+        ok: true,
+        data: {
+          methods: [],
+          default_indicator_ids: [],
+          revision_snapshot: input.revision_snapshot,
+          request_id: "harness-empty-indicators",
+        },
+      };
+    },
     async flowRows(input) {
       return {
         ok: true,

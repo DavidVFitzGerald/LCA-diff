@@ -99,6 +99,15 @@ function harness(initial: AuthState, signOut?: AuthService["signOut"]) {
       name === "releases" ? releases : vi.fn(operation),
     ]),
   ) as unknown as Services["data"];
+  data.indicatorTree = vi.fn(async (input) => ({
+    ok: true as const,
+    data: {
+      methods: [],
+      default_indicator_ids: [],
+      revision_snapshot: input.revision_snapshot,
+      request_id: "session-indicators",
+    },
+  }));
   const emit = (next: AuthState) => {
     current = next;
     observers.forEach((observer) => observer(next));
