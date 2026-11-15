@@ -1,0 +1,43 @@
+name: Backend
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-quality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container:
+      image: ghcr.io/astral-sh/uv:python3.14-bookworm-slim@sha256:7cf77f594be8042dab6daa9fe326f90962252268b4f120a7f5dccce4d947e6c1
+    services:
+      postgres:
+        image: postgres:17-bookworm@sha256:40865bc877a289da75963d97d72b59633f639fc5af7a4e856bfa3714cae5b536
+        env:
+          POSTGRES_USER: lca_bootstrap
+          POSTGRES_PASSWORD: local-bootstrap-only
+          POSTGRES_DB: lca
+        options: >-
+          --health-cmd "pg_isready -U lca_bootstrap -d lca"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      UV_PYTHON_DOWNLOADS: never
+      LCA_DATABASE_URL: postgresql+psycopg://lca_migrator:local-migration-only@postgres/lca
+      LCA_TEST_DATABASE_URL: postgresql+psycopg://lca_migrator:local-migration-only@postgres/lca
+      LCA_BOOTSTRAP_DATABASE_URL: postgresql://lca_bootstrap:local-bootstrap-only@postgres/lca
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - run: uv lock --check
+      - run: uv sync --frozen --all-packages
+      - run: uv run --frozen ruff format --check packages/python db/migrations scripts
+      - run: uv run --frozen ruff check packages/python db/migrations scripts
+      - run: uv run --frozen mypy
+      - run: uv run --frozen python scripts/bootstrap_test_db.py
+      - run: uv run --frozen pytest -m unit
+      - run: uv run --frozen pytest -m integration
+      - run: uv run --frozen alembic upgrade head
+      - run: uv run --frozen python scripts/backend_compat.py

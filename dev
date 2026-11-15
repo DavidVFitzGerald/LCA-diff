@@ -9,7 +9,7 @@ if [[ "${LCA_DEV_CONTAINER:-}" == 1 ]]; then
 fi
 compose=(docker compose --project-directory "$repo_dir" --file "$repo_dir/compose.yaml")
 case "${1:-help}" in
-    build|up|down|shell|check|logs)
+    build|up|down|shell|check|logs|backend-up|backend-down)
         bash "$repo_dir/.devcontainer/check-docker.sh" ;;
     config|help) ;;
     *) echo "Unknown command: $1" >&2; exit 2 ;;
@@ -17,12 +17,14 @@ esac
 case "${1:-help}" in
     build) "${compose[@]}" build workspace ;;
     up) "${compose[@]}" up --detach --build workspace ;;
+    backend-up) "${compose[@]}" --profile backend up --detach --wait postgres workspace ;;
+    backend-down) "${compose[@]}" stop postgres ;;
     down) "${compose[@]}" down ;;
     shell) "${compose[@]}" exec workspace bash ;;
     check) "${compose[@]}" exec -T workspace bash .devcontainer/check-env.sh ;;
     logs) "${compose[@]}" logs --tail=100 workspace ;;
     config) "${compose[@]}" config --quiet ;;
     help)
-        echo 'Usage: ./dev {build|up|shell|check|down|logs|config}'
+        echo 'Usage: ./dev {build|up|shell|check|down|logs|config|backend-up|backend-down}'
         echo 'Requires a rootless Docker daemon; run development tools inside its workspace.' ;;
 esac

@@ -39,29 +39,37 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 
 ## Current position
 
-**Pending sequencing revision:** proposed [ADR 0005](../adr/0005-parallel-backend-delivery.md)
+**Accepted sequencing revision:** [ADR 0005](../adr/0005-parallel-backend-delivery.md)
 ([#55](https://github.com/DavidVFitzGerald/LCA-diff/issues/55)) records the
 maintainer's request to overlap B1–B4 with F3–F5, using exactly one issue and one
-PR per backend milestone. After approved merge, this replaces the Phase 1 start
+PR per backend milestone. PR #56 merged at `125b090` with explicit maintainer
+authorization; this replaces the Phase 1 start
 gate and session-sized splitting policy for those four milestones only. Work may
 span sessions with incremental commits and criterion checklists. The existing
 frontend backlog is unchanged. Keep tests focused on meaningful MVP behavior
 under §9.2; no scientific, security, publication or release gate is waived.
 Use isolated worktrees and container projects/ports/volumes, preserve frontend
 files/contracts and coordinate shared root tooling/locks/CI/documentation.
-Backend implementation and creation of its four issues have not started.
+Backend issues are published: B1 [#57](https://github.com/DavidVFitzGerald/LCA-diff/issues/57),
+B2 [#58](https://github.com/DavidVFitzGerald/LCA-diff/issues/58),
+B3 [#59](https://github.com/DavidVFitzGerald/LCA-diff/issues/59),
+B4 [#60](https://github.com/DavidVFitzGerald/LCA-diff/issues/60).
+B1 foundation PR #61 passed independent QA at `d3a2389` and hosted CI; merge
+remains pending. B2 PR #70 passed independent QA at `44471c6` and all three hosted
+checks; B3 implementation is in progress. These are delivered branch results,
+not claims of merged milestones.
 
-| Milestone                                | Status                                                                                                                                                                                                      | Dependency                                                                         |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| M0 — workflow and roadmap                | Baseline merged in PR #35                                                                                                                                                                                   | None                                                                               |
-| M1 — container development environment   | QA passed; runtime/editor evidence merged in PR #35                                                                                                                                                         | M0 baseline merged                                                                 |
-| M2 — GitHub execution setup              | Forms/PR guidance and activation merged; #4 solo protection proposal in review                                                                                                                              | M0/M1 delivered; main protection waits for approved ADR 0004                       |
-| F1 — frontend foundation                 | Complete: #5–#10 merged; final PR #44 at `9612943`, independent QA and hosted CI passed                                                                                                                     | M2 activation delivered; protection tracked separately in #4                       |
-| F2 — shell and simulated authentication  | Complete: #11–#15 merged after independent QA and hosted CI (final PR #49 at `1f82774`)                                                                                                                     | F1 complete; each task's issue dependencies                                        |
-| F3–F5 — remaining mock frontend journeys | F3 complete: #16–#19 merged after independent QA and hosted CI (final PR #62 at `d3fddb1`). F4: #20 (flow windows and row summaries) in progress; later F4–F5 tasks not started; predecessor gates retained | F2 completion and each task's issue dependencies                                   |
-| B1–B4 — Phase 2, backend and ingestion   | Not started                                                                                                                                                                                                 | Until ADR 0005 acceptance: Phase 1 gate; afterward M1/M2 and milestone gates below |
-| I1 — real frontend integration           | Not started                                                                                                                                                                                                 | Phase 1 gate, B2 and validated synthetic publication from B4                       |
-| R1–R2 — production readiness and release | Not started                                                                                                                                                                                                 | Dependencies below                                                                 |
+| Milestone | Status | Dependency |
+| --- | --- | --- |
+| M0 — workflow and roadmap | Baseline merged in PR #35 | None |
+| M1 — container development environment | QA passed; runtime/editor evidence merged in PR #35 | M0 baseline merged |
+| M2 — GitHub execution setup | Forms/PR guidance and activation merged; #4 solo protection proposal in review | M0/M1 delivered; main protection waits for approved ADR 0004 |
+| F1 — frontend foundation | Complete: #5–#10 merged; final PR #44 at `9612943`, independent QA and hosted CI passed | M2 activation delivered; protection tracked separately in #4 |
+| F2 — shell and simulated authentication | Complete: #11–#15 merged after independent QA and hosted CI (final PR #49 at `1f82774`) | F1 complete; each task's issue dependencies |
+| F3–F5 — remaining mock frontend journeys | F3 complete: #16–#19 merged after independent QA and hosted CI (final PR #62 at `d3fddb1`). F4: #20 (flow windows and row summaries) in progress; later F4–F5 tasks not started; predecessor gates retained | F2 completion and each task's issue dependencies |
+| B1–B4 — Phase 2, backend and ingestion | B1 #57 / PR #61 and B2 #58 / PR #70 passed QA/CI, awaiting merge; B3 #59 implementing; B4 #60 awaits B3 delivery | M1/M2 and accepted ADR 0005, then milestone gates below |
+| I1 — real frontend integration | Not started | Phase 1 gate, B2 and validated synthetic publication from B4 |
+| R1–R2 — production readiness and release | Not started | Dependencies below |
 
 M0–M2 are the explicitly authorized documentation/environment bootstrap exception
 to issue-first execution. When M2 opens initial issues, record roadmap/environment
@@ -222,16 +230,15 @@ Phase 1 gate: every MVP UI journey works with deterministic synthetic mocks;
 Vitest, typecheck/build and Playwright pass in containers. Check Chromium and
 Firefox, Safari as practicable, large grids and account isolation. Record a
 UI/spec coverage checklist and remaining real-integration checks. A mock demo is
-not a published BAFU release or a completed MVP. Until ADR 0005 is accepted,
-backend implementation waits for this gate. After acceptance B1–B4 may overlap;
-I1 still waits for this gate. Performance and integration are rechecked later.
+not a published BAFU release or a completed MVP. Under accepted ADR 0005 B1–B4
+may overlap this work; I1 still waits for this gate. Performance and integration
+are rechecked later.
 
 ## Phase 2 — backend, ingestion and connection
 
 ### B1 — Python domain, schema and release contracts
 
-Depends on Phase 1 gate until ADR 0005 acceptance; afterward depends on verified
-M1/M2 and the accepted sequencing revision. One issue and one PR for all B1.
+Depends on verified M1/M2 and accepted ADR 0005. One issue and one PR for all B1.
 Implement the single uv workspace packages, shared
 Pydantic boundaries/config, SQLAlchemy schema and Alembic migrations under §4.
 Use exact decimals, deterministic versioned flow keys, immutable revisions,
@@ -243,6 +250,14 @@ Loguru context and local dotenv precedence checks.
 Gate: clean-DB migrations and targeted Postgres tests prove constraints,
 precision, revision isolation and provenance; frozen locks and applicable Python
 quality checks pass. Data model readiness does not assert actual import success.
+
+Implementation in [#57](https://github.com/DavidVFitzGerald/LCA-diff/issues/57) /
+[PR #61](https://github.com/DavidVFitzGerald/LCA-diff/pull/61) adds the shared
+member, single constrained uv lock, full schema and immutable publication guards,
+safe API views/roles, isolated Postgres and backend CI. Local container checks
+pass (9 unit cases, 5 database scenarios, Ruff/MyPy and compatible API/ETL
+resolver probes); independent QA and merge remain pending. See
+[B1 verification](b1-verification.md) for commands, scope and B2/B3/B4 handoff.
 
 ### B2 — read API and real authorization
 

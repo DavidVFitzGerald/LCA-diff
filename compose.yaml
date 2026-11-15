@@ -20,3 +20,26 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    environment:
+      LCA_DATABASE_URL: postgresql+psycopg://lca_migrator:local-migration-only@postgres/lca
+      LCA_TEST_DATABASE_URL: postgresql+psycopg://lca_migrator:local-migration-only@postgres/lca
+  postgres:
+    profiles: [backend]
+    image: postgres:17-bookworm@sha256:40865bc877a289da75963d97d72b59633f639fc5af7a4e856bfa3714cae5b536
+    user: "999:999"
+    environment:
+      POSTGRES_USER: lca_bootstrap
+      POSTGRES_PASSWORD: local-bootstrap-only
+      POSTGRES_DB: lca
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./db/bootstrap.sql:/docker-entrypoint-initdb.d/001-roles.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U lca_bootstrap -d lca"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+volumes:
+  postgres-data:
