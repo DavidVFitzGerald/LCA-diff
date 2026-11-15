@@ -5,9 +5,8 @@ from pathlib import Path
 from typing import Literal, Self
 from uuid import UUID
 
-from pydantic import Field, model_validator
-
 from lca_shared.contracts import Amount, Boundary
+from pydantic import Field, model_validator
 
 
 class Release(Boundary):

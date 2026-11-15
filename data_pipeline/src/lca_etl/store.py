@@ -6,12 +6,12 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid5
 
+from lca_shared.db import schema as db
 from sqlalchemy import Connection, Table, func, select
 from sqlalchemy.dialects.postgresql import insert
 
 from lca_etl.intake import canonical_json
 from lca_etl.models import Manifest, RuleSet
-from lca_shared.db import schema as db
 
 IMPORT_NAMESPACE = UUID("248e390c-31e5-5bba-8251-02880d3e3d15")
 

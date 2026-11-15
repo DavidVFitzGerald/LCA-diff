@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
+from lca_shared.db import schema as db
+from lca_shared.logging import event
 from sqlalchemy import Connection, create_engine, select
 from sqlalchemy.engine import Engine
 
@@ -14,8 +16,6 @@ from lca_etl.intake import load_rules, prepare, sha256, write_json, xml_files
 from lca_etl.models import Manifest
 from lca_etl.store import insert_rows, issue, register, stable
 from lca_etl.workbook import cells51, headers, rows
-from lca_shared.db import schema as db
-from lca_shared.logging import event
 
 
 def engine() -> Engine:

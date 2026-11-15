@@ -3,7 +3,6 @@
 import argparse
 import json
 from pathlib import Path
-from typing import Any
 
 from lca_etl.xml import parse_xml
 
