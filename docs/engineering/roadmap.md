@@ -60,7 +60,8 @@ branches; recovery [PR #82](https://github.com/DavidVFitzGerald/LCA-diff/pull/82
 delivered the unchanged reviewed B2/B3 code to `main` at `9b0ebba` after independent
 QA and hosted CI. The maintainer confirmed merge; #58, #59 and recovery #81 are
 closed. See [delivery recovery](backend-delivery-recovery.md).
-B4 #60 is in implementation on `feat/b4-publication`; its operator workflow is
+B4 #60 is in draft [PR #86](https://github.com/DavidVFitzGerald/LCA-diff/pull/86)
+on `feat/b4-publication`; its operator workflow is
 documented in [B4 publication](b4-publication.md). Independent QA, hosted checks
 and maintainer merge remain B4 completion gates.
 
@@ -323,7 +324,7 @@ prove full BAFU import completeness.
 
 ### B4 — promotion, atomic publication and rollback
 
-Implementation is in progress under #60 on `feat/b4-publication`, preserving one
+Implementation is in draft PR #86 under #60 on `feat/b4-publication`, preserving one
 issue and one PR. The CLI, immutable target archive transfer, transactional audit,
 publication/rollback and synthetic B2 visibility checks are implemented locally.
 See [operator commands](b4-publication.md) and [verification](b4-verification.md).

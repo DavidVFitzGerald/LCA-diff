@@ -1,7 +1,8 @@
 # B4 verification and handoff
 
 Issue [#60](https://github.com/DavidVFitzGerald/LCA-diff/issues/60), branch
-`feat/b4-publication`, based on main recovery merge `9b0ebba`.
+`feat/b4-publication`, [PR #86](https://github.com/DavidVFitzGerald/LCA-diff/pull/86),
+based on main recovery merge `9b0ebba`. Application delivery commit: `1b9ee46`.
 Implementation uses one issue and one PR. Independent final-SHA QA, hosted CI
 and maintainer merge remain pending. No frontend implementation changed and no
 production operation, infrastructure provisioning or proprietary import occurred.
@@ -50,8 +51,9 @@ Commands executed in the guarded ETL container:
 
 Observed: frozen lock check passes (174 packages); Ruff format/lint and MyPy
 pass (43 source files); 12 unit checks and 5 PostgreSQL integration scenarios
-pass. The initial focused B4 suite passes all 3 scenarios. Final snapshot-cell
-assertions and final-SHA results will be recorded before readiness.
+pass. The final focused B4 suite passes all 3 scenarios in 41.93 seconds,
+including exact old/new cell values across publication and replay release binding.
+Ruff format/lint and MyPy were rerun successfully with those final assertions.
 
 The publication suite migrates clean disposable source/target databases, creates
 three synthetic ready candidates (first through real Spark), and exercises real
@@ -64,9 +66,10 @@ fake; actual cloud transfer/permissions/retention verification belongs to R1.
 
 ## Remaining gates and next action
 
-Engineering must commit/push, open the sole B4 PR, inspect hosted checks and hand
-the delivered SHA to independent QA. Prior role attempts were blocked by agent
-usage limits; self-review does not replace independent QA. #60 stays open until
+Engineering committed and pushed `1b9ee46` and opened draft PR #86. Hosted checks
+and independent QA are in progress. Prior role attempts were blocked by agent
+usage limits; the independent QA role has now resumed. Self-review does not replace
+independent QA. #60 stays open until
 checks, QA and an approved merge. I1 owns frontend integration; R1 owns actual
 cloud deployment/restore/credential drills; R2 owns full-data validation,
 licensing/date/audit signoff and explicit production publication approval.
