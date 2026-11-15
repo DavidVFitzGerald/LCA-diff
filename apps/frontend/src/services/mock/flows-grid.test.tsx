@@ -5,212 +5,30 @@
  * browser journey is e2e/flows-grid.spec.ts.
  */
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
-import { createElement, Fragment, useEffect } from "react";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import {
-  selectionKey,
-  SelectionProvider,
-  useSelectionStore,
-} from "../../app/selection";
-import type { SelectedProcess, SelectionStore } from "../../app/selection";
-import { FlowsGrid } from "../../components/comparison/FlowsGrid";
+import { describe, expect, it } from "vitest";
+import { selectionKey } from "../../app/selection";
 import { STANDARD_ROW_HEIGHT } from "../../components/comparison/geometry";
-import type {
-  FlowCellsRequest,
-  FlowSummariesRequest,
-  ComparisonRowsRequest,
-  RequestOptions,
-} from "../contracts";
-import { createMockComparison } from "./comparison";
-import { createComparisonCatalog } from "./comparison-fixtures";
-import { createDiscoveryCatalog } from "./discovery";
-import { mount } from "./test-harness";
-
-const PROCESSES = 220;
-const GENERATED_ROWS = 2000;
-const discovery = createDiscoveryCatalog(PROCESSES);
-const comparisonCatalog = createComparisonCatalog(
-  PROCESSES,
+import {
   GENERATED_ROWS,
-  true,
-);
-const entries: SelectedProcess[] = discovery.revisions[0].headers.map(
-  (header) => ({
-    release_id: header.release_id,
-    revision_id: header.revision_id,
-    id: header.id,
-    name: header.name,
-    geography: header.geography,
-    path: header.category_path,
-  }),
-);
+  PROCESSES,
+  at,
+  entries,
+  grid,
+  layout,
+  render,
+  rowNamed,
+  rowOffset,
+  scrollTo,
+  scroller,
+  selectAll,
+  settled,
+  settledAt,
+  store,
+  stubGridLayout,
+  topRow,
+} from "./flows-grid-harness";
 
-/** Stubbed layout: a 1,400 × 600 grid; the header strip is what remains. */
-const layout = { width: 1400, height: 600 };
-const leading = 504; // leadingWidth(1400)
-beforeAll(() => {
-  Object.defineProperty(HTMLElement.prototype, "clientWidth", {
-    configurable: true,
-    get(this: HTMLElement) {
-      if (this.classList.contains("process-header-scroller"))
-        return layout.width - leading;
-      if (
-        this.classList.contains("comparison-frame") ||
-        this.classList.contains("comparison-grid-scroller")
-      )
-        return layout.width;
-      return 0;
-    },
-  });
-  Object.defineProperty(HTMLElement.prototype, "clientHeight", {
-    configurable: true,
-    get(this: HTMLElement) {
-      return this.classList.contains("comparison-grid-scroller")
-        ? layout.height
-        : 0;
-    },
-  });
-  // jsdom stores scroll offsets but has no scrollTo.
-  Object.defineProperty(HTMLElement.prototype, "scrollTo", {
-    configurable: true,
-    value(this: HTMLElement, options: ScrollToOptions) {
-      if (options.top !== undefined) this.scrollTop = options.top;
-      if (options.left !== undefined) this.scrollLeft = options.left;
-      // Browsers dispatch scroll asynchronously.
-      setTimeout(() => this.dispatchEvent(new Event("scroll")));
-    },
-  });
-});
-afterAll(() => {
-  for (const property of ["clientWidth", "clientHeight", "scrollTo"])
-    Reflect.deleteProperty(HTMLElement.prototype, property);
-});
-
-let store!: SelectionStore;
-function Probe() {
-  const value = useSelectionStore();
-  useEffect(() => {
-    store = value;
-  }, [value]);
-  return null;
-}
-
-function render(latency = 0) {
-  const comparison = createMockComparison({
-    catalog: comparisonCatalog,
-    scenario: { latency_ms: latency },
-  });
-  const signals: AbortSignal[] = [];
-  // Reads issued while the previous comparison is shown (must be none).
-  const busyReads: string[] = [];
-  const busy = (name: string) => {
-    if (document.querySelector('[role="grid"][aria-busy="true"]'))
-      busyReads.push(name);
-  };
-  const flowRows = vi.fn(
-    (input: ComparisonRowsRequest, options?: RequestOptions) =>
-      comparison.flowRows(input, options),
-  );
-  const flowSummaries = vi.fn(
-    (input: FlowSummariesRequest, options?: RequestOptions) => (
-      busy("flowSummaries"),
-      comparison.flowSummaries(input, options)
-    ),
-  );
-  const flowCells = vi.fn(
-    (input: FlowCellsRequest, options?: RequestOptions) => {
-      busy("flowCells");
-      if (options?.signal) signals.push(options.signal);
-      return comparison.flowCells(input, options);
-    },
-  );
-  const app = mount({
-    catalog: discovery,
-    wrap: () => ({ flowRows, flowSummaries, flowCells }),
-    ui: createElement(
-      SelectionProvider,
-      null,
-      createElement(
-        Fragment,
-        null,
-        createElement(Probe),
-        createElement(FlowsGrid),
-      ),
-    ),
-  });
-  return { ...app, flowRows, flowSummaries, flowCells, signals, busyReads };
-}
-
-const grid = () => screen.getByRole("grid", { name: "Flows comparison" });
-const scroller = () => grid();
-const valueCells = () =>
-  grid().querySelectorAll('[role="gridcell"][data-state]');
-const at = (row: number, column: number) =>
-  grid().querySelector<HTMLElement>(
-    `[data-row="${row}"][data-col="${column}"]`,
-  );
-async function selectAll() {
-  act(() => store.selectMany(entries));
-  await waitFor(() => expect(valueCells().length).toBeGreaterThan(0), {
-    timeout: 5000,
-  });
-}
-function scrollTo(top: number, left = scroller().scrollLeft) {
-  act(() => {
-    scroller().scrollTop = top;
-    scroller().scrollLeft = left;
-    fireEvent.scroll(scroller());
-  });
-}
-
-/** A mounted row's top relative to the viewport top, in px. */
-function rowOffset(row: HTMLElement) {
-  return (
-    Number(/translateY\((.+)px\)/.exec(row.style.transform)![1]) -
-    scroller().scrollTop
-  );
-}
-function rowNamed(name: string) {
-  return [...grid().querySelectorAll<HTMLElement>('[role="rowheader"]')]
-    .find((header) => header.getAttribute("aria-label") === name)
-    ?.closest<HTMLElement>('[role="row"]');
-}
-/** The loaded row containing the viewport top, with its offset. */
-function topRow() {
-  for (const row of grid().querySelectorAll<HTMLElement>('[role="row"]')) {
-    const offset = rowOffset(row);
-    if (offset > 0 || offset + parseFloat(row.style.height) <= 0) continue;
-    const name = row
-      .querySelector('[role="rowheader"]:not([aria-busy])')
-      ?.getAttribute("aria-label");
-    return name ? { name, offset } : null;
-  }
-  return null;
-}
-/** Idle, every mounted row summarized, and nothing moving any more. */
-async function settled() {
-  await waitFor(
-    () => {
-      expect(grid()).not.toHaveAttribute("aria-busy");
-      expect(grid().querySelector('[role="rowheader"][aria-busy]')).toBeNull();
-    },
-    { timeout: 15000 },
-  );
-  await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
-}
-async function settledAt(row: number) {
-  scrollTo(row * STANDARD_ROW_HEIGHT + 20);
-  await waitFor(
-    () =>
-      expect(
-        grid().querySelector(
-          `[role="rowheader"][data-row="${row + 5}"]:not([aria-busy])`,
-        ),
-      ).not.toBeNull(),
-    { timeout: 15000 },
-  );
-  await settled();
-}
+stubGridLayout();
 
 // Explicit budget: under a full parallel run the first mount of the large
 // workload can exceed the 5 s default (#24 observed 4.6–5.9 s; ~2.5 s alone).
@@ -541,10 +359,11 @@ describe("windowed Flows grid (#23)", { timeout: 20000 }, () => {
     await settled();
     // The view stays about five rows below the old anchor, not snapped back.
     expect(topRow()!.name).not.toBe(anchor.name);
+    // Five rows above the view is within the overscan, so it is mounted.
     const old = rowNamed(anchor.name);
-    if (old) expect(rowOffset(old)).toBeLessThan(-3 * STANDARD_ROW_HEIGHT);
+    expect(old).toBeDefined();
+    expect(rowOffset(old!)).toBeLessThan(-3 * STANDARD_ROW_HEIGHT);
   }, 40000);
-
   it("reorders columns without re-reading rows or losing focus (QA D1)", async () => {
     const app = render();
     await selectAll();
