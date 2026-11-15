@@ -5,8 +5,8 @@ import type { Page } from "@playwright/test";
  * Shared process headers and comparability warnings (#21) through the
  * composed default mock catalog. Windowing of hundreds of columns, minimum
  * widths and invalid responses are component-level evidence
- * (src/services/mock/comparison-headers.test.tsx): the composed app has no
- * large browser scenario yet (see #23).
+ * (src/services/mock/comparison-headers.test.tsx); the large browser
+ * scenario is exercised in e2e/flows-grid.spec.ts (#23).
  */
 const PASSWORD = "demo-password";
 

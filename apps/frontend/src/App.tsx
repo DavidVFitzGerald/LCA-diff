@@ -11,7 +11,7 @@ import { ProcessSearch } from "./components/process-search/ProcessSearch";
 import { ProcessTree } from "./components/process-tree/ProcessTree";
 import { SelectedProcesses } from "./components/selected-processes/SelectedProcesses";
 import { SelectionProvider, useSelection } from "./app/selection";
-import { ComparisonHeader } from "./components/comparison/ComparisonHeader";
+import { FlowsGrid } from "./components/comparison/FlowsGrid";
 import "./app/shell.css";
 
 const desktopQuery = "(min-width: 960px)";
@@ -33,14 +33,14 @@ function EmptyComparison({ title }: { title: string }) {
   );
 }
 
-/** Flows: shared process headers now (#21); the flow grid follows in #23/#24. */
+/** Flows: shared headers (#21) over the windowed flow grid (#23). */
 const FlowsPanel = memo(function FlowsPanel() {
   const { entries } = useSelection();
   if (!entries.length) return <EmptyComparison title="Compare process flows" />;
   return (
     <>
       <h2 className="visually-hidden">Compare process flows</h2>
-      <ComparisonHeader tab="flows" />
+      <FlowsGrid />
     </>
   );
 });
@@ -174,7 +174,7 @@ function Workspace({ email, signOut }: { email: string; signOut: () => void }) {
 }
 
 export function App() {
-  const { mode, services } = useServiceContext();
+  const { mode, services, demo } = useServiceContext();
   const auth = useAuthState();
   const desktop = useSyncExternalStore(
     subscribeViewport,
@@ -204,7 +204,11 @@ export function App() {
     <div className="app">
       <p role="status" className="demo-marker">
         {mode === "mock"
-          ? "Local demo mode — synthetic services"
+          ? `Local demo mode — synthetic services${
+              demo?.scenario === "large"
+                ? " (large synthetic scenario: 220 processes, 2,000+ flows)"
+                : ""
+            }`
           : "Injected test services"}
         . Auth: {auth.status}.
       </p>

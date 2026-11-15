@@ -1,0 +1,121 @@
+/* Windowed comparison grid (#23). Rows and cells are absolutely positioned;
+   the identifying block is sticky left inside each full-width row. */
+.comparison-frame {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.comparison-header-row {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid #c9d6ce;
+}
+.comparison-header-row > .process-header-anchor {
+  flex: 1;
+  min-width: 0;
+}
+/* In a grid the strip follows the cells' scroll position; it has no
+   scrollbar of its own but reserves the same vertical gutter as the body. */
+.comparison-header-row .process-header-scroller {
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
+.comparison-corner {
+  flex: 0 0 auto;
+  display: grid;
+  align-items: end;
+  padding-bottom: 0.4rem;
+  background: #f6f9f7;
+  border-inline-end: 1px solid #c9d6ce;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #33463c;
+}
+.comparison-grid-scroller {
+  position: relative;
+  flex: 1;
+  min-height: 12rem;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+.comparison-grid-canvas {
+  position: relative;
+}
+.comparison-grid-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+/* Very subtle index-based stripes instead of horizontal borders (§6.4). */
+.comparison-grid-row.even {
+  --row-background: #ffffff;
+}
+.comparison-grid-row.odd {
+  --row-background: #f4f7f5;
+}
+.comparison-grid-row {
+  background: var(--row-background);
+}
+.comparison-grid-row:hover,
+.comparison-grid-row:focus-within {
+  z-index: 2;
+}
+.comparison-grid-leading {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  height: 100%;
+  background: var(--row-background);
+  border-inline-end: 1px solid #c9d6ce;
+}
+.comparison-grid-cell {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-inline-end: 1px solid #edf1ee;
+}
+.comparison-grid-cell > [role="gridcell"]:focus-visible,
+.comparison-grid-leading > [role="rowheader"]:focus-visible {
+  outline: 2px solid #1f6f4a;
+  outline-offset: -2px;
+}
+/* Compact inner columns of the bounded identifying block. */
+.identity-fields {
+  display: grid;
+  height: 100%;
+  align-items: center;
+  column-gap: 0.4rem;
+  padding-inline: 0.5rem;
+  box-sizing: border-box;
+  font-size: 0.75rem;
+  color: #1d2e26;
+}
+.identity-fields > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.identity-fields > .identity-empty {
+  color: #8a9a91;
+}
+.comparison-grid-error {
+  margin: 0.5rem 1.5rem;
+  color: #8a1c1c;
+}
+.comparison-frame > .comparison-header {
+  padding-inline: 0;
+}
+.comparison-frame .comparability-status,
+.comparison-frame .comparison-header-error {
+  margin-inline: 1rem;
+}
+.comparison-grid-status {
+  margin: 0;
+  padding-inline: 1rem;
+  min-height: 0;
+  font-size: 0.75rem;
+  color: #52675b;
+}

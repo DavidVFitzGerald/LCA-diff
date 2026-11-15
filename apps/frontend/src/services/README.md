@@ -444,3 +444,91 @@ and in the accessible name ("…, negative").
 - `components/comparison/SignedValueCell.test.tsx`
 
 Browser assertions arrive when #23/#24 mount the cells in the grid.
+
+## Windowed comparison grid (#23)
+
+`components/comparison/ComparisonGrid.tsx` is the shared grid for Flows (now)
+and Scores (#28). One scroll container virtualizes both rows and process
+columns with TanStack Virtual:
+
+- **Window.** Only the viewport plus overscan (6 rows, 4 columns) is mounted.
+  The active cell stays mounted as the single roving tab stop.
+- **Row heights.** Heights come from whole-row summaries (`rowGeometry`,
+  rounded up to whole px). They are applied with `resizeItem`; view anchoring
+  (below) keeps content steady when rows above change height. Rows are keyed
+  by index, so a loading row or cell and its
+  loaded data share one DOM node and keep focus. Cached heights are
+  corrected, scroll-anchored, as summaries arrive; they are never reset.
+- **Selection changes.** Rows are read for the canonical sorted process set,
+  so reordering columns re-reads no rows or summaries. While a changed
+  selection loads, the previous comparison stays shown (`aria-busy`, with an
+  "Updating the comparison…" status). Nothing is read with the old token
+  (#23 QA D1).
+- **View anchoring.** The grid anchors the view on flows itself; the
+  virtualizer's own size adjustment is off. After every scroll it records up
+  to 12 loaded rows from the viewport top with their layout starts. After any
+  layout change (corrected heights, a new row set), it finds the first
+  recorded flow still present and scrolls by exactly how far that flow's
+  start moved. Rows added, removed or resized above therefore never shift
+  the flows being read, and the relative adjustment never undoes a scroll in
+  progress, including one made while the comparison updates. Rows load in
+  order, so finding a later recorded flow means earlier ones were removed.
+  When all recorded flows are gone, the grid re-anchors on what is in view.
+  The grid reports its anchor flows to `useFlowGrid` (`anchorKeys`). On a
+  selection change, the previous comparison stays shown (busy, reading
+  nothing) until an anchor flow is loaded in the new one, or no pages remain.
+  The new rows therefore never appear at a stale position. The active cell
+  follows its flow and process by key. While the grid owns keyboard focus,
+  focus moves back to the active cell whenever its node now shows another
+  flow or process (#23 QA D2–D4).
+- **Stripes.** Alternating backgrounds follow the row index.
+- **Identifying block.** A bounded sticky left block, 36% of the grid width
+  clamped to 300–560 px, holds compact inner columns. For Flows these are the
+  seven fields in order: Type, Flow Name, Location, Process Name, Category,
+  Subcategory, Unit. The row header's accessible name holds every field in
+  full.
+- **Headers.** The process header strip from #21 stays above the grid, so it
+  is vertically pinned. Its horizontal scroll is kept in sync with the cells
+  in both directions, and both scrollers reserve the same scrollbar gutter.
+- **Keyboard.** The grid exposes `role="grid"`, `aria-rowcount` and
+  `aria-colcount`. Rows carry `aria-rowindex`, the row header is a
+  `rowheader`, and value cells are `gridcell`s with `aria-colindex`; each
+  cell's accessible name starts with its process name. Keys:
+  - Arrows move one cell.
+  - Home/End go to the row's first or last cell.
+  - Ctrl+Home/End go to the first or last cell of the grid.
+  - PageUp/PageDown move by roughly one viewport.
+    Focus always moves to a mounted cell.
+
+**Data** (`useFlowGrid.ts`) is read for the window only:
+
+- Cursor row pages of 100 load only as far as the mounted rows need, plus 25
+  rows of lookahead.
+- One whole-selection summary request runs per loaded row page that
+  intersects the window.
+- Cells are read as fixed tiles of 50 rows × 20 processes (at most 1,000
+  cells each), so scrolling within a tile reuses it.
+- Tiles and summaries that leave the window lose their observers, and their
+  in-flight reads are aborted.
+
+**Large synthetic scenario.** `?mock-scenario=large` is read only at the
+composition root, and only in explicit `VITE_SERVICE_MODE=mock`. It serves
+220 processes and 2,000 generated rows with deterministic per-process
+mixed-sign, negative-only, positive-only, sparse, lopsided and all-zero
+families, plus scattered absences and present zeros. The values are
+invented, not inventory data.
+
+- Any other value, or any scenario outside mock mode, is a configuration
+  error. There is never a fallback.
+- The demo banner names the scenario.
+
+**Evidence:**
+
+- `components/comparison/grid-model.test.ts`
+- `services/mock/flows-grid.test.tsx`: request and DOM bounds, cancellation,
+  heights and stripes, keyboard, focus retention.
+- `app/composition.test.tsx`: scenario validation.
+- `e2e/flows-grid.spec.ts`: Chromium checks for the DOM bounds, sticky
+  alignment, sidebar collapse and resize, and keyboard. In Chromium at
+  1440 × 900, the 2,224 × 220 workload mounts at most about 25 rows and 440
+  cells.

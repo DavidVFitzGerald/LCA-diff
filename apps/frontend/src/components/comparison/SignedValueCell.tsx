@@ -1,4 +1,5 @@
 import { memo, useId } from "react";
+import type { HTMLAttributes } from "react";
 import type { DecimalString } from "../../services/contracts";
 import {
   decimalSign,
@@ -16,7 +17,12 @@ import "./signed-value.css";
 export type CellState =
   | { readonly kind: "present"; readonly amount: DecimalString }
   | { readonly kind: "absent" }
-  | { readonly kind: "unavailable"; readonly reason: string };
+  | { readonly kind: "unavailable"; readonly reason: string }
+  /** Not yet read (#23). Same root element, so a focused cell keeps focus. */
+  | { readonly kind: "pending" };
+
+export type CellAttributes = HTMLAttributes<HTMLDivElement> &
+  Partial<Record<`data-${string}`, string | number>>;
 
 /**
  * Signed bar plus value label (#22, spec §6.6). Geometry comes from the
@@ -28,23 +34,43 @@ export const SignedValueCell = memo(function SignedValueCell({
   value,
   row,
   focusable = true,
+  context,
+  cell,
 }: {
   value: CellState;
   row: RowGeometry;
   /** Grids with roving focus (#23) pass false for non-active cells. */
   focusable?: boolean;
+  /** Column identity prefixed to the accessible name, e.g. a process name. */
+  context?: string;
+  /** Grid role, position and key handling from the owning grid (#23). */
+  cell?: CellAttributes;
 }) {
+  const prefix = context ? `${context}: ` : "";
   const tipId = useId();
+  if (value.kind === "pending")
+    return (
+      <div
+        className="signed-cell"
+        data-pending=""
+        aria-busy="true"
+        style={{ height: row.rowHeight }}
+        {...cell}
+      >
+        <span className="signed-sr-only">{prefix}Loading</span>
+      </div>
+    );
   if (value.kind === "absent")
     return (
       <div
         className="signed-cell"
         data-state="absent"
         style={{ height: row.rowHeight }}
+        {...cell}
       >
         {/* Visually blank; announced as text, since a role-less div's
             aria-label may be ignored by assistive technology. */}
-        <span className="signed-sr-only">No flow</span>
+        <span className="signed-sr-only">{prefix}No flow</span>
       </div>
     );
   const present = value.kind === "present";
@@ -65,8 +91,9 @@ export const SignedValueCell = memo(function SignedValueCell({
       data-state={present ? meaning : "unavailable"}
       style={{ height: row.rowHeight }}
       tabIndex={focusable ? 0 : -1}
-      aria-label={`${present ? full : "N/A"}, ${meaning}`}
+      aria-label={`${prefix}${present ? full : "N/A"}, ${meaning}`}
       aria-describedby={present ? undefined : tipId}
+      {...cell}
     >
       <div
         className="signed-chart"
@@ -96,7 +123,14 @@ export const SignedValueCell = memo(function SignedValueCell({
           <span className="signed-label-text">{label}</span>
         </span>
       </div>
-      <span id={tipId} role="tooltip" className="signed-tooltip">
+      {/* Visual only for present values, whose accessible name already holds
+          the full lexeme; N/A cells are described by it. */}
+      <span
+        id={tipId}
+        role="tooltip"
+        className="signed-tooltip"
+        aria-hidden={present ? true : undefined}
+      >
         {full}
       </span>
     </div>

@@ -33,7 +33,7 @@ export interface RowGeometry {
   readonly axis: number;
   /** Labels sit above zero unless every populated value is non-positive. */
   readonly labels: "above" | "below";
-  /** chartHeight plus padding: the row height a virtualizer should use. */
+  /** chartHeight plus padding, rounded up to whole px, for the virtualizer. */
   readonly rowHeight: number;
 }
 
@@ -63,7 +63,8 @@ export function rowGeometry(
     chartHeight,
     axis,
     labels,
-    rowHeight: chartHeight + 2 * CHART_PADDING,
+    // Whole pixels, so virtualized row starts never accumulate drift (#23).
+    rowHeight: Math.ceil(chartHeight + 2 * CHART_PADDING),
   });
   if (!hasP && !hasN)
     return finish("empty", "0" as DecimalString, H, BASELINE_INSET);
@@ -123,3 +124,12 @@ export function labelTop(row: RowGeometry): number {
 
 /** Colour intensity rises monotonically with |value| / M. */
 export const barOpacity = (magnitude: number) => 0.35 + 0.65 * magnitude;
+
+/** Height of a standard (H-tall) row, used before its summary arrives. */
+export const STANDARD_ROW_HEIGHT = CHART_HEIGHT + 2 * CHART_PADDING;
+
+/** Standard geometry for a row whose summary has not arrived yet. */
+export const PENDING_ROW: RowGeometry = rowGeometry({
+  max_positive: "0" as DecimalString,
+  max_negative_magnitude: "0" as DecimalString,
+});
