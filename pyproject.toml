@@ -732,7 +732,7 @@ dev = ["alembic==1.20.1", "hatchling==1.33.0", "mypy==2.4.1", "pytest==9.2.0", "
 
 [tool.pytest.ini_options]
 testpaths = ["packages/python/lca_shared/tests", "apps/api/tests", "data_pipeline/tests"]
-markers = ["unit: domain/config checks", "integration: disposable PostgreSQL checks", "api: read API checks", "auth: Auth Emulator checks", "etl: miniature Spark/PostgreSQL import", "airflow: DAG and task integration"]
+markers = ["unit: domain/config checks", "integration: disposable PostgreSQL checks", "api: read API checks", "auth: Auth Emulator checks", "etl: miniature Spark/PostgreSQL import", "airflow: DAG and task integration", "publication: isolated publication lifecycle and fault checks"]
 
 [tool.ruff]
 line-length = 100
