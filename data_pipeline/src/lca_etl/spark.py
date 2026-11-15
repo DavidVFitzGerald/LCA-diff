@@ -18,6 +18,7 @@ def extract(
         .appName("lca-bafu-extract")
         .config("spark.ui.enabled", "false")
         .config("spark.driver.memory", "768m")
+        .config("spark.jars.ivy", "/tmp/lca-spark-ivy")
         .config("spark.sql.shuffle.partitions", "2")
         .getOrCreate()
     )

@@ -11,6 +11,10 @@ ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 \
     AIRFLOW_HOME=/workspaces/lca-diff/private/airflow \
     PYSPARK_PYTHON=/workspaces/lca-diff/.venv/bin/python
 RUN printf 'umask 022\n' > /etc/lca-etl-shell.sh && printf '\n. /etc/lca-etl-shell.sh\n' >> /root/.bashrc
+# GitHub's disposable runner account is UID 1001. Give that explicitly selected
+# CI identity a real passwd/home entry for Hadoop/Java; local rootless work keeps
+# namespace UID 0 mapped to the daemon owner.
+RUN groupadd --gid 1001 lca-etl && useradd --uid 1001 --gid 1001 --no-create-home --home-dir /tmp/lca-etl lca-etl
 ENV BASH_ENV=/etc/lca-etl-shell.sh
 WORKDIR /workspaces/lca-diff
 CMD ["sleep", "infinity"]
