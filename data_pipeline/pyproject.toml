@@ -1,0 +1,20 @@
+[project]
+name = "lca-etl"
+version = "0.1.0"
+requires-python = ">=3.14,<3.15"
+dependencies = [
+  "lca-shared",
+  "apache-airflow==3.4.0",
+  "pyspark==4.3.0",
+  "defusedxml==0.7.1",
+]
+
+[project.scripts]
+lca-import = "lca_etl.cli:main"
+
+[tool.uv.sources]
+lca-shared = { workspace = true }
+
+[build-system]
+requires = ["hatchling==1.33.0"]
+build-backend = "hatchling.build"

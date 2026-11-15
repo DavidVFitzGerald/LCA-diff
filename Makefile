@@ -1,16 +1,25 @@
 .PHONY: help dev-build dev-up dev-shell dev-check dev-down dev-logs
 .PHONY: format lint typecheck test test-unit test-e2e frontend-build
 .PHONY: backend-format backend-format-check backend-lint backend-typecheck backend-test-unit backend-test-integration backend-migrate backend-compat test-integration
+.PHONY: backend-test-etl backend-test-airflow import
+
+backend-test-etl backend-test-airflow import:
+	@test "$${LCA_DEV_CONTAINER:-}" = 1 || { echo 'Run this target inside ./dev etl-shell.' >&2; exit 1; }
+	@case "$@" in \
+	  backend-test-etl) uv run --frozen --package lca-etl pytest data_pipeline/tests -m etl ;; \
+	  backend-test-airflow) uv run --frozen --package lca-etl pytest data_pipeline/tests -m airflow ;; \
+	  import) test -n "$(MANIFEST)" && uv run --frozen --package lca-etl lca-import run --manifest "$(MANIFEST)" --wait ;; \
+	esac
 
 backend-format backend-format-check backend-lint backend-typecheck backend-test-unit backend-test-integration backend-migrate backend-compat:
 	@test "$${LCA_DEV_CONTAINER:-}" = 1 || { echo 'Run this target inside ./dev shell.' >&2; exit 1; }
 	@case "$@" in \
-  backend-format) uv run --frozen ruff format packages/python apps/api db/migrations scripts ;; \
-  backend-format-check) uv run --frozen ruff format --check packages/python apps/api db/migrations scripts ;; \
-  backend-lint) uv run --frozen ruff check packages/python apps/api db/migrations scripts ;; \
+  backend-format) uv run --frozen ruff format packages/python apps/api db/migrations scripts data_pipeline ;; \
+  backend-format-check) uv run --frozen ruff format --check packages/python apps/api db/migrations scripts data_pipeline ;; \
+  backend-lint) uv run --frozen ruff check packages/python apps/api db/migrations scripts data_pipeline ;; \
 	  backend-typecheck) uv run --frozen mypy ;; \
 	  backend-test-unit) uv run --frozen pytest -m unit ;; \
-  backend-test-integration) uv run --frozen pytest -m integration ;; \
+  backend-test-integration) uv run --frozen pytest -m 'integration and not etl and not airflow' ;; \
 	  backend-migrate) uv run --frozen alembic upgrade head ;; \
 	  backend-compat) uv run --frozen python scripts/backend_compat.py ;; \
 	esac
