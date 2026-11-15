@@ -481,6 +481,26 @@ columns with TanStack Virtual:
   follows its flow and process by key. While the grid owns keyboard focus,
   focus moves back to the active cell whenever its node now shows another
   flow or process (#23 QA D2–D4).
+- **Errors and the hold (#69).** A flow that may be on an unfetched page is
+  unknown to `locate`, never absent, even after a page has failed, so the
+  grid keeps its anchors through an error.
+  - _Row-page error during the hold_ (any page after the first): the hold
+    pauses. The previous comparison stays shown with the anchor in place, and
+    the partial new comparison is never shown. The alert "Flow values could
+    not be loaded." offers Retry. No summary or cell reads are issued, and the
+    status does not say "Updating the comparison…", because nothing is in
+    flight. The grid keeps `aria-busy`, because its rows are still the
+    previous selection's rather than the selected one's.
+  - _Retry_ resumes the hold: busy, "Updating the comparison…", row pages
+    only, until an anchor flow is loaded or no pages remain. The anchor is
+    then restored at its offset. A repeated failure pauses it again.
+  - _Selection change during the error:_ a new hold starts from the
+    still-shown previous comparison. The failed one is never shown.
+  - _First-page error:_ the grid shows the error with no rows, because the
+    new comparison has no rows yet. Retry restores the anchor once rows
+    load.
+  - _Error outside a hold_ (paging with an unchanged selection): the alert is
+    shown, the loaded rows stay, and Retry continues paging.
 - **Stripes.** Alternating backgrounds follow the row index.
 - **Identifying block.** A bounded sticky left block, 36% of the grid width
   clamped to 300–560 px, holds compact inner columns. For Flows these are the
@@ -526,7 +546,14 @@ invented, not inventory data.
 
 - `components/comparison/grid-model.test.ts`
 - `services/mock/flows-grid.test.tsx`: request and DOM bounds, cancellation,
-  heights and stripes, keyboard, focus retention.
+  heights and stripes, keyboard, focus retention, the D1–D4 anchoring cases.
+- `services/mock/flows-grid-anchoring.test.tsx`: the focused column removed
+  (O9), the first or every recorded flow removed (O8), and row-page errors
+  during and outside the hold (#69). Errors are injected per row page through
+  the test's `flowRows` spy (`flows-grid-harness.ts`). The mock scenario and
+  URL scenarios are unchanged. The suite is split into two files because each
+  large-workload test adds about 100 MB to the worker heap, and one file of 20
+  exceeds the worker's heap limit.
 - `app/composition.test.tsx`: scenario validation.
 - `e2e/flows-grid.spec.ts`: Chromium checks for the DOM bounds, sticky
   alignment, sidebar collapse and resize, and keyboard. In Chromium at
