@@ -80,10 +80,15 @@ Re-groom before starting; do not treat a later slice's drafted interfaces as fro
 
 ### [F5 — Scores, differences and workspace completion](https://github.com/DavidVFitzGerald/LCA-diff/milestone/6) — 8 tasks
 
+Maintainer-authorized scheduling adjustment (2026-11-15): selector #27 may run
+alongside F4 verification using its existing service/auth/selection prerequisites.
+Scores-grid integration #28 still requires both #26 and #27. This changes task
+scheduling only; product/scientific scope and F4/F5 acceptance gates are unchanged.
+
 | Key | Issue | Blocking predecessors |
 | --- | --- | --- |
-| F5-01 | [#27 — Add the indicator tree and source-ordered selection state](https://github.com/DavidVFitzGerald/LCA-diff/issues/27) | [#26](https://github.com/DavidVFitzGerald/LCA-diff/issues/26) |
-| F5-02 | [#28 — Assemble windowed Scores with valid and unavailable cell states](https://github.com/DavidVFitzGerald/LCA-diff/issues/28) | [#27](https://github.com/DavidVFitzGerald/LCA-diff/issues/27) |
+| F5-01 | [#27 — Add the indicator tree and source-ordered selection state](https://github.com/DavidVFitzGerald/LCA-diff/issues/27) | [#8](https://github.com/DavidVFitzGerald/LCA-diff/issues/8), [#9](https://github.com/DavidVFitzGerald/LCA-diff/issues/9), [#15](https://github.com/DavidVFitzGerald/LCA-diff/issues/15), [#19](https://github.com/DavidVFitzGerald/LCA-diff/issues/19) |
+| F5-02 | [#28 — Assemble windowed Scores with valid and unavailable cell states](https://github.com/DavidVFitzGerald/LCA-diff/issues/28) | [#26](https://github.com/DavidVFitzGerald/LCA-diff/issues/26), [#27](https://github.com/DavidVFitzGerald/LCA-diff/issues/27) |
 | F5-03 | [#29 — Implement exact on-demand difference queries in mock services](https://github.com/DavidVFitzGerald/LCA-diff/issues/29) | [#28](https://github.com/DavidVFitzGerald/LCA-diff/issues/28) |
 | F5-04 | [#30 — Wire independent difference toggles and canonical query caching](https://github.com/DavidVFitzGerald/LCA-diff/issues/30) | [#29](https://github.com/DavidVFitzGerald/LCA-diff/issues/29) |
 | F5-05 | [#31 — Persist the versioned account-scoped workspace](https://github.com/DavidVFitzGerald/LCA-diff/issues/31) | [#30](https://github.com/DavidVFitzGerald/LCA-diff/issues/30) |
