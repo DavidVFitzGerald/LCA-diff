@@ -60,10 +60,9 @@ branches; recovery [PR #82](https://github.com/DavidVFitzGerald/LCA-diff/pull/82
 delivered the unchanged reviewed B2/B3 code to `main` at `9b0ebba` after independent
 QA and hosted CI. The maintainer confirmed merge; #58, #59 and recovery #81 are
 closed. See [delivery recovery](backend-delivery-recovery.md).
-B4 #60 is in draft [PR #86](https://github.com/DavidVFitzGerald/LCA-diff/pull/86)
-on `feat/b4-publication`; its operator workflow is
-documented in [B4 publication](b4-publication.md). Independent QA, hosted checks
-and maintainer merge remain B4 completion gates.
+B4 #60 was delivered through [PR #86](https://github.com/DavidVFitzGerald/LCA-diff/pull/86),
+merged to `main` at `f0e2f9c` after independent QA and hosted checks; its operator
+workflow is documented in [B4 publication](b4-publication.md).
 
 | Milestone | Status | Dependency |
 | --- | --- | --- |
@@ -72,8 +71,8 @@ and maintainer merge remain B4 completion gates.
 | M2 — GitHub execution setup | Forms/PR guidance and activation merged; #4 solo protection proposal in review | M0/M1 delivered; main protection waits for approved ADR 0004 |
 | F1 — frontend foundation | Complete: #5–#10 merged; final PR #44 at `9612943`, independent QA and hosted CI passed | M2 activation delivered; protection tracked separately in #4 |
 | F2 — shell and simulated authentication | Complete: #11–#15 merged after independent QA and hosted CI (final PR #49 at `1f82774`) | F1 complete; each task's issue dependencies |
-| F3–F5 — remaining mock frontend journeys | F3 complete: #16–#19 merged after independent QA and hosted CI (final PR #62 at `d3fddb1`). F4: #20 (flow windows and row summaries) in progress; later F4–F5 tasks not started; predecessor gates retained | F2 completion and each task's issue dependencies |
-| B1–B4 — Phase 2, backend and ingestion | B1 #57 / PR #61 merged; B2 #58 and B3 #59 delivered to main through recovery PR #82 after QA/CI; B4 #60 in implementation | M1/M2 and accepted ADR 0005, then milestone gates below |
+| F3–F5 — remaining mock frontend journeys | F3 complete: #16–#19 merged after independent QA and hosted CI (final PR #62 at `d3fddb1`). F4 complete: #20–#25, #64 and #69 merged after independent QA and hosted CI; gate #26 (PR #78, `af5317d`) recorded in [F4 verification](f4-verification.md) after blockers #75, #77 and #79 merged. F5: #27 in progress (draft PR #88); later F5 tasks not started; predecessor gates retained | F2 completion and each task's issue dependencies |
+| B1–B4 — Phase 2, backend and ingestion | B1 #57 / PR #61 merged; B2 #58 and B3 #59 delivered to main through recovery PR #82 after QA/CI; B4 #60 / PR #86 merged at `f0e2f9c` after QA/CI | M1/M2 and accepted ADR 0005, then milestone gates below |
 | I1 — real frontend integration | Not started | Phase 1 gate, B2 and validated synthetic publication from B4 |
 | R1–R2 — production readiness and release | Not started | Dependencies below |
 
