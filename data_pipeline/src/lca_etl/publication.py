@@ -14,6 +14,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from lca_etl.intake import sha256
 from lca_etl.object_store import ObjectStore
 from lca_etl.publication_artifact import TABLES, Candidate
+from lca_etl.publication_fingerprint import fingerprint, verify_fingerprint
 from lca_etl.publication_models import OperationError, Target
 from lca_etl.publication_validation import validate_target
 
@@ -225,6 +226,12 @@ def promote(
                     validate_target(
                         connection, candidate.revision, previous["details"]["receipt"]["manifest"]
                     )
+                    verify_fingerprint(
+                        connection,
+                        candidate.revision,
+                        candidate.release,
+                        previous["details"]["receipt"],
+                    )
                     transaction.rollback()
                     return result(previous, reused=True, dry_run=dry_run)
                 require_approval(
@@ -262,6 +269,11 @@ def promote(
                 insert_candidate(connection, candidate, store)
                 before = active(connection, candidate.release)
                 validate_target(connection, candidate.revision, candidate.payload)
+                receipt = candidate.receipt() | {
+                    "target_fingerprint": fingerprint(
+                        connection, candidate.revision, candidate.release
+                    )
+                }
                 record = {
                     "id": operation_id,
                     "database_release_id": candidate.release,
@@ -275,7 +287,7 @@ def promote(
                     "database_role": "database-derived",
                     "details": {
                         "archive_uri": target.archive_uri,
-                        "receipt": candidate.receipt(),
+                        "receipt": receipt,
                         "files": files,
                     },
                 }
@@ -387,6 +399,7 @@ def activate(
                 )
                 verify_receipt(dict(promotion), store)
                 validate_target(connection, revision, payload)
+                verify_fingerprint(connection, revision, release, promotion["details"]["receipt"])
                 if action == "rollback" and record["published_at"] is None:
                     raise OperationError("ROLLBACK_REQUIRES_PUBLISHED_REVISION")
                 if (

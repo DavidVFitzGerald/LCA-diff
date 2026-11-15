@@ -78,6 +78,11 @@ All candidate data and its promotion receipt commit together. No publication
 pointer changes. Staging tables are not transferred: source objects, original
 exchange ordinals/amounts, workbook coordinates and rules remain self-contained.
 Local `artifact://` source/report references become durable target archive URIs.
+The receipt also binds exact target table contents with deterministic hashes,
+including provenance and metadata. Activation and retries reject coordinated
+target edits even if row counts and scientific sum checks still agree. Only
+revision status and its publication timestamp are excluded from that content
+binding because activation deliberately changes them.
 
 Publish verifies the promoted archive again and locks release dependencies and
 the revision before changing status/pointer and appending its audit receipt in

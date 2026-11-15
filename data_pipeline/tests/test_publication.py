@@ -330,6 +330,33 @@ def test_denials_interrupted_transfer_and_corrupt_artifact(
     promote(path, target, operation)
     with pytest.raises(OperationError, match="ROLLBACK_REQUIRES_PUBLISHED_REVISION"):
         activate(target, "rollback", revision, uuid4(), expected=None)
+    importer = create_engine(os.environ["LCA_TARGET_IMPORT_DATABASE_URL"])
+    with importer.begin() as connection:
+        # Coordinated changes keep the semantic sum/reference gates satisfied,
+        # but must still be rejected as drift from the promoted candidate.
+        changed = connection.scalar(
+            select(db.process_flows.c.id)
+            .where(
+                db.process_flows.c.revision_id == revision,
+                db.process_flows.c.flow_type == "Ecosphere Output",
+                db.process_flows.c.amount == -2,
+            )
+            .limit(1)
+        )
+        assert changed is not None
+        connection.execute(
+            db.process_flows.update().where(db.process_flows.c.id == changed).values(amount="-123")
+        )
+        connection.execute(
+            db.flow_provenance.update()
+            .where(db.flow_provenance.c.process_flow_id == changed)
+            .values(normalized_input_amount="-123")
+        )
+    with pytest.raises(OperationError, match="TARGET_CONTENT_CHANGED"):
+        activate(target, "publish", revision, uuid4(), expected=None)
+    with pytest.raises(OperationError, match="TARGET_CONTENT_CHANGED"):
+        promote(path, target, operation)
+    importer.dispose()
     tampered = tmp_path / "semantic"
     shutil.copytree(path.parent, tampered)
     table = tampered / "tables" / "process_flows.jsonl"
