@@ -87,17 +87,39 @@ p {
   flex: 1;
   min-height: 0;
 }
+/* Sidebars are flex columns (#77): the process tree takes the height left
+   after the other controls, down to its 12rem minimum, so content fits the
+   viewport-tall page instead of a fixed offset guessing the chrome above it.
+   Only content beyond that minimum makes the sidebar scroll internally. */
 .sidebar {
+  display: flex;
   flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-start;
   max-width: 240px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* Focus scrolling keeps a control clear of the padding edge; without it
+     Firefox leaves a partly visible focused control clipped (#77). */
+  scroll-padding-block: 1.25rem;
   /* Contains absolutely positioned (e.g. visually hidden) descendants, so
      they scroll with the sidebar instead of extending the page. */
   position: relative;
   padding: 1.25rem;
   background: #f0f4ef;
   border-inline: 1px solid #dde5df;
+}
+.sidebar > * {
+  flex: none;
+}
+.sidebar > #process-sidebar {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+}
+/* Zero specificity, so the tree's own flex rule (process-tree.css) wins. */
+:where(#process-sidebar) > * {
+  flex: none;
 }
 .sidebar section {
   width: 198px;
