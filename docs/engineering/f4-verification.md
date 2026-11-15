@@ -1,17 +1,24 @@
 # F4 verification: large Flows comparisons and the F4 gate (#26)
 
 Status: engineering evidence on branch `feat/f4-flows-gate`, based on `main`
-at `0a8bc4b` (#20–#25, #64 and #69 merged). Every check below ran at
-`4f8e8c8`, the commit that adds this issue's tests. The commit that adds this
-document is documentation-only. The #26 handoff records the delivered SHA,
-the hosted CI runs and the independent QA verdict.
+at `0a8bc4b` (#20–#25, #64 and #69 merged). Every local check below ran at
+`4f8e8c8`, the commit that adds this issue's tests. The later commits
+(`794e48f` and the one that records the hosted results) change
+documentation only. The hosted runs used `794e48f`, whose code is identical
+to `4f8e8c8`. The #26 handoff records the delivered SHA and the independent
+QA verdict.
 
-**Gate result: not passed.** The full browser suite fails in Firefox, with
-two deterministic failures that predate this branch. Both are filed as Bugs:
-#75 (content-process crash in the column-operations journey) and #77 (an
-extra sidebar tab stop breaks the F2 keyboard gate). F4 is complete only after
-those are resolved, the suite passes in both projects, QA passes, and the PR
-is merged by the coordinator.
+**Gate result: not passed.** The full browser suite fails. All the failures
+predate this branch, and each is filed as a Bug:
+
+- #75: a Firefox content-process crash in the column-operations journey.
+- #77: an extra Firefox sidebar tab stop breaks the F2 keyboard gate.
+- #79: in hosted CI, the identity block's "Location" label overflows with
+  the CI fonts, which fails four Flows layout cases in both browsers.
+
+F4 is complete only after these are resolved, the full suite passes in both
+projects locally and in hosted CI, QA passes, and the coordinator merges the
+PR.
 
 This is mock evidence only. It does not prove real authentication,
 authorization, API performance, adapter parity or data security. The
@@ -44,18 +51,19 @@ COMPOSE_PROJECT_NAME=lca-diff-f4-gate ./dev down
 
 ## Results (AC7)
 
-| Check                                                                     | Result                                                                                                                                                                                        |
-| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `./dev check`; frozen `npm ci` (236 packages, lockfile unchanged)         | PASS                                                                                                                                                                                          |
-| format:check, lint, typecheck, build                                      | PASS                                                                                                                                                                                          |
-| Unit tests: three consecutive full runs (`vitest run --reporter=verbose`) | PASS, 405 tests in 32 files each time (92.6 s, 102.2 s, 103.7 s). No 1 s `waitFor` timeout. No #51 flake                                                                                      |
-| test:e2e `@smoke`                                                         | PASS, 14 cases (7 each in Chromium and Firefox), including the new F4 gate                                                                                                                    |
-| test:e2e full, Chromium                                                   | PASS, 30 of 30                                                                                                                                                                                |
-| test:e2e full, Firefox                                                    | **FAIL**, 28 of 30. `column-operations.spec.ts:120` crashes the page (#75). `f2-gate.spec.ts:48` fails at `toBeFocused` on Sign out (#77). Both fail deterministically (3/3 and 5/5 repeats). |
-| Firefox, column operations and F4 gate run explicitly                     | **FAIL**, 3 of 4. The two large cases and `f4-gate` pass; `column-operations.spec.ts:120` crashes (#75)                                                                                       |
-| Hosted CI `quality` (PR smoke) and `workflow_dispatch` full suite         | Recorded in the #26 handoff and PR. The full-suite run is expected to show the same Firefox failures                                                                                          |
+| Check                                                                     | Result                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `./dev check`; frozen `npm ci` (236 packages, lockfile unchanged)         | PASS                                                                                                                                                                                                                                                                                          |
+| format:check, lint, typecheck, build                                      | PASS                                                                                                                                                                                                                                                                                          |
+| Unit tests: three consecutive full runs (`vitest run --reporter=verbose`) | PASS, 405 tests in 32 files each time (92.6 s, 102.2 s, 103.7 s). No 1 s `waitFor` timeout. No #51 flake                                                                                                                                                                                      |
+| test:e2e `@smoke`                                                         | PASS, 14 cases (7 each in Chromium and Firefox), including the new F4 gate                                                                                                                                                                                                                    |
+| test:e2e full, Chromium                                                   | PASS, 30 of 30                                                                                                                                                                                                                                                                                |
+| test:e2e full, Firefox                                                    | **FAIL**, 28 of 30. `column-operations.spec.ts:120` crashes the page (#75). `f2-gate.spec.ts:48` fails at `toBeFocused` on Sign out (#77). Both fail deterministically (3/3 and 5/5 repeats).                                                                                                 |
+| Firefox, column operations and F4 gate run explicitly                     | **FAIL**, 3 of 4. The two large cases and `f4-gate` pass; `column-operations.spec.ts:120` crashes (#75)                                                                                                                                                                                       |
+| Hosted CI `quality`, PR #78 (`pull_request`: unit, build, `@smoke`)       | PASS ([run 43734187625](https://github.com/DavidVFitzGerald/LCA-diff/actions/runs/43734187625), 3 min, at `794e48f`)                                                                                                                                                                          |
+| Hosted CI full suite (`workflow_dispatch`)                                | **FAIL**, 50 of 60 ([run 43734192952](https://github.com/DavidVFitzGerald/LCA-diff/actions/runs/43734192952), at `794e48f`). Firefox: #75 and #77 as above. Both projects: `flows-composition.spec.ts:332` and `:354` at both sizes (8 cases), "Location" label 58 px in a 50 px column (#79) |
 
-### Firefox failures
+### Browser failures
 
 - **#75, the column-operations default journey.** The Firefox content
   process exits on signal 11 (`DEBUG=pw:browser`), and Playwright reports
@@ -74,6 +82,15 @@ COMPOSE_PROJECT_NAME=lca-diff-f4-gate ./dev down
   - The F3 record shows this spec passing in Firefox, so the regression came
     in after F3.
   - Playwright has not changed since #10.
+- **#79, the Flows layout in hosted CI.** The `expectReadable` check fails on
+  "Location": `scrollWidth` 58 px against `clientWidth` 50 px, in both
+  browsers and at both sizes.
+  - These cases pass in the local workspace container. The font stack
+    (`Inter, ui-sans-serif, system-ui, sans-serif`) is not bundled, so the
+    two environments resolve different fallback fonts.
+  - The last hosted full-suite runs (#20's branch) predate the #24 identity
+    block, so this is the first hosted full run of these cases.
+  - `@smoke` does not include them.
 
 ## Acceptance criteria evidence (#26)
 
@@ -93,8 +110,10 @@ and 50-process scenarios, which use the same grid and services.
 | Header × removal                                  | `f4-gate.spec.ts`; `column-operations.spec.ts:120`                                                                                                      | PASS     | f4-gate PASS; `:120` **FAIL** (#75)            |
 | Selected-list removal                             | `flows-composition.spec.ts:119` (N → 0, then 0 → 1); `selection.spec.ts`                                                                                | PASS     | PASS                                           |
 
-Status: PASS in Chromium. FAIL in Firefox until #75 is fixed, because the
-only default-scenario pointer-drag case crashes there.
+Status: in the local container, PASS in Chromium and FAIL in Firefox until
+#75 is fixed, because the only default-scenario pointer-drag case crashes
+there. In hosted CI, `flows-composition.spec.ts:354` (the scrolling case)
+also fails in both projects (#79).
 
 ### AC2: the F4 `@smoke` gate
 
@@ -268,25 +287,25 @@ FAIL above and are not counted as passing.
 - Mock mode only: no proof of real authentication, authorization, API
   performance or data security.
 - Remaining gates: B2, I1, R2 and #34.
-- Open follow-ups: the O11 bounding decision, #75, #77 and #76.
+- Open follow-ups: the O11 bounding decision, #75, #77, #79 and #76.
 - F4 is marked complete only by the coordinator, after QA and approved
   merge.
 
 ## F4 roadmap gate coverage
 
-| Gate item                          | Evidence                                                                                                                                                                                                                                                                    |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Golden sorting                     | `comparison.test.ts` › represented identities sorted by identifying fields; case-insensitive sort (#24). `flows-composition.test.tsx` AC2 (service order, no re-sort). `flows-composition.spec.ts:119` (Upper after lower)                                                  |
-| Signs                              | `geometry.test.ts` (golden −80/+20 row; mixed, positive-only and negative-only rows); `SignedValueCell.test.tsx` (sign without colour). `f4-gate.spec.ts` (`-80…, negative`)                                                                                                |
-| Zero and absence                   | `SignedValueCell.test.tsx` (present zero and −0 as 0; absent blank); `flows-composition.test.tsx` AC4; `comparison.test.ts` (exact zero vs absence vs N/A); `f4-gate.spec.ts`                                                                                               |
-| Exact labels                       | `flows-composition.test.tsx` AC4 (full lexemes in the tooltip and name); `SignedValueCell.test.tsx` (adaptive labels, full tooltip); `flows-composition.spec.ts:119`; `f4-gate.spec.ts`                                                                                     |
-| Geometry                           | `geometry.test.ts` (H × (P + N) / M, sub-pixel bars, exact-magnitude M, labels); `flows-grid.test.tsx` (row heights from summaries, stripes); `flow-summaries.test.ts` (offscreen extrema); warning geometry identical (`flows-composition.spec.ts:119`)                    |
-| Warnings                           | `comparison-headers.test.tsx` (amount OR unit mismatch, values unchanged); `flows-composition.test.tsx` AC5 and AC6; `SignedValueCell.test.tsx` cell warnings; `process-headers.spec.ts`; `f4-gate.spec.ts`                                                                 |
-| Hundreds of columns, bounded cells | AC4 (220 columns × 2,225 rows: 17–22 rows, 187–418 cells and 11–16 headers mounted); `comparison-headers.test.tsx` (300 columns windowed)                                                                                                                                   |
-| Windowed reads                     | AC4 (100-row pages, one 100-row summary window, ≤ 1,000-cell tiles, aborted windows left behind); `comparison-queries.test.ts` (#64 cursors, tokens, batches)                                                                                                               |
-| Sticky alignment                   | AC4 (0.00 px measured in both browsers; ≤ 1 px committed tolerance)                                                                                                                                                                                                         |
-| Responsive controls                | `flows-grid.spec.ts:242` (sidebar collapse, the 1100 px viewport at the 120 px minimum, keyboard to far cells); `flows-composition.spec.ts:332/354` (1440 × 900 and 1280 × 800, page fixed); `foundation.spec.ts` (narrow viewport). Firefox keyboard order: **FAIL** (#77) |
-| Recorded environment and workload  | This document (environment, workload, observation method); no SLA                                                                                                                                                                                                           |
+| Gate item                          | Evidence                                                                                                                                                                                                                                                                                                         |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Golden sorting                     | `comparison.test.ts` › represented identities sorted by identifying fields; case-insensitive sort (#24). `flows-composition.test.tsx` AC2 (service order, no re-sort). `flows-composition.spec.ts:119` (Upper after lower)                                                                                       |
+| Signs                              | `geometry.test.ts` (golden −80/+20 row; mixed, positive-only and negative-only rows); `SignedValueCell.test.tsx` (sign without colour). `f4-gate.spec.ts` (`-80…, negative`)                                                                                                                                     |
+| Zero and absence                   | `SignedValueCell.test.tsx` (present zero and −0 as 0; absent blank); `flows-composition.test.tsx` AC4; `comparison.test.ts` (exact zero vs absence vs N/A); `f4-gate.spec.ts`                                                                                                                                    |
+| Exact labels                       | `flows-composition.test.tsx` AC4 (full lexemes in the tooltip and name); `SignedValueCell.test.tsx` (adaptive labels, full tooltip); `flows-composition.spec.ts:119`; `f4-gate.spec.ts`                                                                                                                          |
+| Geometry                           | `geometry.test.ts` (H × (P + N) / M, sub-pixel bars, exact-magnitude M, labels); `flows-grid.test.tsx` (row heights from summaries, stripes); `flow-summaries.test.ts` (offscreen extrema); warning geometry identical (`flows-composition.spec.ts:119`)                                                         |
+| Warnings                           | `comparison-headers.test.tsx` (amount OR unit mismatch, values unchanged); `flows-composition.test.tsx` AC5 and AC6; `SignedValueCell.test.tsx` cell warnings; `process-headers.spec.ts`; `f4-gate.spec.ts`                                                                                                      |
+| Hundreds of columns, bounded cells | AC4 (220 columns × 2,225 rows: 17–22 rows, 187–418 cells and 11–16 headers mounted); `comparison-headers.test.tsx` (300 columns windowed)                                                                                                                                                                        |
+| Windowed reads                     | AC4 (100-row pages, one 100-row summary window, ≤ 1,000-cell tiles, aborted windows left behind); `comparison-queries.test.ts` (#64 cursors, tokens, batches)                                                                                                                                                    |
+| Sticky alignment                   | AC4 (0.00 px measured in both browsers; ≤ 1 px committed tolerance)                                                                                                                                                                                                                                              |
+| Responsive controls                | `flows-grid.spec.ts:242` (sidebar collapse, the 1100 px viewport at the 120 px minimum, keyboard to far cells); `flows-composition.spec.ts:332/354` (1440 × 900 and 1280 × 800, page fixed); `foundation.spec.ts` (narrow viewport). Firefox keyboard order: **FAIL** (#77). Hosted CI label fit: **FAIL** (#79) |
+| Recorded environment and workload  | This document (environment, workload, observation method); no SLA                                                                                                                                                                                                                                                |
 
 ## Issue coverage (#20–#25, #64, #69)
 
@@ -307,6 +326,8 @@ FAIL above and are not counted as passing.
   gate.
 - #77: Firefox sidebar tab stop fails `f2-gate.spec.ts:48`. This blocks the
   gate.
+- #79: the identity label overflows with the hosted CI fonts and fails
+  `flows-composition.spec.ts:332/354` in both browsers. This blocks the gate.
 - #76: budget headroom for the 300-selection and deep-scroll tests.
 - O11: the maintainer decides whether to bound the hold. O13: no change.
 - #51 (AuthDialog flake; not seen in these runs) and #52 (tree ARIA
