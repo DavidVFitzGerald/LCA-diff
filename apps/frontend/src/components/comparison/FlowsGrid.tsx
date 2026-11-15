@@ -29,7 +29,9 @@ const TYPE_LABELS: Readonly<Record<FlowType, string>> = {
 /**
  * The seven Flows identifying fields, in specified order (spec §6.4). Each
  * inner column has a minimum (px) that keeps its header label (single words;
- * multi-word labels wrap to two lines) and compact values legible (#24, O2).
+ * multi-word labels wrap to two lines) and compact values legible (#24, O2),
+ * measured with the bundled Inter (#79). The minima plus gaps and padding
+ * (406.4 px) stay within the 410 px block minimum.
  */
 const FLOW_FIELDS: readonly {
   readonly label: string;
@@ -45,19 +47,19 @@ const FLOW_FIELDS: readonly {
     min: 46,
     share: 0.9,
   },
-  { label: "Flow Name", value: (row) => row.name, min: 56, share: 2 },
-  { label: "Location", value: (row) => row.location, min: 50, share: 0.8 },
+  { label: "Flow Name", value: (row) => row.name, min: 40, share: 2 },
+  { label: "Location", value: (row) => row.location, min: 52, share: 0.8 },
   {
     label: "Process Name",
     value: (row) => row.process_name,
-    min: 50,
+    min: 51,
     share: 1.6,
   },
-  { label: "Category", value: (row) => row.category, min: 52, share: 1.1 },
+  { label: "Category", value: (row) => row.category, min: 57, share: 1.1 },
   {
     label: "Subcategory",
     value: (row) => row.subcategory,
-    min: 70,
+    min: 78,
     share: 1.1,
   },
   { label: "Unit", value: (row) => row.unit, min: 28, share: 0.6 },

@@ -85,9 +85,13 @@ A process containing **more than one exchange with `outputGroup=0`** is classifi
 ### 2.1 Provided artifacts
 
 - `LCA-diff description for initial prompt.md` — original UX and ingestion requirements.
-- Five `process_*.xml` files — examples of BAFU process exports in an EcoSpold 01-like structure.
-- Three `EcoSpold01*Simple.html` files — schema documentation, useful guidance but **not** an unquestioned validator for these files.
-- `BAFU-2026 v1 LCIA Results_corrected.xlsx` — LCIA workbook.
+- The original five `process_*.xml` examples are now supplemented by the
+  maintainer's private full-input ZIP, in an EcoSpold 01-like structure. Actual
+  inventory counts and checksums remain in private verification records.
+- A private schema-description ZIP contains three `EcoSpold01*Simple.html` files;
+  these are guidance, **not** an unquestioned validator or workbook-basis proof.
+- A private scores ZIP contains the full
+  `BAFU-2026 v1 LCIA Results_corrected.xlsx` workbook.
 
 The supplied workbook has an `Info` sheet and a **`BAFU_2026 v1`** data sheet. The data sheet contains **11,947 data rows (Excel rows 3–11,949)**, and **47 indicator columns `E:AY`**, following four identity columns `A:D` (`Product`, `Category`, `Sub-category`, `Unit`). Row 1 identifies methods, with blank cells to be **forward-filled within each method span**; row 2 identifies indicators and their bracketed units. Method spans shown in the file are **IPCC 2021**, **Ecological Scarcity 2021**, and **EF 3.1**. Default indicator: **IPCC 2021 → GWP 100 [kg CO2-eq]**.
 
@@ -300,7 +304,12 @@ All public read paths must join through `release_publication.active_revision_id`
 
 ### 5.1 Inputs, manifest, and CLI
 
-Supply the **complete** BAFU XML release in addition to the five attached examples before attempting a full production import. The uploaded five XML files are **test fixtures**, not a substitute for the approximately 11,947 files required by the full MVP. The workbook is supplied in full.
+The maintainer has now supplied private archives for the XML release, workbook
+and schema descriptions. Retain their original
+bytes/checksums and validate the actual manifest; availability is not proof of
+full reconciliation or release readiness. B3 exercises a configured
+representative subset and the workbook; full-data validation remains R2.
+Public CI uses only small invented fixtures, never the private provider inputs.
 
 A maintainer-owned versioned manifest (YAML/JSON) must contain at least:
 
@@ -760,7 +769,7 @@ The brainstorming is finished; the following are **implementation-time verificat
 
 | Risk / unresolved fact | Required default and action |
 |---|---|
-| Only **five XML samples** were supplied, versus ~11,947 expected for full BAFU | Implement/test with samples; **do not claim the full BAFU database is imported** until complete XML release is obtained and reconciled |
+| Private XML/workbook/schema archives are now available | B3's representative import is not full-data validation; keep observed inventory and processing evidence private, and **do not claim the full BAFU database is imported** until the actual manifest and full reconciliation pass R2 |
 | Workbook has **no numeric process ID** column | Use strict composite matching plus version-controlled curated overrides; unresolved rows never auto-associate |
 | Workbook/XML unit mismatch (`m`/`km`, `t*km`/`tkm`) | Use **verified, approved ETL conversion to the XML reference quantity/unit**; capture full original Excel row in audit CSV; leave unverified values `N/A` |
 | Provider licensing for centralized storage/redistribution | Confirm legally before public deployment; product decision on all-registered access remains, subject to permission |
@@ -774,7 +783,7 @@ The workbook's `Info` sheet reports **BAFU:2026 v1** and a July 2026 correction 
 
 ## 12. Suggested implementation order / agent milestones
 
-**Revised delivery sequence (proposed ADR 0005, issue #55):** workflow/roadmap → verified container environment and issue setup → parallel mock frontend (F3–F5) and backend/ETL (B1–B4) → real frontend integration → production readiness. This revision takes effect after ADR 0005 is approved and merged, partially superseding ADR 0002; until then the accepted frontend-first gate remains authoritative. Use one issue and one PR per backend milestone, permitting multiple sessions and incremental commits. B1 precedes B2/B3; B3 precedes B4; B4's API visibility gate requires B2. I1 requires the Phase 1 gate, B2 and B4. Separate worktrees and container projects/ports/volumes; coordinate root tooling, locks, Compose, CI and shared documents. Backend changes must preserve the frontend agent's components, mock fixtures and provisional contracts. Phase 1 centralizes calls and authentication behind typed services and deterministic asynchronous mocks, independently of API/database/Firebase/cloud/private inputs. Provisional DTOs follow §7; reconcile differences and generate DTOs from FastAPI OpenAPI in I1, with drift/parity checks and one explicit real-adapter composition boundary. Never silently fall back to mocks in production. Use the smallest meaningful behavior suite satisfying §9.2's applicable tiered gates; avoid duplicate tests and arbitrary coverage targets. Scientific correctness, verified authorization, revision integrity, ingestion audits, atomic publication/rollback and full release validation remain required. Mock checks do not satisfy real integration gates. The [roadmap](roadmap.md) defines evidence. The list below is a scope inventory, not an execution order.
+**Revised delivery sequence (accepted ADR 0005, issue #55 / PR #56):** workflow/roadmap → verified container environment and issue setup → parallel mock frontend (F3–F5) and backend/ETL (B1–B4) → real frontend integration → production readiness. PR #56 was explicitly authorized and merged at `125b090` on 2026-11-14; ADR 0005 partially supersedes ADR 0002's scheduling gate while retaining its service boundary. Use one issue and one PR per backend milestone, permitting multiple sessions and incremental commits. B1 precedes B2/B3; B3 precedes B4; B4's API visibility gate requires B2. I1 requires the Phase 1 gate, B2 and B4. Separate worktrees and container projects/ports/volumes; coordinate root tooling, locks, Compose, CI and shared documents. Backend changes must preserve the frontend agent's components, mock fixtures and provisional contracts. Phase 1 centralizes calls and authentication behind typed services and deterministic asynchronous mocks, independently of API/database/Firebase/cloud/private inputs. Provisional DTOs follow §7; reconcile differences and generate DTOs from FastAPI OpenAPI in I1, with drift/parity checks and one explicit real-adapter composition boundary. Never silently fall back to mocks in production. Use the smallest meaningful behavior suite satisfying §9.2's applicable tiered gates; avoid duplicate tests and arbitrary coverage targets. Scientific correctness, verified authorization, revision integrity, ingestion audits, atomic publication/rollback and full release validation remain required. Mock checks do not satisfy real integration gates. The [roadmap](roadmap.md) defines evidence. The list below is a scope inventory, not an execution order.
 
 1. **Foundation:** Monorepo/uv workspace + lockfile, Dev Container, Compose, local Postgres, Ruff/MyPy/Pydantic/Loguru/python-dotenv, **tiered CI with pytest/Vitest/Playwright smoke**, Terraform scaffolding, Firebase auth, API health, and frontend shell + login modal. Add `AGENTS.md`, PRD/spec paths and ADR governance. **[MVP]**
 2. **Data contracts:** SQLAlchemy/Pydantic models, Alembic, BAFU-specific shared staging tables, `flow`/`process`/`process_flows`/`flow_provenance`/`lcia_score`, deterministic UUIDv5 keys, immutable release revisions/publications, exact-decimal serialization, Postgres integration tests. **[MVP]**

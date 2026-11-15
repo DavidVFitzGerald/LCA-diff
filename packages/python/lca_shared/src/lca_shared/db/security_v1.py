@@ -1,0 +1,220 @@
+"""Database-enforced publication immutability and read-only public projections."""
+
+from sqlalchemy import Connection
+
+from lca_shared.db.schema_v1 import metadata
+
+
+def install_security(connection: Connection) -> None:
+    connection.exec_driver_sql("""
+    CREATE FUNCTION lca_lock_publication_dependencies(owner_id uuid, release_id uuid) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
+    BEGIN
+      -- Lock-only helper: publisher need not receive UPDATE privileges on catalog
+      -- values merely to serialize their writers. No data or role state is changed.
+      PERFORM id FROM database_release WHERE id=release_id FOR UPDATE;
+      PERFORM id FROM resolution_rule WHERE database_release_id=release_id ORDER BY id FOR UPDATE;
+      PERFORM f.id FROM flow f JOIN process_flows pf ON pf.flow_id=f.id
+        WHERE pf.revision_id=owner_id ORDER BY f.id FOR UPDATE OF f;
+    END $$;
+    CREATE FUNCTION lca_assert_mutable(owner_id uuid) RETURNS void
+    LANGUAGE plpgsql SET search_path = pg_catalog, public, pg_temp AS $$
+    DECLARE frozen timestamptz;
+    BEGIN
+      SELECT published_at INTO frozen FROM release_revision WHERE id = owner_id FOR UPDATE;
+      IF frozen IS NOT NULL THEN
+        RAISE EXCEPTION 'published revision data is immutable' USING ERRCODE = '23514';
+      END IF;
+    END $$;
+    CREATE FUNCTION lca_revision_owned_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public, pg_temp AS $$
+    BEGIN
+      IF TG_OP <> 'INSERT' THEN PERFORM lca_assert_mutable(OLD.revision_id); END IF;
+      IF TG_OP <> 'DELETE' THEN PERFORM lca_assert_mutable(NEW.revision_id); END IF;
+      IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+      RETURN NEW;
+    END $$;
+    CREATE FUNCTION lca_revision_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public, pg_temp AS $$
+    BEGIN
+      IF TG_OP = 'INSERT' THEN
+        IF NEW.published_at IS NOT NULL OR NEW.status IN ('published','superseded') THEN
+          RAISE EXCEPTION 'revisions must be created unpublished' USING ERRCODE = '23514';
+        END IF;
+        RETURN NEW;
+      END IF;
+      IF TG_OP = 'DELETE' THEN
+        IF OLD.published_at IS NOT NULL THEN
+          RAISE EXCEPTION 'published revisions cannot be deleted' USING ERRCODE = '23514';
+        END IF;
+        RETURN OLD;
+      END IF;
+      IF NEW.status IN ('published','superseded') AND NEW.status IS DISTINCT FROM OLD.status
+         AND current_user NOT IN ('lca_publisher','lca_migrator') THEN
+        RAISE EXCEPTION 'only publisher may mark published revision states' USING ERRCODE = '42501';
+      END IF;
+      IF OLD.published_at IS NOT NULL AND
+        ((to_jsonb(NEW) - 'status') IS DISTINCT FROM (to_jsonb(OLD) - 'status')
+         OR NEW.status NOT IN ('published','superseded')) THEN
+        RAISE EXCEPTION 'published revision metadata is immutable' USING ERRCODE = '23514';
+      END IF;
+      IF OLD.published_at IS NULL AND NEW.published_at IS NOT NULL THEN
+        IF current_user NOT IN ('lca_publisher','lca_migrator') THEN
+          RAISE EXCEPTION 'only publisher may freeze revisions' USING ERRCODE = '42501';
+        END IF;
+        PERFORM lca_lock_publication_dependencies(NEW.id, NEW.database_release_id);
+      END IF;
+      RETURN NEW;
+    END $$;
+    CREATE TRIGGER immutable_revision BEFORE INSERT OR UPDATE OR DELETE ON release_revision
+      FOR EACH ROW EXECUTE FUNCTION lca_revision_guard();
+    CREATE FUNCTION lca_release_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public, pg_temp AS $$
+    BEGIN
+      IF EXISTS (SELECT 1 FROM release_revision WHERE database_release_id=OLD.id AND published_at IS NOT NULL) THEN
+        RAISE EXCEPTION 'published release metadata is immutable' USING ERRCODE = '23514';
+      END IF;
+      IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+      RETURN NEW;
+    END $$;
+    CREATE TRIGGER immutable_release BEFORE UPDATE OR DELETE ON database_release
+      FOR EACH ROW EXECUTE FUNCTION lca_release_guard();
+    CREATE FUNCTION lca_rule_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public, pg_temp AS $$
+    BEGIN
+      IF TG_OP = 'UPDATE' AND NEW.database_release_id IS DISTINCT FROM OLD.database_release_id THEN
+        RAISE EXCEPTION 'rule source release is immutable; create a new rule' USING ERRCODE = '23514';
+      END IF;
+      IF TG_OP = 'DELETE' AND EXISTS (SELECT 1 FROM flow_provenance WHERE applied_rule_ids ? OLD.id::text) THEN
+        RAISE EXCEPTION 'rule is referenced by provenance' USING ERRCODE = '23503';
+      END IF;
+      IF OLD.approved OR EXISTS (
+        SELECT 1 FROM (
+          SELECT revision_id FROM validation_issue WHERE resolution_rule_id=OLD.id
+          UNION ALL SELECT revision_id FROM lcia_score WHERE resolution_rule_id=OLD.id
+          UNION ALL SELECT revision_id FROM stg_bafu_reference_resolution WHERE resolution_rule_id=OLD.id
+          UNION ALL SELECT revision_id FROM flow_provenance WHERE applied_rule_ids ? OLD.id::text
+        ) references_to_rule JOIN release_revision r ON r.id=references_to_rule.revision_id
+        WHERE r.published_at IS NOT NULL
+      ) THEN
+        RAISE EXCEPTION 'approved or published referenced rules are immutable; create a new version' USING ERRCODE = '23514';
+      END IF;
+      IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+      RETURN NEW;
+    END $$;
+    CREATE TRIGGER immutable_rule BEFORE UPDATE OR DELETE ON resolution_rule
+      FOR EACH ROW EXECUTE FUNCTION lca_rule_guard();
+    CREATE FUNCTION lca_rule_scope_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public, pg_temp AS $$
+    BEGIN
+      IF NEW.resolution_rule_id IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM resolution_rule rule JOIN release_revision revision
+          ON revision.database_release_id=rule.database_release_id
+        WHERE revision.id=NEW.revision_id AND rule.id=NEW.resolution_rule_id
+      ) THEN
+        RAISE EXCEPTION 'resolution rule belongs to another source release' USING ERRCODE = '23503';
+      END IF;
+      RETURN NEW;
+    END $$;
+    CREATE FUNCTION lca_provenance_rule_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public, pg_temp AS $$
+    BEGIN
+      IF jsonb_typeof(NEW.applied_rule_ids) <> 'array' THEN
+        RAISE EXCEPTION 'applied rules must be an array of rule UUIDs' USING ERRCODE = '23514';
+      END IF;
+      PERFORM rule.id FROM resolution_rule rule WHERE NEW.applied_rule_ids ? rule.id::text
+        ORDER BY rule.id FOR KEY SHARE;
+      IF EXISTS (
+        SELECT 1 FROM jsonb_array_elements_text(NEW.applied_rule_ids) applied
+        WHERE NOT EXISTS (
+          SELECT 1 FROM resolution_rule rule JOIN release_revision revision
+            ON revision.database_release_id=rule.database_release_id
+          WHERE revision.id=NEW.revision_id AND rule.id::text=applied.value
+        )
+      ) THEN
+        RAISE EXCEPTION 'applied rule missing or belongs to another release' USING ERRCODE = '23503';
+      END IF;
+      RETURN NEW;
+    END $$;
+    CREATE TRIGGER scoped_provenance_rules BEFORE INSERT OR UPDATE ON flow_provenance
+      FOR EACH ROW EXECUTE FUNCTION lca_provenance_rule_guard();
+    CREATE FUNCTION lca_flow_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public, pg_temp AS $$
+    BEGIN
+      IF EXISTS (SELECT 1 FROM process_flows pf JOIN release_revision r ON r.id=pf.revision_id
+                 WHERE pf.flow_id=OLD.id AND r.published_at IS NOT NULL) THEN
+        RAISE EXCEPTION 'published flow identities and descriptions are immutable' USING ERRCODE = '23514';
+      END IF;
+      IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+      RETURN NEW;
+    END $$;
+    CREATE TRIGGER immutable_flow BEFORE UPDATE OR DELETE ON flow
+      FOR EACH ROW EXECUTE FUNCTION lca_flow_guard();
+    CREATE FUNCTION lca_publication_guard() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public, pg_temp AS $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM release_revision r WHERE r.id=NEW.active_revision_id
+        AND r.database_release_id=NEW.database_release_id AND r.published_at IS NOT NULL
+        AND r.status IN ('published','superseded')) THEN
+        RAISE EXCEPTION 'publication must select an immutable published revision' USING ERRCODE = '23514';
+      END IF;
+      RETURN NEW;
+    END $$;
+    CREATE TRIGGER valid_publication BEFORE INSERT OR UPDATE ON release_publication
+      FOR EACH ROW EXECUTE FUNCTION lca_publication_guard();
+    CREATE FUNCTION lca_no_truncate() RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog, public, pg_temp AS $$
+    BEGIN
+      RAISE EXCEPTION 'truncate is prohibited; use revision-scoped operations' USING ERRCODE = '23514';
+    END $$;
+    """)
+    for table in metadata.sorted_tables:
+        name = table.name
+        if "revision_id" in table.c:
+            connection.exec_driver_sql(
+                f'CREATE TRIGGER immutable_revision_data BEFORE INSERT OR UPDATE OR DELETE ON "{name}" '
+                "FOR EACH ROW EXECUTE FUNCTION lca_revision_owned_guard()"
+            )
+        if "resolution_rule_id" in table.c:
+            connection.exec_driver_sql(
+                f'CREATE TRIGGER scoped_resolution_rule BEFORE INSERT OR UPDATE ON "{name}" '
+                "FOR EACH ROW EXECUTE FUNCTION lca_rule_scope_guard()"
+            )
+        connection.exec_driver_sql(
+            f'CREATE TRIGGER no_truncate BEFORE TRUNCATE ON "{name}" '
+            "EXECUTE FUNCTION lca_no_truncate()"
+        )
+    connection.exec_driver_sql("""
+      CREATE SCHEMA api;
+      REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC;
+      REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;
+      GRANT USAGE ON SCHEMA public TO lca_import, lca_publisher;
+      GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO lca_import;
+      REVOKE ALL ON release_publication, alembic_version FROM lca_import;
+      GRANT SELECT ON ALL TABLES IN SCHEMA public TO lca_publisher;
+      GRANT UPDATE ON release_revision TO lca_publisher;
+      GRANT INSERT, UPDATE ON release_publication TO lca_publisher;
+      GRANT EXECUTE ON FUNCTION lca_assert_mutable(uuid) TO lca_import, lca_publisher;
+      GRANT EXECUTE ON FUNCTION lca_lock_publication_dependencies(uuid, uuid) TO lca_publisher;
+      GRANT USAGE ON SCHEMA api TO lca_api;
+    """)
+    views = {
+        "database_release": "SELECT d.* FROM database_release d WHERE EXISTS (SELECT 1 FROM release_revision r WHERE r.database_release_id=d.id AND r.published_at IS NOT NULL)",
+        "release_revision": "SELECT id,database_release_id,revision_no,status,published_at FROM release_revision WHERE published_at IS NOT NULL",
+        "release_publication": "SELECT p.* FROM release_publication p JOIN release_revision r ON r.id=p.active_revision_id WHERE r.published_at IS NOT NULL",
+        "flow": "SELECT f.* FROM flow f WHERE EXISTS (SELECT 1 FROM process_flows pf JOIN release_revision r ON r.id=pf.revision_id WHERE pf.flow_id=f.id AND r.published_at IS NOT NULL)",
+    }
+    for name in (
+        "process",
+        "process_flows",
+        "impact_method",
+        "impact_indicator",
+        "lcia_score",
+        "process_warning",
+    ):
+        views[name] = (
+            f'SELECT t.* FROM "{name}" t JOIN release_revision r ON r.id=t.revision_id WHERE r.published_at IS NOT NULL'
+        )
+    # Warning linkage IDs are not needed by clients; views omit private audit pointers.
+    views["process_warning"] = (
+        "SELECT t.id,t.revision_id,t.process_id,t.flow_id,t.flow_type,t.indicator_id,t.code,t.message FROM process_warning t JOIN release_revision r ON r.id=t.revision_id WHERE r.published_at IS NOT NULL"
+    )
+    views["lcia_score"] = (
+        "SELECT t.revision_id,t.process_id,t.indicator_id,t.amount,t.status FROM lcia_score t JOIN release_revision r ON r.id=t.revision_id WHERE r.published_at IS NOT NULL"
+    )
+    for name, query in views.items():
+        connection.exec_driver_sql(
+            f'CREATE VIEW api."{name}" WITH (security_barrier=true) AS {query}'
+        )
+    connection.exec_driver_sql("GRANT SELECT ON ALL TABLES IN SCHEMA api TO lca_api")

@@ -1,0 +1,22 @@
+{
+  "format_version": 1,
+  "release": {
+    "database_code": "BAFU",
+    "release_version": "2026 v1",
+    "display_name": "BAFU:2026 v1",
+    "published_date": null,
+    "license_policy": "all_verified_users"
+  },
+  "sources": {
+    "archives": {
+      "xml": "/inputs/xml/BAFU-2026 v1_ecoSpold v1.zip",
+      "scores": "/inputs/scores/BAFU-2026 v1_LCIA Results_corrected.zip",
+      "schema": "/inputs/schema/ecospold1_data_exchange_format.zip"
+    },
+    "lcia_sheet": "BAFU_2026 v1"
+  },
+  "work_directory": "/workspaces/lca-diff/private/imports",
+  "validation_rules": "../rules/bafu_2026_v1.json",
+  "score_basis_rules": "../rules/bafu_2026_score_basis.json",
+  "sample_process_limit": 5
+}
