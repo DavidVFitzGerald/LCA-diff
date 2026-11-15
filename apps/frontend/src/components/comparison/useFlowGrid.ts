@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   keepPreviousData,
   useInfiniteQuery,
@@ -7,6 +7,7 @@ import {
 import { SERVICE_WINDOW, useServiceQueries } from "../../app/queries";
 import type { SelectedProcess } from "../../app/selection";
 import type {
+  ComparisonPage,
   FlowCell,
   FlowRow,
   FlowRowSummary,
@@ -45,7 +46,7 @@ export interface FlowGridData {
   row(index: number): FlowRow | undefined;
   /**
    * Index of a flow in the shown comparison: undefined while it may still
-   * be in an unloaded page (pass it as `seekKey` to load on), null if absent.
+   * be in an unloaded page or a changed selection is loading, null if absent.
    */
   locate(key: string): number | null | undefined;
   /** Whole-selection geometry once the row's summary has arrived. */
@@ -70,8 +71,11 @@ export function useFlowGrid(
   entries: readonly SelectedProcess[],
   rows: IndexRange,
   columns: IndexRange,
-  /** A flow to keep loading row pages for until found (view anchoring). */
-  seekKey: string | null = null,
+  /**
+   * The flows the view is anchored on (read when a selection changes): the
+   * previous comparison stays shown until one is loaded in the new one.
+   */
+  anchorKeys: () => readonly string[] = () => [],
 ): FlowGridData {
   const queries = useServiceQueries();
   const snapshot = useMemo(() => selectionSnapshot(entries), [entries]);
@@ -93,41 +97,63 @@ export function useFlowGrid(
     // no empty grid, no scroll reset, no lost focus (#23 QA D1).
     placeholderData: keepPreviousData,
   });
-  // While the previous comparison is shown, read nothing with its token.
-  const updating = pages.isPlaceholderData;
-  const loadedPages = useMemo(() => pages.data?.pages ?? [], [pages.data]);
-  const token = loadedPages[0]?.comparison_token;
-  const rowCount = loadedPages[0]?.total_count ?? 0;
-  const loadedRows = useMemo(
-    () => loadedPages.flatMap((page) => page.items),
-    [loadedPages],
+  const placeholder = pages.isPlaceholderData;
+  const freshPages = useMemo(() => pages.data?.pages ?? [], [pages.data]);
+  const freshRows = useMemo(
+    () => freshPages.flatMap((page) => page.items),
+    [freshPages],
   );
-
-  const keyIndex = useMemo(
-    () =>
-      new Map<string, number>(
-        loadedRows.map((row, index) => [row.row_key, index]),
-      ),
-    [loadedRows],
-  );
-  const seeking = seekKey !== null && !keyIndex.has(seekKey);
-  const wantedEnd = rows ? rows[1] + ROW_LOOKAHEAD : 0;
+  const freshIndex = useMemo(() => indexRows(freshRows), [freshRows]);
   const { hasNextPage, isFetchingNextPage, fetchNextPage, isError } = pages;
+
+  // View anchoring (#23 QA D2): when the selection changes, the previous
+  // comparison stays shown (busy, reading nothing) until one of the anchor
+  // flows is loaded in the new one, or no pages remain. The grid then puts
+  // that flow back in place in the same layout pass, so the new rows never
+  // appear at a stale scroll position.
+  const [previous, setPrevious] = useState<Shown | null>(null);
+  const anchors = previous && !placeholder ? anchorKeys() : [];
+  const seeking =
+    !placeholder &&
+    previous !== null &&
+    freshPages[0]?.comparison_token !== previous.token &&
+    anchors.some((key) => previous.index.has(key)) &&
+    !anchors.some((key) => freshIndex.has(key)) &&
+    hasNextPage &&
+    !isError;
+  const updating = placeholder || seeking;
+  const fresh = useMemo<Shown>(
+    () => ({
+      token: freshPages[0]?.comparison_token,
+      rowCount: freshPages[0]?.total_count ?? 0,
+      pages: freshPages,
+      rows: freshRows,
+      index: freshIndex,
+    }),
+    [freshPages, freshRows, freshIndex],
+  );
+  // Remember the shown comparison (React's "previous render" pattern).
+  if (!updating && fresh.token !== undefined && previous !== fresh)
+    setPrevious(fresh);
+  const shown = updating && previous ? previous : fresh;
+  const { token, rowCount, rows: loadedRows, index: keyIndex } = shown;
+  const loadedPages = shown.pages;
+  const wantedEnd = rows ? rows[1] + ROW_LOOKAHEAD : 0;
   useEffect(() => {
     if (
       hasNextPage &&
       !isFetchingNextPage &&
       !isError &&
-      !updating &&
-      (loadedRows.length <= wantedEnd || seeking)
+      !placeholder &&
+      (seeking || freshRows.length <= wantedEnd)
     )
       void fetchNextPage();
   }, [
     hasNextPage,
     isFetchingNextPage,
     isError,
-    updating,
-    loadedRows.length,
+    placeholder,
+    freshRows.length,
     wantedEnd,
     seeking,
     fetchNextPage,
@@ -217,6 +243,19 @@ export function useFlowGrid(
       cellResults.retry();
     },
   };
+}
+
+interface Shown {
+  readonly token: string | undefined;
+  readonly rowCount: number;
+  readonly pages: readonly ComparisonPage<FlowRow>[];
+  readonly rows: readonly FlowRow[];
+  readonly index: ReadonlyMap<string, number>;
+}
+function indexRows(rows: readonly FlowRow[]): ReadonlyMap<string, number> {
+  return new Map<string, number>(
+    rows.map((row, index) => [row.row_key, index]),
+  );
 }
 
 interface Combined<T> {

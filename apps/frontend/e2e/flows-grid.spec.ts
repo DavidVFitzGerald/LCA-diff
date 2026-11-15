@@ -189,8 +189,39 @@ test("220 × 2,000+ flows mount only a window with sticky, aligned headers and i
         ?.querySelector('[role="rowheader"]')
         ?.getAttribute("aria-label");
     });
+  /** Idle, every row in view loaded, then a pause for late corrections. */
+  const settle = async () => {
+    await expect(grid).not.toHaveAttribute("aria-busy");
+    await expect
+      .poll(() =>
+        grid.evaluate((element) => {
+          const view = element.getBoundingClientRect();
+          return [
+            ...element.querySelectorAll('[role="rowheader"][aria-busy]'),
+          ].filter((header) => {
+            const rect = header.getBoundingClientRect();
+            return rect.bottom > view.top && rect.top < view.bottom;
+          }).length;
+        }),
+      )
+      .toBe(0);
+    await page.waitForTimeout(500);
+  };
+  // QA D3: a single removal above the view keeps the flow after heights
+  // settle.
+  await settle();
+  const single = await topFlow();
+  expect(single).toBeTruthy();
+  const selected = page.getByRole("button", { name: /^Selected processes/ });
+  if ((await selected.getAttribute("aria-expanded")) === "false")
+    await selected.click();
+  await page
+    .getByRole("button", { name: /^Remove .+ from selection$/ })
+    .nth(2)
+    .click();
+  await settle();
+  expect(await topFlow()).toBe(single);
   const flowBefore = await topFlow();
-  expect(flowBefore).toBeTruthy();
   await page
     .getByRole("textbox", { name: "Process Name" })
     .fill("generated 0001");

@@ -454,9 +454,9 @@ columns with TanStack Virtual:
 - **Window.** Only the viewport plus overscan (6 rows, 4 columns) is mounted.
   The active cell stays mounted as the single roving tab stop.
 - **Row heights.** Heights come from whole-row summaries (`rowGeometry`,
-  rounded up to whole px). They are applied with `resizeItem`, which keeps
-  content steady when rows above the viewport change height. Rows are keyed
-  by index within one comparison token, so a loading row or cell and its
+  rounded up to whole px). They are applied with `resizeItem`; view anchoring
+  (below) keeps content steady when rows above change height. Rows are keyed
+  by index, so a loading row or cell and its
   loaded data share one DOM node and keep focus. Cached heights are
   corrected, scroll-anchored, as summaries arrive; they are never reset.
 - **Selection changes.** Rows are read for the canonical sorted process set,
@@ -464,13 +464,23 @@ columns with TanStack Virtual:
   selection loads, the previous comparison stays shown (`aria-busy`, with an
   "Updating the comparison…" status). Nothing is read with the old token
   (#23 QA D1).
-- **View anchoring.** The view is anchored on flows, not pixels: the grid
-  records the flow at the viewport top and how far into it the view is
-  scrolled. When a new row set is shown, it loads row pages until that flow
-  is found (`seekKey`), then restores it at the same offset, so rows added or
-  removed above never shift what is read. The active cell follows its flow
-  and process by key, and keyboard focus returns to it if its node changed
-  (#23 QA D2).
+- **View anchoring.** The grid anchors the view on flows itself; the
+  virtualizer's own size adjustment is off. After every scroll it records up
+  to 12 loaded rows from the viewport top with their layout starts. After any
+  layout change (corrected heights, a new row set), it finds the first
+  recorded flow still present and scrolls by exactly how far that flow's
+  start moved. Rows added, removed or resized above therefore never shift
+  the flows being read, and the relative adjustment never undoes a scroll in
+  progress, including one made while the comparison updates. Rows load in
+  order, so finding a later recorded flow means earlier ones were removed.
+  When all recorded flows are gone, the grid re-anchors on what is in view.
+  The grid reports its anchor flows to `useFlowGrid` (`anchorKeys`). On a
+  selection change, the previous comparison stays shown (busy, reading
+  nothing) until an anchor flow is loaded in the new one, or no pages remain.
+  The new rows therefore never appear at a stale position. The active cell
+  follows its flow and process by key. While the grid owns keyboard focus,
+  focus moves back to the active cell whenever its node now shows another
+  flow or process (#23 QA D2–D4).
 - **Stripes.** Alternating backgrounds follow the row index.
 - **Identifying block.** A bounded sticky left block, 36% of the grid width
   clamped to 300–560 px, holds compact inner columns. For Flows these are the

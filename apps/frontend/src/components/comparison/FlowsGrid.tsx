@@ -104,8 +104,15 @@ function FlowsBody({
     (rows: IndexRange, columns: IndexRange) => setRange({ rows, columns }),
     [],
   );
-  const [seek, setSeek] = useState<string | null>(null);
-  const data = useFlowGrid(entries, range.rows, range.columns, seek);
+  // The grid reports its anchor flows here; the data hook reads them when
+  // the selection changes (no re-render per scroll).
+  const anchors = useRef<readonly string[]>([]);
+  const data = useFlowGrid(
+    entries,
+    range.rows,
+    range.columns,
+    () => anchors.current,
+  );
   const columns = useMemo(
     (): GridColumn[] =>
       entries.map((entry) => {
@@ -189,9 +196,10 @@ function FlowsBody({
         rowCount={data.rowCount}
         rowKey={rowKey}
         busy={data.updating}
-        version={data.token}
         locate={data.locate}
-        onSeek={setSeek}
+        onAnchor={(keys) => {
+          anchors.current = keys;
+        }}
         heights={data.heights}
         renderLeading={renderLeading}
         renderCell={renderCell}

@@ -189,7 +189,7 @@ describe("explicit service composition", () => {
     // The mock session is browser-persisted; never leak it into later tests.
     await Promise.all([standard, large].map((r) => r.services.auth.signOut()));
     window.sessionStorage.clear();
-  });
+  }, 20000); // builds the 220 × 2,000+ catalog; slow under parallel load
 
   it("runs explicit mock mode without dataset reads during resolving/unauthenticated auth", async () => {
     const runtime = createApplication("mock");

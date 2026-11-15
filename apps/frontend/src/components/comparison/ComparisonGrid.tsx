@@ -8,6 +8,8 @@ import type { CellAttributes } from "./SignedValueCell";
 import "./grid.css";
 
 const ROW_OVERSCAN = 6;
+/** Loaded rows from the viewport top recorded as view anchors. */
+const PIN_COUNT = 12;
 const COLUMN_OVERSCAN = 4;
 /** Reported ranges are rounded outward so scrolling rarely re-renders the owner. */
 const QUANTUM = { rows: 10, columns: 5 } as const;
@@ -64,9 +66,8 @@ export function ComparisonGrid({
   rowCount,
   rowKey,
   busy = false,
-  version,
   locate,
-  onSeek,
+  onAnchor,
   heights,
   renderLeading,
   renderCell,
@@ -82,15 +83,13 @@ export function ComparisonGrid({
   rowKey: (index: number) => string;
   /** A changed row set is loading; the previous rows stay shown. */
   busy?: boolean;
-  /** Identity of the shown row set (e.g. its comparison token). */
-  version?: string;
   /**
    * Index of a row key in the shown rows: undefined while unknown (still
    * loading), null when absent. Enables anchoring the view on flows.
    */
   locate?: (key: string) => number | null | undefined;
-  /** Asks the owner to load rows until `key` can be located (null: done). */
-  onSeek?: (key: string | null) => void;
+  /** Reports the flows the view is anchored on, top first (see `pin`). */
+  onAnchor?: (keys: readonly string[]) => void;
   heights: ReadonlyMap<number, number>;
   renderLeading: (index: number, cell: CellAttributes) => ReactNode;
   renderCell: (
@@ -161,6 +160,8 @@ export function ComparisonGrid({
     rangeExtractor: (range) =>
       withIndex(defaultRangeExtractor(range), activeRow),
   });
+  // The grid anchors the view on flows itself (see `pin`).
+  rowWindow.shouldAdjustScrollPositionOnItemSizeChange = () => false;
   const columnWindow = useVirtualizer({
     horizontal: true,
     count: columns.length,
@@ -189,6 +190,7 @@ export function ComparisonGrid({
       if (cancelled) return;
       for (const [index, height] of heights)
         if (index < rowCount) rowWindow.resizeItem(index, height);
+      pinView.current();
     });
     return () => {
       cancelled = true;
@@ -197,44 +199,77 @@ export function ComparisonGrid({
 
   const rowItems = rowWindow.getVirtualItems();
 
-  // View anchoring across row-set changes (#23 QA D2): remember the first
-  // visible flow and how far into it the view is scrolled; when a new row
-  // set is shown, load until that flow is located and put it back at the
-  // same offset, so rows added or removed above never shift what is read.
-  // Focus follows its flow by key.
-  const anchor = useRef<{ key: string; into: number } | null>(null);
-  const restoring = useRef<{ key: string; into: number } | null>(null);
-  const shownVersion = useRef(version);
+  // View anchoring (#23 QA D2–D4), in place of the virtualizer's own size
+  // adjustment: after every scroll, the loaded rows from the viewport top
+  // are recorded with their layout starts. Whenever the layout changes (a
+  // new row set, corrected heights), the first recorded flow still present
+  // is found and the view scrolls by exactly how far its start moved, so
+  // rows added, removed or resized above never shift what is read, and a
+  // scroll in progress is never undone. The owner is told the anchor flows
+  // (`onAnchor`), so on a selection change it can keep the previous rows
+  // shown until one of them is loaded in the new ones.
+  const pins = useRef<{ key: string; start: number }[]>([]);
+  const layout = () => {
+    rowWindow.getVirtualItems();
+    return rowWindow.measurementsCache;
+  };
+  const record = () => {
+    const element = scroller.current;
+    if (!element || !locate) return;
+    const items = layout();
+    const top = element.scrollTop;
+    let low = 0;
+    let high = items.length;
+    while (low < high) {
+      const middle = (low + high) >> 1;
+      if (items[middle].end <= top) low = middle + 1;
+      else high = middle;
+    }
+    const found: { key: string; start: number }[] = [];
+    for (
+      let index = low;
+      index < items.length &&
+      found.length < PIN_COUNT &&
+      items[index].start < top + element.clientHeight;
+      index += 1
+    ) {
+      const key = rowKey(index);
+      if (locate(key) === index) found.push({ key, start: items[index].start });
+    }
+    // No loaded row in view (rows still loading): keep the previous pins.
+    if (found.length > 0) {
+      pins.current = found;
+      onAnchor?.(found.map((pinned) => pinned.key));
+    }
+  };
+  const pin = () => {
+    const element = scroller.current;
+    if (!element || !locate) return;
+    if (pins.current.length === 0) return record();
+    const items = layout();
+    let pending = false;
+    for (const candidate of pins.current) {
+      const index = locate(candidate.key);
+      if (index === undefined) pending = true;
+      if (typeof index !== "number" || !items[index]) continue;
+      const delta = items[index].start - candidate.start;
+      if (Math.abs(delta) >= 0.5)
+        element.scrollTo({ top: element.scrollTop + delta });
+      pins.current = pins.current.map((pinned) => {
+        const at = locate(pinned.key);
+        return typeof at === "number" && items[at]
+          ? { ...pinned, start: items[at].start }
+          : pinned;
+      });
+      return record();
+    }
+    // Every anchor flow is gone: anchor on what is in view now.
+    if (!pending) record();
+  };
+  const pinView = useRef(pin);
   useLayoutEffect(() => {
-    if (version !== shownVersion.current) {
-      shownVersion.current = version;
-      if (anchor.current && version !== undefined && locate) {
-        restoring.current = anchor.current;
-        onSeek?.(anchor.current.key);
-      }
-    }
-    const target = restoring.current;
-    if (target && locate) {
-      const index = locate(target.key);
-      if (index === undefined) return;
-      restoring.current = null;
-      onSeek?.(null);
-      if (index !== null) {
-        const start = rowWindow.measurementsCache[index]?.start;
-        // Scroll the element itself (the virtualizer follows its scroll event).
-        if (start !== undefined)
-          scroller.current?.scrollTo({ top: start + target.into });
-      }
-      if (ownsFocus.current) pendingFocus.current = true;
-      return;
-    }
-    if (busy || !locate) return;
-    const first = rowWindow.range?.startIndex;
-    const item = rowItems.find((candidate) => candidate.index === first);
-    if (first === undefined || !item) return;
-    const key = rowKey(first);
-    if (locate(key) !== first) return;
-    anchor.current = { key, into: (rowWindow.scrollOffset ?? 0) - item.start };
+    pinView.current = pin;
+    pin();
   });
   const columnItems = columnWindow.getVirtualItems();
   // The viewport plus overscan, excluding the always-mounted active cell,
@@ -273,13 +308,21 @@ export function ComparisonGrid({
     const body = scroller.current;
     if (header && body && header.scrollLeft !== body.scrollLeft)
       header.scrollLeft = body.scrollLeft;
+    record();
   }
 
   useEffect(() => {
+    // While the grid owns focus, focus follows the active cell: when its
+    // node unmounts (focus falls to the body) or now shows another flow or
+    // process (a row set or column change), it moves back to the active cell.
+    const focused = document.activeElement as HTMLElement | null;
     const lost =
       ownsFocus.current &&
-      (document.activeElement === null ||
-        document.activeElement === document.body);
+      (focused === null ||
+        focused === document.body ||
+        (scroller.current?.contains(focused) === true &&
+          (Number(focused.dataset.row) !== activeRow ||
+            Number(focused.dataset.col) !== activeColumn)));
     if (!pendingFocus.current && !lost) return;
     const target = scroller.current?.querySelector<HTMLElement>(
       `[data-row="${activeRow}"][data-col="${activeColumn}"]`,

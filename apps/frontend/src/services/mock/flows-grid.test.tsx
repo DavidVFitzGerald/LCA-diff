@@ -163,6 +163,55 @@ function scrollTo(top: number, left = scroller().scrollLeft) {
   });
 }
 
+/** A mounted row's top relative to the viewport top, in px. */
+function rowOffset(row: HTMLElement) {
+  return (
+    Number(/translateY\((.+)px\)/.exec(row.style.transform)![1]) -
+    scroller().scrollTop
+  );
+}
+function rowNamed(name: string) {
+  return [...grid().querySelectorAll<HTMLElement>('[role="rowheader"]')]
+    .find((header) => header.getAttribute("aria-label") === name)
+    ?.closest<HTMLElement>('[role="row"]');
+}
+/** The loaded row containing the viewport top, with its offset. */
+function topRow() {
+  for (const row of grid().querySelectorAll<HTMLElement>('[role="row"]')) {
+    const offset = rowOffset(row);
+    if (offset > 0 || offset + parseFloat(row.style.height) <= 0) continue;
+    const name = row
+      .querySelector('[role="rowheader"]:not([aria-busy])')
+      ?.getAttribute("aria-label");
+    return name ? { name, offset } : null;
+  }
+  return null;
+}
+/** Idle, every mounted row summarized, and nothing moving any more. */
+async function settled() {
+  await waitFor(
+    () => {
+      expect(grid()).not.toHaveAttribute("aria-busy");
+      expect(grid().querySelector('[role="rowheader"][aria-busy]')).toBeNull();
+    },
+    { timeout: 15000 },
+  );
+  await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+}
+async function settledAt(row: number) {
+  scrollTo(row * STANDARD_ROW_HEIGHT + 20);
+  await waitFor(
+    () =>
+      expect(
+        grid().querySelector(
+          `[role="rowheader"][data-row="${row + 5}"]:not([aria-busy])`,
+        ),
+      ).not.toBeNull(),
+    { timeout: 15000 },
+  );
+  await settled();
+}
+
 describe("windowed Flows grid (#23)", () => {
   it("mounts only the viewport window of 220 × 2,000+ and reads bounded windows", async () => {
     const app = render();
@@ -436,6 +485,62 @@ describe("windowed Flows grid (#23)", () => {
     expect(app.flowRows).toHaveBeenCalled();
     // Nothing was read with the previous token for the new columns (O6).
     expect(app.busyReads).toEqual([]);
+  }, 40000);
+
+  it("adds processes above the view without ever showing other flows (QA D2, D3)", async () => {
+    render(30);
+    act(() => store.selectMany(entries.slice(0, 110)));
+    await settledAt(1150);
+    const anchor = topRow()!;
+    // Sample the row at the viewport top on every DOM change.
+    const seen = new Set<string>();
+    const observer = new MutationObserver(() => {
+      const row = topRow();
+      if (row) seen.add(row.name);
+    });
+    observer.observe(grid(), {
+      subtree: true,
+      childList: true,
+      attributes: true,
+    });
+    act(() => store.selectMany(entries.slice(110)));
+    await settled();
+    observer.disconnect();
+    const after = topRow()!;
+    expect(after.name).toBe(anchor.name);
+    expect(Math.abs(after.offset - anchor.offset)).toBeLessThanOrEqual(1);
+    expect([...seen]).toEqual([anchor.name]);
+  }, 40000);
+
+  it("keeps the flow in place after a single removal once heights settle (QA D3)", async () => {
+    render(30);
+    await selectAll();
+    await settledAt(1300);
+    const anchor = topRow()!;
+    act(() => store.deselectMany([selectionKey(entries[5])]));
+    await settled();
+    const after = topRow()!;
+    expect(after.name).toBe(anchor.name);
+    expect(Math.abs(after.offset - anchor.offset)).toBeLessThanOrEqual(1);
+  }, 40000);
+
+  it("does not undo a scroll made while the comparison updates (QA D4)", async () => {
+    render(300);
+    await selectAll();
+    await settledAt(1300);
+    const anchor = topRow()!;
+    act(() =>
+      store.deselectMany(
+        entries.slice(3, 113).map((entry) => selectionKey(entry)),
+      ),
+    );
+    expect(grid()).toHaveAttribute("aria-busy", "true");
+    scrollTo(scroller().scrollTop + 5 * STANDARD_ROW_HEIGHT);
+    await settled();
+    // The view stays about five rows below the old anchor, not snapped back.
+    expect(topRow()!.name).not.toBe(anchor.name);
+    const old = rowNamed(anchor.name);
+    if (old) expect(rowOffset(old)).toBeLessThan(-3 * STANDARD_ROW_HEIGHT);
   }, 40000);
 
   it("reorders columns without re-reading rows or losing focus (QA D1)", async () => {
