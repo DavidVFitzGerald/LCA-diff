@@ -54,10 +54,12 @@ Backend issues are published: B1 [#57](https://github.com/DavidVFitzGerald/LCA-d
 B2 [#58](https://github.com/DavidVFitzGerald/LCA-diff/issues/58),
 B3 [#59](https://github.com/DavidVFitzGerald/LCA-diff/issues/59),
 B4 [#60](https://github.com/DavidVFitzGerald/LCA-diff/issues/60).
-B1 foundation PR #61 passed independent QA at `d3a2389` and hosted CI; merge
-remains pending. B2 PR #70 passed independent QA at `44471c6` and all three hosted
-checks; B3 implementation is in progress. These are delivered branch results,
-not claims of merged milestones.
+B1 PR #61 is merged into `main` at `f790803`. B2 PR #70 and B3 PR #72 passed
+independent QA and hosted CI, but their merges targeted predecessor feature
+branches and did not deliver those milestones to `main`. Recovery issue
+[#81](https://github.com/DavidVFitzGerald/LCA-diff/issues/81) brings the unchanged
+reviewed B2/B3 code to `main` through one recovery PR. See
+[delivery recovery](backend-delivery-recovery.md). B4 remains unimplemented.
 
 | Milestone | Status | Dependency |
 | --- | --- | --- |
@@ -67,7 +69,7 @@ not claims of merged milestones.
 | F1 — frontend foundation | Complete: #5–#10 merged; final PR #44 at `9612943`, independent QA and hosted CI passed | M2 activation delivered; protection tracked separately in #4 |
 | F2 — shell and simulated authentication | Complete: #11–#15 merged after independent QA and hosted CI (final PR #49 at `1f82774`) | F1 complete; each task's issue dependencies |
 | F3–F5 — remaining mock frontend journeys | F3 complete: #16–#19 merged after independent QA and hosted CI (final PR #62 at `d3fddb1`). F4: #20 (flow windows and row summaries) in progress; later F4–F5 tasks not started; predecessor gates retained | F2 completion and each task's issue dependencies |
-| B1–B4 — Phase 2, backend and ingestion | B1 #57 / PR #61 and B2 #58 / PR #70 passed QA/CI, awaiting merge; B3 #59 implementing; B4 #60 awaits B3 delivery | M1/M2 and accepted ADR 0005, then milestone gates below |
+| B1–B4 — Phase 2, backend and ingestion | B1 #57 / PR #61 merged; B2 #58 / PR #70 and B3 #59 / PR #72 passed QA/CI but await delivery to main through recovery #81; B4 #60 not started | M1/M2 and accepted ADR 0005, then milestone gates below |
 | I1 — real frontend integration | Not started | Phase 1 gate, B2 and validated synthetic publication from B4 |
 | R1–R2 — production readiness and release | Not started | Dependencies below |
 
