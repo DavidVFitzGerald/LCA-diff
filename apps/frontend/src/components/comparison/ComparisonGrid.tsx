@@ -92,10 +92,16 @@ export function ComparisonGrid({
   onAnchor?: (keys: readonly string[]) => void;
   heights: ReadonlyMap<number, number>;
   renderLeading: (index: number, cell: CellAttributes) => ReactNode;
+  /**
+   * `rowHeight` is the height the row has in this commit. A height from
+   * `heights` reaches the row one commit later (see the resize effect), so
+   * a cell must size itself from this value, not from its summary (#87).
+   */
   renderCell: (
     index: number,
     column: number,
     cell: CellAttributes,
+    rowHeight: number,
   ) => ReactNode;
   onRange: (rows: IndexRange, columns: IndexRange) => void;
   headerScroller?: RefObject<HTMLDivElement | null>;
@@ -431,6 +437,7 @@ export function ComparisonGrid({
                   row.index,
                   column.index,
                   attributes(row.index, column.index),
+                  row.size,
                 )}
               </div>
             ))}
