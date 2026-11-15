@@ -3,6 +3,7 @@
 import argparse
 import json
 from pathlib import Path
+from typing import Any
 
 from lca_etl.xml import parse_xml
 
@@ -38,7 +39,7 @@ def extract(
                     size += len(chunk)
                     if size <= max_bytes:
                         content.extend(chunk)
-            result = (
+            result: dict[str, Any] = (
                 parse_xml(bytes(content), max_bytes=max_bytes)
                 if size <= max_bytes
                 else {"processes": [], "error": "XML_SIZE_BUDGET"}

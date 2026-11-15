@@ -6,7 +6,7 @@ from typing import Literal, Self
 from uuid import UUID
 
 from lca_shared.contracts import Amount, Boundary
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 
 class Release(Boundary):
@@ -18,9 +18,10 @@ class Release(Boundary):
 
 
 class Archives(Boundary):
+    model_config = ConfigDict(populate_by_name=True, extra="forbid", frozen=True)
     xml: Path
     scores: Path
-    schema: Path
+    schema_archive: Path = Field(alias="schema")
 
 
 class Sources(Boundary):
@@ -92,6 +93,11 @@ class Rule(Boundary):
             raise ValueError(
                 "Basis rules require complete source/target quantities, units and factor"
             )
+        if self.rule_type in ("score_basis", "unit_alias") and any(
+            value is not None and value <= 0
+            for value in (self.source_quantity, self.target_quantity, self.factor)
+        ):
+            raise ValueError("Reference quantities and conversion factors must be positive")
         return self
 
 

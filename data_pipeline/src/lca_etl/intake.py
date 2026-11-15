@@ -165,7 +165,7 @@ def prepare(manifest: Manifest) -> dict[str, Any]:
     inputs: list[dict[str, Any]] = []
     archives = manifest.sources.archives
     if archives is not None:
-        for kind, path in archives.model_dump().items():
+        for kind, path in archives.model_dump(by_alias=True).items():
             inputs.append(
                 {
                     "kind": kind,
@@ -189,6 +189,10 @@ def prepare(manifest: Manifest) -> dict[str, Any]:
                     "byte_size": path.stat().st_size,
                 }
             )
+    implementation = hashlib.sha256()
+    for module in sorted(Path(__file__).parent.glob("*.py")):
+        implementation.update(module.name.encode())
+        implementation.update(module.read_bytes())
     frozen = {
         "format_version": 1,
         "manifest": manifest.model_dump(mode="json"),
@@ -200,19 +204,26 @@ def prepare(manifest: Manifest) -> dict[str, Any]:
                 manifest.score_basis_rules,
             )
         ],
+        "pipeline": {"version": "0.1.0", "implementation_sha256": implementation.hexdigest()},
     }
     digest = hashlib.sha256(canonical_json(frozen)).hexdigest()
     directory = manifest.work_directory / digest
-    directory.mkdir(parents=True, exist_ok=True)
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if directory.is_symlink():
+        raise ValueError("Generated run directory cannot be a symlink")
+    directory.chmod(0o700)
     existing = directory / "frozen_manifest.json"
     if existing.exists() and json.loads(existing.read_bytes()) != frozen:
         raise ValueError("Frozen manifest has been changed")
     write_json(existing, frozen)
     archive_entries = []
     if archives is not None:
-        for kind, path in archives.model_dump().items():
+        for kind, path in archives.model_dump(by_alias=True).items():
             copied = directory / "archives" / kind / path.name
             entry = immutable_copy(path, copied)
+            expected = next(item for item in inputs if item["kind"] == kind)
+            if entry["sha256"] != expected["sha256"] or entry["byte_size"] != expected["byte_size"]:
+                raise ValueError("Source changed after its manifest fingerprint was frozen")
             entry["kind"] = kind
             entry["members"] = safe_extract(copied, directory / "sources" / kind, manifest)
             archive_entries.append(entry)
@@ -226,11 +237,19 @@ def prepare(manifest: Manifest) -> dict[str, Any]:
         assert manifest.sources.lcia_workbook is not None
         xml_directory = directory / "sources" / "xml"
         for path in xml_files(manifest.sources.process_xml_directory):
-            immutable_copy(
+            copied = immutable_copy(
                 path, xml_directory / path.relative_to(manifest.sources.process_xml_directory)
             )
+            expected = next(item for item in inputs if item["path"] == str(path))
+            if copied["sha256"] != expected["sha256"]:
+                raise ValueError("Expanded source changed after the manifest was frozen")
         workbook = directory / "sources" / "scores" / manifest.sources.lcia_workbook.name
-        immutable_copy(manifest.sources.lcia_workbook, workbook)
+        copied = immutable_copy(manifest.sources.lcia_workbook, workbook)
+        expected = next(
+            item for item in inputs if item["path"] == str(manifest.sources.lcia_workbook)
+        )
+        if copied["sha256"] != expected["sha256"]:
+            raise ValueError("Workbook changed after its manifest fingerprint was frozen")
     for name, path in (
         ("validation", manifest.validation_rules),
         ("score_basis", manifest.score_basis_rules),

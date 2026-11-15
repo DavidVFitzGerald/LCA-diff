@@ -174,6 +174,7 @@ def reconcile(
     matched: dict[UUID, dict[str, Any]] = {}
     used_processes: set[UUID] = set()
     row_candidates: dict[int, list[str]] = {}
+    row: dict[str, Any] | None
     for row in staged_rows:
         row_key = key(row["product"], row["category"], row["subcategory"])
         possible = candidates.get(row_key, [])
@@ -305,10 +306,13 @@ def reconcile(
             )
             source_cells: dict[str, Any] = {}
         else:
-            source_cells = connection.scalar(
-                select(db.stg_bafu_lcia_row.c.original_cells).where(
-                    db.stg_bafu_lcia_row.c.id == row["id"]
+            source_cells = (
+                connection.scalar(
+                    select(db.stg_bafu_lcia_row.c.original_cells).where(
+                        db.stg_bafu_lcia_row.c.id == row["id"]
+                    )
                 )
+                or {}
             )
         conversion = (
             basis_rule(
@@ -400,6 +404,7 @@ def reconcile(
                 }
             )
             if status == "unresolved_basis":
+                assert row is not None
                 issue_id = issue(
                     connection,
                     revision_id,

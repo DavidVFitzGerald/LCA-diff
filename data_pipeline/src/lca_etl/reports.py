@@ -59,10 +59,16 @@ def gate(connection: Connection, revision_id: UUID, run_id: UUID) -> None:
             OR s.source_object_id IS NULL OR s.source_row IS NULL OR s.source_column IS NULL
             OR s.target_basis_quantity<>p.reference_amount OR s.target_basis_unit<>p.reference_unit
             OR s.amount<>s.original_amount::numeric*s.conversion_factor
+            OR s.original_basis_quantity<=0 OR s.target_basis_quantity<=0 OR s.conversion_factor<=0
             OR (s.resolution_rule_id IS NULL AND (s.original_basis_quantity<>s.target_basis_quantity
                 OR s.original_basis_unit<>s.target_basis_unit OR s.conversion_factor<>1))
             OR (s.resolution_rule_id IS NOT NULL AND (NOT r.approved OR r.approved_by IS NULL
-                OR r.database_release_id<>rv.database_release_id)))
+                OR r.database_release_id<>rv.database_release_id
+                OR r.resolution->>'source_unit' IS DISTINCT FROM s.original_basis_unit
+                OR r.resolution->>'target_unit' IS DISTINCT FROM s.target_basis_unit
+                OR (r.resolution->>'source_quantity')::numeric IS DISTINCT FROM s.original_basis_quantity
+                OR (r.resolution->>'target_quantity')::numeric IS DISTINCT FROM s.target_basis_quantity
+                OR (r.resolution->>'factor')::numeric IS DISTINCT FROM s.conversion_factor)))
         """,
     }
     for code, query in checks.items():
@@ -76,6 +82,15 @@ def gate(connection: Connection, revision_id: UUID, run_id: UUID) -> None:
                 severity="CRITICAL",
                 message="Candidate failed a reference, exact-provenance or verified-score invariant",
             )
+        else:
+            connection.execute(
+                db.validation_issue.update()
+                .where(
+                    db.validation_issue.c.revision_id == revision_id,
+                    db.validation_issue.c.code == code,
+                )
+                .values(resolution_state="resolved", resolved_at=func.now())
+            )
     if not connection.scalar(
         select(func.count()).select_from(db.process).where(db.process.c.revision_id == revision_id)
     ):
@@ -87,6 +102,15 @@ def gate(connection: Connection, revision_id: UUID, run_id: UUID) -> None:
             stage="readiness",
             severity="CRITICAL",
             message="No eligible process exists in the candidate",
+        )
+    else:
+        connection.execute(
+            db.validation_issue.update()
+            .where(
+                db.validation_issue.c.revision_id == revision_id,
+                db.validation_issue.c.code == "CANDIDATE_EMPTY",
+            )
+            .values(resolution_state="resolved", resolved_at=func.now())
         )
 
 
@@ -363,15 +387,61 @@ def reports(
         item["severity"] == "CRITICAL" and item["resolution_state"] == "unresolved"
         for item in issues
     )
-    counts["excluded_processes"] = sum(item["resolution_state"] == "excluded" for item in issues)
-    counts["score_status"] = dict(
-        connection.execute(
+    counts["excluded_processes"] = len(
+        {
+            (item["source_object_id"], item["process_source_id"])
+            for item in issues
+            if item["resolution_state"] == "excluded"
+        }
+    )
+    counts["score_status"] = {
+        row[0]: row[1]
+        for row in connection.execute(
             select(db.lcia_score.c.status, func.count())
             .where(db.lcia_score.c.revision_id == revision_id)
             .group_by(db.lcia_score.c.status)
         ).all()
-    )
+    }
     counts["representative"] = prepared["representative"]
+    counts["workbook_row_states"] = {
+        row[0]: row[1]
+        for row in connection.execute(
+            select(db.stg_bafu_lcia_row.c.reconciliation_state, func.count())
+            .where(db.stg_bafu_lcia_row.c.revision_id == revision_id)
+            .group_by(db.stg_bafu_lcia_row.c.reconciliation_state)
+        ).all()
+    }
+    counts["matched_workbook_rows"] = counts["workbook_row_states"].get("matched", 0)
+    counts["unmatched_workbook_rows"] = (
+        counts["stg_bafu_lcia_row"] - counts["matched_workbook_rows"]
+    )
+    counts["reference_resolutions"] = {
+        row[0]: row[1]
+        for row in connection.execute(
+            select(db.stg_bafu_reference_resolution.c.status, func.count())
+            .where(db.stg_bafu_reference_resolution.c.revision_id == revision_id)
+            .group_by(db.stg_bafu_reference_resolution.c.status)
+        ).all()
+    }
+    counts["converted_scores"] = connection.scalar(
+        select(func.count())
+        .select_from(db.lcia_score)
+        .where(
+            db.lcia_score.c.revision_id == revision_id,
+            db.lcia_score.c.status == "valid",
+            db.lcia_score.c.resolution_rule_id.is_not(None),
+        )
+    )
+    counts["aggregation_groups"] = len(aggregation_records)
+    counts["candidate_status"] = "rejected" if counts["unresolved_critical"] else "ready"
+    counts["candidate_published"] = (
+        connection.scalar(
+            select(db.release_revision.c.published_at).where(
+                db.release_revision.c.id == revision_id
+            )
+        )
+        is not None
+    )
     counts["revision_id"] = str(revision_id)
     counts["run_id"] = str(run_id)
     frozen = json.loads((Path(prepared["directory"]) / "frozen_manifest.json").read_bytes())

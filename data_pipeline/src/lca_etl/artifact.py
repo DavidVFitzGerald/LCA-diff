@@ -63,9 +63,9 @@ def build_artifact(
         root = directory / group
         if not root.exists():
             continue
-        for source in sorted(path for path in root.rglob("*") if path.is_file()):
-            relative = source.relative_to(directory)
-            copied = immutable_copy(source, artifact / relative)
+        for archived_path in sorted(path for path in root.rglob("*") if path.is_file()):
+            relative = archived_path.relative_to(directory)
+            copied = immutable_copy(archived_path, artifact / relative)
             objects.append(
                 {
                     "path": relative.as_posix(),

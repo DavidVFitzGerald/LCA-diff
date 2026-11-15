@@ -42,13 +42,14 @@ def harmonize(
         for row in staged
         if row["dataset_number"] and counts[row["dataset_number"]] == 1
     }
-    objects = dict(
-        connection.execute(
+    objects = {
+        row[0]: row[1]
+        for row in connection.execute(
             select(db.source_object.c.id, db.source_object.c.relative_path).where(
                 db.source_object.c.revision_id == revision_id
             )
         ).all()
-    )
+    }
     references: dict[UUID, list[dict[str, Any]]] = {}
     for row in connection.execute(
         select(db.stg_bafu_exchange).where(
@@ -305,16 +306,17 @@ def harmonize(
                 and not fallback
             )
             target_ref = target_refs[0] if linked else exchange
-            target_attrs = target["reference_attributes"] if linked else {}
+            linked_target = target if linked and target is not None else {}
+            target_attrs = linked_target.get("reference_attributes", {})
             canonical_location = (
-                (target["geography"] or target_ref["location"] or "")
+                (linked_target.get("geography") or target_ref["location"] or "")
                 if linked
                 else (exchange["location"] or "")
             )
             identity = FlowIdentity(
                 release_scope=f"BAFU:{manifest.release.release_version}",
                 source_number=str(
-                    target["dataset_number"] if linked else (exchange["number"] or "missing")
+                    linked_target["dataset_number"] if linked else (exchange["number"] or "missing")
                 ),
                 flow_type=FlowType(flow_type),
                 unit=exchange["unit"],

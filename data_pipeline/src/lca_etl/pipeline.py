@@ -19,7 +19,7 @@ from lca_etl.workbook import cells51, headers, rows
 
 
 def engine() -> Engine:
-    return create_engine(os.environ["LCA_DATABASE_URL"], pool_pre_ping=True)
+    return create_engine(os.environ["LCA_DATABASE_URL"], pool_pre_ping=True, hide_parameters=True)
 
 
 def source(
@@ -184,7 +184,7 @@ def stage_workbook(
     insert_rows(connection, db.stg_bafu_lcia_row, source_rows())
 
 
-def execute(manifest: Manifest, *, use_spark: bool = True) -> dict[str, Any]:
+def _execute(manifest: Manifest, *, use_spark: bool = True) -> dict[str, Any]:
     """Portable implementation also used by Airflow tasks.
 
     `use_spark=False` is explicit unit-test support; normal CLI/DAG execution
@@ -209,7 +209,24 @@ def execute(manifest: Manifest, *, use_spark: bool = True) -> dict[str, Any]:
             .one()
         )
         completed = revision["status"] in ("ready", "published", "superseded")
+        if not completed:
+            source(
+                connection,
+                revision_id,
+                directory / "frozen_manifest.json",
+                "manifest/frozen_manifest.json",
+                "manifest",
+            )
     if completed:
+        if revision["status"] == "ready":
+            artifact = directory / "artifact" / "manifest.json"
+            if artifact.exists():
+                expected = (artifact.parent / "manifest.sha256").read_text().split()[0]
+                if sha256(artifact) != expected:
+                    raise ValueError("Existing completed artifact was modified")
+            else:
+                with database.connect() as connection:
+                    build_artifact(connection, release_id, revision_id, run_id, manifest, prepared)
         database.dispose()
         return {
             "revision_id": str(revision_id),
@@ -231,6 +248,12 @@ def execute(manifest: Manifest, *, use_spark: bool = True) -> dict[str, Any]:
         if not paths:
             raise ValueError("XML source directory is empty")
         output = directory / "spark-extracted"
+        if use_spark and output.exists() and not (output / "_SUCCESS").exists():
+            from uuid import uuid4
+
+            failed_output = directory / "failed-extractions" / str(uuid4())
+            failed_output.parent.mkdir(exist_ok=True)
+            output.rename(failed_output)
         if not output.exists():
             if use_spark:
                 from lca_etl.spark import extract
@@ -251,8 +274,6 @@ def execute(manifest: Manifest, *, use_spark: bool = True) -> dict[str, Any]:
                             }
                         )
                         stream.write(json.dumps(result) + "\n")
-        elif use_spark and not (output / "_SUCCESS").exists():
-            raise ValueError("Incomplete Spark extraction requires inspection before retry")
         with database.begin() as connection:
             stage_xml(connection, revision_id, run_id, prepared, output)
         with database.begin() as connection:
@@ -261,8 +282,30 @@ def execute(manifest: Manifest, *, use_spark: bool = True) -> dict[str, Any]:
             harmonize(connection, release_id, revision_id, run_id, manifest, sets[0])
         with database.begin() as connection:
             reconcile(connection, release_id, revision_id, run_id, manifest, sets)
+            # A successful retry resolves the operational failure event without
+            # deleting its history or auto-resolving scientific source defects.
+            connection.execute(
+                db.validation_issue.update()
+                .where(
+                    db.validation_issue.c.revision_id == revision_id,
+                    db.validation_issue.c.code == "IMPORT_FAILED",
+                )
+                .values(resolution_state="resolved", resolved_at=datetime.now(UTC))
+            )
     except Exception as exception:
         error = type(exception).__name__
+        import traceback
+
+        write_json(
+            directory / "failure.json",
+            {
+                "error_type": error,
+                "frames": [
+                    {"file": frame.filename, "line": frame.lineno, "function": frame.name}
+                    for frame in traceback.extract_tb(exception.__traceback__)
+                ],
+            },
+        )
         with database.begin() as connection:
             issue(
                 connection,
@@ -302,3 +345,32 @@ def execute(manifest: Manifest, *, use_spark: bool = True) -> dict[str, Any]:
         event("IMPORT_FINISHED", run_id=run_id, revision_id=revision_id)
         database.dispose()
     return result
+
+
+def execute(manifest: Manifest, *, use_spark: bool = True) -> dict[str, Any]:
+    """Serialize retries for one manifest across extraction and DB transactions."""
+    import hashlib
+
+    from sqlalchemy import text
+
+    from lca_etl.intake import canonical_json
+
+    lock_key = hashlib.sha256(canonical_json(manifest.model_dump(mode="json"))).hexdigest()
+    lock_database = engine()
+    try:
+        with lock_database.connect() as lease:
+            acquired = lease.scalar(
+                text("SELECT pg_try_advisory_lock(hashtextextended(:key,0))"), {"key": lock_key}
+            )
+            if not acquired:
+                raise RuntimeError(
+                    "This frozen input is already being imported; inspect its run report"
+                )
+            try:
+                return _execute(manifest, use_spark=use_spark)
+            finally:
+                lease.execute(
+                    text("SELECT pg_advisory_unlock(hashtextextended(:key,0))"), {"key": lock_key}
+                )
+    finally:
+        lock_database.dispose()
