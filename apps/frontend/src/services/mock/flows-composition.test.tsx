@@ -323,6 +323,40 @@ describe("Flows composition (#24)", { timeout: 20000 }, () => {
     ]);
   });
 
+  it("drops rows whose last contributor is removed with its header × and keeps the others' values (#26 AC3)", async () => {
+    render();
+    await selectAll();
+    expect(columnNames()).toEqual([ALPHA, GAMMA, BETA]);
+    // Gamma alone contributes its reference row and the Alpha-service input.
+    const kept = [
+      ROWS.alphaReference,
+      ROWS.betaReference,
+      ROWS.recovered,
+      ROWS.water,
+      ROWS.airLow,
+      ROWS.airHigh,
+    ];
+    const labels = (process: Process) =>
+      kept.map((row) => cellAt(row, process).getAttribute("aria-label"));
+    const alpha = labels(ALPHA);
+    const beta = labels(BETA);
+    expect(rowNames()).toContain(ROWS.gammaReference);
+    expect(rowNames()).toContain(ROWS.alphaInput);
+
+    const remove = () =>
+      screen.queryByRole("button", { name: `Remove column ${GAMMA} — CH` });
+    act(() => fireEvent.click(remove()!));
+    await loaded(6);
+    // The column and the orphaned rows are gone; shared rows remain with
+    // their other processes' values unchanged.
+    expect(columnNames()).toEqual([ALPHA, BETA]);
+    expect(grid()).toHaveAttribute("aria-colcount", "3");
+    expect(rowNames()).toEqual(kept);
+    expect(labels(ALPHA)).toEqual(alpha);
+    expect(labels(BETA)).toEqual(beta);
+    expect(remove()).toBeNull();
+  });
+
   it("renders rows in the service's order without re-sorting (AC2)", async () => {
     const app = render();
     await selectAll();
