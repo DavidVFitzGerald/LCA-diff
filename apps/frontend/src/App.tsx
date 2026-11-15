@@ -11,6 +11,7 @@ import { ProcessSearch } from "./components/process-search/ProcessSearch";
 import { ProcessTree } from "./components/process-tree/ProcessTree";
 import { SelectedProcesses } from "./components/selected-processes/SelectedProcesses";
 import { SelectionProvider, useSelection } from "./app/selection";
+import { AnnouncerProvider } from "./app/announcer";
 import { FlowsGrid } from "./components/comparison/FlowsGrid";
 import "./app/shell.css";
 
@@ -27,7 +28,10 @@ function isDesktop() {
 function EmptyComparison({ title }: { title: string }) {
   return (
     <div className="empty-comparison">
-      <h2>{title}</h2>
+      {/* Focus target when the last column is removed (#25). */}
+      <h2 tabIndex={-1} data-empty-focus>
+        {title}
+      </h2>
       <p>Select processes in the left sidebar to start your comparison.</p>
     </div>
   );
@@ -71,104 +75,106 @@ function Workspace({ email, signOut }: { email: string; signOut: () => void }) {
   }
   return (
     <SelectionProvider>
-      <header className="app-header">
-        <h1>LCA diff</h1>
-        <div className="account-controls">
-          <span>{email}</span>
-          <button
-            type="button"
-            aria-expanded={settingsOpen}
-            aria-controls="settings"
-            onClick={() => setSettingsOpen(!settingsOpen)}
-          >
-            Settings
-          </button>
-          <button type="button" onClick={signOut}>
-            Sign out
-          </button>
-        </div>
-      </header>
-      {settingsOpen && (
-        <section id="settings" aria-label="Settings" className="settings">
-          <p>Display settings use your browser defaults.</p>
-        </section>
-      )}
-      <div className="workspace">
-        <aside className="sidebar" aria-label="Process selection">
-          <button
-            type="button"
-            aria-expanded={processesOpen}
-            aria-controls="process-sidebar"
-            onClick={() => setProcessesOpen(!processesOpen)}
-          >
-            {processesOpen ? "Collapse processes" : "Expand processes"}
-          </button>
-          <section id="process-sidebar" hidden={!processesOpen}>
-            <h2 id="process-tree-heading">Processes</h2>
-            <ProcessSearch onChange={setSearchFields} />
-            <ProcessTree
-              labelledBy="process-tree-heading"
-              fields={searchFields}
-            />
-            <SelectedProcesses />
-          </section>
-        </aside>
-        <main
-          className="comparison"
-          aria-label="Comparison workspace"
-          tabIndex={-1}
-        >
-          <div role="tablist" aria-label="Comparison view">
-            {(["flows", "scores"] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                role="tab"
-                id={`tab-${value}`}
-                aria-controls={`panel-${value}`}
-                aria-selected={tab === value}
-                tabIndex={tab === value ? 0 : -1}
-                onKeyDown={changeTab}
-                onClick={() => setTab(value)}
-              >
-                {value === "flows" ? "Flows" : "Scores"}
-              </button>
-            ))}
-          </div>
-          {(["flows", "scores"] as const).map((value) => (
-            <section
-              key={value}
-              role="tabpanel"
-              id={`panel-${value}`}
-              aria-labelledby={`tab-${value}`}
-              tabIndex={0}
-              hidden={tab !== value}
-            >
-              {value === "flows" ? (
-                <FlowsPanel />
-              ) : (
-                <EmptyComparison title="Compare impact scores" />
-              )}
-            </section>
-          ))}
-        </main>
-        {tab === "scores" && (
-          <aside className="sidebar" aria-label="Indicator selection">
+      <AnnouncerProvider>
+        <header className="app-header">
+          <h1>LCA diff</h1>
+          <div className="account-controls">
+            <span>{email}</span>
             <button
               type="button"
-              aria-expanded={indicatorsOpen}
-              aria-controls="indicator-sidebar"
-              onClick={() => setIndicatorsOpen(!indicatorsOpen)}
+              aria-expanded={settingsOpen}
+              aria-controls="settings"
+              onClick={() => setSettingsOpen(!settingsOpen)}
             >
-              {indicatorsOpen ? "Collapse indicators" : "Expand indicators"}
+              Settings
             </button>
-            <section id="indicator-sidebar" hidden={!indicatorsOpen}>
-              <h2>Indicators</h2>
-              <p>Choose impact indicators here.</p>
+            <button type="button" onClick={signOut}>
+              Sign out
+            </button>
+          </div>
+        </header>
+        {settingsOpen && (
+          <section id="settings" aria-label="Settings" className="settings">
+            <p>Display settings use your browser defaults.</p>
+          </section>
+        )}
+        <div className="workspace">
+          <aside className="sidebar" aria-label="Process selection">
+            <button
+              type="button"
+              aria-expanded={processesOpen}
+              aria-controls="process-sidebar"
+              onClick={() => setProcessesOpen(!processesOpen)}
+            >
+              {processesOpen ? "Collapse processes" : "Expand processes"}
+            </button>
+            <section id="process-sidebar" hidden={!processesOpen}>
+              <h2 id="process-tree-heading">Processes</h2>
+              <ProcessSearch onChange={setSearchFields} />
+              <ProcessTree
+                labelledBy="process-tree-heading"
+                fields={searchFields}
+              />
+              <SelectedProcesses />
             </section>
           </aside>
-        )}
-      </div>
+          <main
+            className="comparison"
+            aria-label="Comparison workspace"
+            tabIndex={-1}
+          >
+            <div role="tablist" aria-label="Comparison view">
+              {(["flows", "scores"] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  id={`tab-${value}`}
+                  aria-controls={`panel-${value}`}
+                  aria-selected={tab === value}
+                  tabIndex={tab === value ? 0 : -1}
+                  onKeyDown={changeTab}
+                  onClick={() => setTab(value)}
+                >
+                  {value === "flows" ? "Flows" : "Scores"}
+                </button>
+              ))}
+            </div>
+            {(["flows", "scores"] as const).map((value) => (
+              <section
+                key={value}
+                role="tabpanel"
+                id={`panel-${value}`}
+                aria-labelledby={`tab-${value}`}
+                tabIndex={0}
+                hidden={tab !== value}
+              >
+                {value === "flows" ? (
+                  <FlowsPanel />
+                ) : (
+                  <EmptyComparison title="Compare impact scores" />
+                )}
+              </section>
+            ))}
+          </main>
+          {tab === "scores" && (
+            <aside className="sidebar" aria-label="Indicator selection">
+              <button
+                type="button"
+                aria-expanded={indicatorsOpen}
+                aria-controls="indicator-sidebar"
+                onClick={() => setIndicatorsOpen(!indicatorsOpen)}
+              >
+                {indicatorsOpen ? "Collapse indicators" : "Expand indicators"}
+              </button>
+              <section id="indicator-sidebar" hidden={!indicatorsOpen}>
+                <h2>Indicators</h2>
+                <p>Choose impact indicators here.</p>
+              </section>
+            </aside>
+          )}
+        </div>
+      </AnnouncerProvider>
     </SelectionProvider>
   );
 }

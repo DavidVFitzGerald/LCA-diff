@@ -135,3 +135,35 @@ export function useSelection() {
   const entries = useSyncExternalStore(store.subscribe, store.getSnapshot);
   return { entries, store };
 }
+
+/** Visible label of a selected process: its name and geography. */
+export const selectionLabel = (entry: SelectedProcess) =>
+  `${entry.name} — ${entry.geography}`;
+
+/**
+ * Unique labels for accessible control names (#18 D4): the release is added
+ * when labels repeat, then the 1-based position when they still repeat.
+ * Shared by the Selected list and the column headers (#25), so their
+ * remove buttons name a process the same way.
+ */
+export function uniqueSelectionLabels(
+  entries: readonly SelectedProcess[],
+  releaseName: (entry: SelectedProcess) => string,
+): string[] {
+  const count = (values: readonly string[]) => {
+    const totals = new Map<string, number>();
+    values.forEach((v) => totals.set(v, (totals.get(v) ?? 0) + 1));
+    return totals;
+  };
+  const base = entries.map(selectionLabel);
+  const baseCount = count(base);
+  const withRelease = entries.map((entry, index) =>
+    baseCount.get(base[index])! > 1
+      ? `${base[index]} (${releaseName(entry)})`
+      : base[index],
+  );
+  const releaseCount = count(withRelease);
+  return withRelease.map((name, index) =>
+    releaseCount.get(name)! > 1 ? `${name} (item ${index + 1})` : name,
+  );
+}
