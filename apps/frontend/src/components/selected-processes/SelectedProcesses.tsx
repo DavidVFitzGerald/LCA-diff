@@ -3,39 +3,17 @@ import type { KeyboardEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
 import { useServiceQueries } from "../../app/queries";
-import { selectionKey, useSelection } from "../../app/selection";
+import {
+  selectionKey,
+  selectionLabel as label,
+  uniqueSelectionLabels,
+  useSelection,
+} from "../../app/selection";
 import type { SelectedProcess } from "../../app/selection";
 import "./selected-processes.css";
 
 export const SELECTED_ROW_HEIGHT = 36;
 const OVERSCAN = 6;
-
-const label = (entry: SelectedProcess) => `${entry.name} — ${entry.geography}`;
-
-/** Accessible remove-button names, disambiguated for duplicate labels (D4). */
-function removeNames(
-  entries: readonly SelectedProcess[],
-  releaseName: (entry: SelectedProcess) => string,
-): string[] {
-  const count = (values: string[]) => {
-    const totals = new Map<string, number>();
-    values.forEach((v) => totals.set(v, (totals.get(v) ?? 0) + 1));
-    return totals;
-  };
-  const base = entries.map(label);
-  const baseCount = count(base);
-  const withRelease = entries.map((entry, index) =>
-    baseCount.get(base[index])! > 1
-      ? `${base[index]} (${releaseName(entry)})`
-      : base[index],
-  );
-  const releaseCount = count(withRelease);
-  return withRelease.map((name, index) => {
-    const unique =
-      releaseCount.get(name)! > 1 ? `${name} (item ${index + 1})` : name;
-    return `Remove ${unique} from selection`;
-  });
-}
 
 export function SelectedProcesses() {
   const { entries, store } = useSelection();
@@ -63,7 +41,9 @@ export function SelectedProcesses() {
       ? `${release.display_name} ${release.version}`
       : entry.release_id;
   };
-  const names = removeNames(entries, releaseName);
+  const names = uniqueSelectionLabels(entries, releaseName).map(
+    (name) => `Remove ${name} from selection`,
+  );
   const effective =
     active !== null && index.has(active) ? active : (keys[0] ?? null);
   const activeIndex = effective === null ? -1 : index.get(effective)!;
