@@ -9,7 +9,7 @@ if [[ "${LCA_DEV_CONTAINER:-}" == 1 ]]; then
 fi
 compose=(docker compose --project-directory "$repo_dir" --file "$repo_dir/compose.yaml")
 case "${1:-help}" in
-    build|up|down|shell|check|logs|backend-up|backend-down)
+    build|up|down|shell|check|logs|backend-up|backend-down|etl-up|etl-shell|etl-run|airflow-up)
         bash "$repo_dir/.devcontainer/check-docker.sh" ;;
     config|help) ;;
     *) echo "Unknown command: $1" >&2; exit 2 ;;
@@ -19,6 +19,10 @@ case "${1:-help}" in
     up) "${compose[@]}" up --detach --build workspace ;;
     backend-up) "${compose[@]}" --profile backend up --detach --wait postgres workspace ;;
     backend-down) "${compose[@]}" stop postgres ;;
+    etl-up) "${compose[@]}" --file "$repo_dir/compose.etl.yaml" --profile backend --profile etl up --detach --build --wait postgres etl ;;
+    etl-shell) "${compose[@]}" --file "$repo_dir/compose.etl.yaml" exec etl bash ;;
+    etl-run) shift; "${compose[@]}" --file "$repo_dir/compose.etl.yaml" exec -T etl bash -c 'exec "$@"' bash "$@" ;;
+    airflow-up) "${compose[@]}" --file "$repo_dir/compose.etl.yaml" --profile backend --profile etl --profile airflow up --detach --build postgres etl airflow-init airflow-api airflow-scheduler airflow-dag-processor ;;
     down) "${compose[@]}" down ;;
     shell) "${compose[@]}" exec workspace bash ;;
     check) "${compose[@]}" exec -T workspace bash .devcontainer/check-env.sh ;;

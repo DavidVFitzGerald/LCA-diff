@@ -724,14 +724,14 @@ constraint-dependencies = [
 ]
 
 [tool.uv.workspace]
-members = ["packages/python/lca_shared"]
+members = ["packages/python/lca_shared", "data_pipeline"]
 
 [dependency-groups]
 dev = ["alembic==1.20.1", "hatchling==1.33.0", "mypy==2.4.1", "pytest==9.2.0", "pytest-cov==7.1.0", "ruff==0.17.5"]
 
 [tool.pytest.ini_options]
-testpaths = ["packages/python/lca_shared/tests"]
-markers = ["unit: domain/config checks", "integration: disposable PostgreSQL checks"]
+testpaths = ["packages/python/lca_shared/tests", "data_pipeline/tests"]
+markers = ["unit: domain/config checks", "integration: disposable PostgreSQL checks", "etl: miniature Spark/PostgreSQL import", "airflow: DAG and task integration"]
 
 [tool.ruff]
 line-length = 100
@@ -743,4 +743,8 @@ select = ["E4", "E7", "E9", "F", "I", "UP", "B", "SIM"]
 [tool.mypy]
 python_version = "3.14"
 strict = true
-files = ["packages/python/lca_shared/src", "db/migrations"]
+files = ["packages/python/lca_shared/src", "db/migrations", "data_pipeline/src", "data_pipeline/jobs", "data_pipeline/dags"]
+
+[[tool.mypy.overrides]]
+module = ["defusedxml.*", "pyspark.*", "airflow.*"]
+ignore_missing_imports = true

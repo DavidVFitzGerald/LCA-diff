@@ -7,3 +7,5 @@
 !apps/frontend/
 !apps/frontend/package.json
 !apps/frontend/package-lock.json
+!data_pipeline/
+!data_pipeline/Dockerfile
