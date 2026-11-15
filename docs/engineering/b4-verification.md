@@ -53,7 +53,12 @@ Observed: frozen lock check passes (174 packages); Ruff format/lint and MyPy
 pass (43 source files); 12 unit checks and 5 PostgreSQL integration scenarios
 pass. The final focused B4 suite passes all 3 scenarios in 41.93 seconds,
 including exact old/new cell values across publication and replay release binding.
-Ruff format/lint and MyPy were rerun successfully with those final assertions.
+Independent QA then identified coordinated target-data drift that semantic checks
+alone did not reject. Promotion receipts now bind exact target table contents,
+verified on publish/rollback and retry. A regression changes an unpublished amount
+and its provenance sum together and proves activation/retry are denied. The
+focused suite passes all 3 scenarios in 62.81 seconds after this fix; Ruff and
+MyPy pass (44 source files). Final-SHA QA remains required.
 
 The publication suite migrates clean disposable source/target databases, creates
 three synthetic ready candidates (first through real Spark), and exercises real
@@ -67,7 +72,11 @@ fake; actual cloud transfer/permissions/retention verification belongs to R1.
 ## Remaining gates and next action
 
 Engineering committed and pushed `1b9ee46` and opened draft PR #86. Hosted checks
-and independent QA are in progress. Prior role attempts were blocked by agent
+on `d3bd9ed` passed backend, API and ETL (including fresh frozen installations,
+publication and real Airflow). Frontend CI failed an unchanged mixed-sign row
+height assertion, while its prior identical-frontend run passed. One rerun was
+requested and the issue is tracked separately in #87; no frontend code was
+changed to hide it. Final checks and independent QA are in progress. Prior role attempts were blocked by agent
 usage limits; the independent QA role has now resumed. Self-review does not replace
 independent QA. #60 stays open until
 checks, QA and an approved merge. I1 owns frontend integration; R1 owns actual
