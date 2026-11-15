@@ -42,6 +42,11 @@ export interface FlowGridData {
   readonly loading: boolean;
   /** A changed selection is loading; the previous comparison is shown. */
   readonly updating: boolean;
+  /**
+   * The previous comparison is shown in place of the selected one: while it
+   * loads (`updating`) or while the hold is paused by a row-page error.
+   */
+  readonly busy: boolean;
   readonly error: Error | null;
   row(index: number): FlowRow | undefined;
   /**
@@ -110,18 +115,21 @@ export function useFlowGrid(
   // comparison stays shown (busy, reading nothing) until one of the anchor
   // flows is loaded in the new one, or no pages remain. The grid then puts
   // that flow back in place in the same layout pass, so the new rows never
-  // appear at a stale scroll position.
+  // appear at a stale scroll position. A row-page error pauses the hold
+  // rather than ending it (#69): the partial new comparison is never shown,
+  // and once Retry succeeds the seek resumes.
   const [previous, setPrevious] = useState<Shown | null>(null);
   const anchors = previous && !placeholder ? anchorKeys() : [];
-  const seeking =
+  const holding =
     !placeholder &&
     previous !== null &&
     freshPages[0]?.comparison_token !== previous.token &&
     anchors.some((key) => previous.index.has(key)) &&
     !anchors.some((key) => freshIndex.has(key)) &&
-    hasNextPage &&
-    !isError;
+    hasNextPage;
+  const seeking = holding && !isError;
   const updating = placeholder || seeking;
+  const busy = placeholder || holding;
   const fresh = useMemo<Shown>(
     () => ({
       token: freshPages[0]?.comparison_token,
@@ -133,9 +141,9 @@ export function useFlowGrid(
     [freshPages, freshRows, freshIndex],
   );
   // Remember the shown comparison (React's "previous render" pattern).
-  if (!updating && fresh.token !== undefined && previous !== fresh)
+  if (!busy && fresh.token !== undefined && previous !== fresh)
     setPrevious(fresh);
-  const shown = updating && previous ? previous : fresh;
+  const shown = busy && previous ? previous : fresh;
   const { token, rowCount, rows: loadedRows, index: keyIndex } = shown;
   const loadedPages = shown.pages;
   const wantedEnd = rows ? rows[1] + ROW_LOOKAHEAD : 0;
@@ -161,7 +169,7 @@ export function useFlowGrid(
 
   // Summaries: one request per loaded row page that intersects the window.
   const summaryPages = useMemo(() => {
-    if (!rows || !token || updating) return [];
+    if (!rows || !token || busy) return [];
     const result: number[] = [];
     for (let page = 0; page < loadedPages.length; page += 1) {
       const start = page * SERVICE_WINDOW;
@@ -169,7 +177,7 @@ export function useFlowGrid(
       if (end >= rows[0] && start <= rows[1]) result.push(page);
     }
     return result;
-  }, [rows, token, updating, loadedPages]);
+  }, [rows, token, busy, loadedPages]);
   const summaries = useQueries({
     queries: summaryPages.map((page) =>
       queries.flowSummaries({
@@ -185,10 +193,10 @@ export function useFlowGrid(
 
   const tiles = useMemo(
     () =>
-      token && !updating
+      token && !busy
         ? tilesFor(rows, columns, loadedRows.length, entries.length)
         : [],
-    [token, updating, rows, columns, loadedRows.length, entries.length],
+    [token, busy, rows, columns, loadedRows.length, entries.length],
   );
   const cellResults = useQueries({
     queries: tiles.map((tile) =>
@@ -225,11 +233,13 @@ export function useFlowGrid(
     rowCount,
     loading: pages.isPending && processIds.length > 0,
     updating,
+    busy,
     error: failed,
     row: (index) => loadedRows[index],
+    // A failed page is still unfetched: its flows are unknown, not absent,
+    // so the grid keeps its anchors through the error (#69).
     locate: (key) =>
-      keyIndex.get(key) ??
-      (updating || (hasNextPage && !isError) ? undefined : null),
+      keyIndex.get(key) ?? (busy || hasNextPage ? undefined : null),
     geometry: (index) => geometries.get(index),
     heights,
     cell: (index, processId) => {

@@ -233,7 +233,7 @@ function FlowsBody({
         leadingWidth={leadingWidth}
         rowCount={data.rowCount}
         rowKey={rowKey}
-        busy={data.updating}
+        busy={data.busy}
         locate={data.locate}
         onAnchor={(keys) => {
           anchors.current = keys;
