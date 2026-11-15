@@ -33,11 +33,53 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: uv lock --check
       - run: uv sync --frozen --all-packages
-      - run: uv run --frozen ruff format --check packages/python db/migrations scripts
-      - run: uv run --frozen ruff check packages/python db/migrations scripts
+      - run: uv run --frozen ruff format --check packages/python apps/api db/migrations scripts
+      - run: uv run --frozen ruff check packages/python apps/api db/migrations scripts
       - run: uv run --frozen mypy
       - run: uv run --frozen python scripts/bootstrap_test_db.py
       - run: uv run --frozen pytest -m unit
       - run: uv run --frozen pytest -m integration
       - run: uv run --frozen alembic upgrade head
       - run: uv run --frozen python scripts/backend_compat.py
+      - run: uv run --frozen lca-openapi --check
+
+  api-quality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # Host commands only orchestrate Docker. Dependencies/tests run in the pinned
+    # Python and Node containers; no host runtime or package installation.
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Build isolated emulator and lean API runtime
+        run: |
+          docker build -t lca-auth -f apps/api/emulator/Dockerfile .
+          docker build -t lca-api -f apps/api/Dockerfile .
+      - name: Start disposable synthetic services
+        run: |
+          docker network create lca-api-test
+          docker run -d --network lca-api-test --name postgres --cap-drop ALL --security-opt no-new-privileges --user 999:999 -e POSTGRES_USER=lca_bootstrap -e POSTGRES_PASSWORD=local-bootstrap-only -e POSTGRES_DB=lca postgres:17-bookworm@sha256:40865bc877a289da75963d97d72b59633f639fc5af7a4e856bfa3714cae5b536
+          docker run -d --network lca-api-test --name auth --cap-drop ALL --security-opt no-new-privileges lca-auth
+      - name: Verify API and real emulator identities in the Python container
+        run: |
+          docker run --rm --network lca-api-test --cap-drop ALL --security-opt no-new-privileges -v "$GITHUB_WORKSPACE:/work" -w /work \
+            -e UV_PYTHON_DOWNLOADS=never -e UV_LINK_MODE=copy \
+            -e LCA_DATABASE_URL=postgresql+psycopg://lca_migrator:local-migration-only@postgres/lca \
+            -e LCA_TEST_DATABASE_URL=postgresql+psycopg://lca_migrator:local-migration-only@postgres/lca \
+            -e LCA_API_TEST_DATABASE_URL=postgresql+psycopg://lca_api:local-read-only@postgres/lca \
+            -e LCA_BOOTSTRAP_DATABASE_URL=postgresql://lca_bootstrap:local-bootstrap-only@postgres/lca \
+            -e LCA_AUTH_TEST_HOST=auth:9099 \
+            ghcr.io/astral-sh/uv:python3.14-bookworm-slim@sha256:7cf77f594be8042dab6daa9fe326f90962252268b4f120a7f5dccce4d947e6c1 \
+            bash -lc 'uv sync --frozen --all-packages && uv run --frozen python scripts/bootstrap_test_db.py && uv run --frozen pytest -m "api or auth" && uv run --frozen lca-openapi --check'
+      - name: Verify runtime identity and image configuration
+        run: |
+          test "$(docker inspect lca-api --format '{{.Config.User}}')" = '65532:65532'
+      - name: Diagnostics
+        if: failure()
+        run: |
+          docker logs auth
+          docker logs postgres
+      - name: Cleanup disposable services
+        if: always()
+        run: |
+          docker rm -f auth postgres || true
+          docker network rm lca-api-test || true
