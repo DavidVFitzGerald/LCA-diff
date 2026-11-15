@@ -1,0 +1,27 @@
+# Disposable publication target. It has its own database volume and no host port.
+services:
+  postgres-target:
+    profiles: [publication]
+    image: postgres:17-bookworm@sha256:40865bc877a289da75963d97d72b59633f639fc5af7a4e856bfa3714cae5b536
+    user: "999:999"
+    environment:
+      POSTGRES_USER: lca_bootstrap
+      POSTGRES_PASSWORD: local-bootstrap-only
+      POSTGRES_DB: lca
+    volumes:
+      - publication-data:/var/lib/postgresql/data
+      - ./db/bootstrap.sql:/docker-entrypoint-initdb.d/001-roles.sql:ro
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U lca_bootstrap -d lca"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  etl:
+    environment:
+      LCA_TARGET_IMPORT_DATABASE_URL: postgresql+psycopg://lca_import:local-import-only@postgres-target/lca
+      LCA_TARGET_PUBLISH_DATABASE_URL: postgresql+psycopg://lca_publisher:local-publisher-only@postgres-target/lca
+      LCA_TARGET_MIGRATION_DATABASE_URL: postgresql+psycopg://lca_migrator:local-migration-only@postgres-target/lca
+volumes:
+  publication-data:

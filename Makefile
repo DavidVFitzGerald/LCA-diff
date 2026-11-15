@@ -2,6 +2,11 @@
 .PHONY: format lint typecheck test test-unit test-e2e frontend-build
 .PHONY: backend-format backend-format-check backend-lint backend-typecheck backend-test-unit backend-test-integration backend-migrate backend-compat test-integration
 .PHONY: backend-test-etl backend-test-airflow import
+.PHONY: backend-test-publication
+
+backend-test-publication:
+	@test "$${LCA_DEV_CONTAINER:-}" = 1 || { echo 'Run inside ./dev publication-run.' >&2; exit 1; }
+	uv run --frozen --package lca-etl pytest data_pipeline/tests/test_publication.py -v
 
 backend-test-etl backend-test-airflow import:
 	@test "$${LCA_DEV_CONTAINER:-}" = 1 || { echo 'Run this target inside ./dev etl-shell.' >&2; exit 1; }

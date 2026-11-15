@@ -2073,6 +2073,7 @@ source = { editable = "data_pipeline" }
 dependencies = [
     { name = "apache-airflow" },
     { name = "defusedxml" },
+    { name = "google-cloud-storage" },
     { name = "lca-shared" },
     { name = "pyspark" },
 ]
@@ -2081,6 +2082,7 @@ dependencies = [
 requires-dist = [
     { name = "apache-airflow", specifier = "==3.4.0" },
     { name = "defusedxml", specifier = "==0.7.1" },
+    { name = "google-cloud-storage", specifier = "==3.17.1" },
     { name = "lca-shared", editable = "packages/python/lca_shared" },
     { name = "pyspark", specifier = "==4.3.0" },
 ]
