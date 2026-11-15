@@ -61,20 +61,22 @@ test("@smoke F4 core Flows comparison: exact cells, warnings, keyboard reorder a
   for (const name of ["Alpha — CH", "Gamma — CH", "Beta — DE"])
     await node(`${NAME} ${name}`).click();
 
-  const flows = page.getByRole("tabpanel", { name: "Flows" });
+  // The Flows tabpanel is located by ID, not by role and name: in
+  // Playwright 1.65.1's Firefox build a named role query on it crashes the
+  // content process (#75; upstream microsoft/playwright#43967; revert in
+  // #85). Its role and accessible name are still asserted here.
+  const flows = page.locator("#panel-flows");
+  await expect(flows).toBeVisible();
+  await expect(flows).toHaveRole("tabpanel");
+  await expect(flows).toHaveAccessibleName("Flows");
   const grid = page.getByRole("grid", { name: "Flows comparison" });
   const cell = (row: number, column: number) =>
     grid.locator(`[data-row="${row}"][data-col="${column}"]`);
-  // CSS-scoped header locators: in Firefox, role locators chained inside
-  // the Flows tabpanel crash the content process (#75, see
-  // docs/engineering/f4-verification.md).
-  const headers = page.locator(
-    '[aria-label="Process columns"] .process-header',
-  );
+  const headers = flows
+    .getByRole("list", { name: "Process columns" })
+    .getByRole("group");
   const header = (name: string) =>
-    headers.filter({
-      has: page.getByText(`${NAME} ${name}`, { exact: true }),
-    });
+    headers.and(page.getByRole("group", { name: `${NAME} ${name}` }));
   /** Header order and Selected-list order are the same list. */
   const order = async (expected: string[]) => {
     const names = expected.map((name) => `${NAME} ${name}`);
