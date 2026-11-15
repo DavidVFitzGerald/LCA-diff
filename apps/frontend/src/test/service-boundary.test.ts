@@ -33,6 +33,16 @@ describe("service import/transport boundary", () => {
       { filePath: "src/components/BoundaryProbe.ts" },
     );
     expect(dto.errorCount).toBe(0);
+    const [decimal] = await lint.lintText(
+      'import { compareDecimal } from "../services/decimal"; void compareDecimal;',
+      { filePath: "src/components/BoundaryProbe.ts" },
+    );
+    expect(decimal.errorCount).toBe(0);
+    const [runtime] = await lint.lintText(
+      'import { createMockRequest } from "../services/mock/runtime"; void createMockRequest;',
+      { filePath: "src/components/BoundaryProbe.ts" },
+    );
+    expect(runtime.errorCount).toBeGreaterThan(0);
     const [composition] = await lint.lintText(
       'import {createMockDiscovery} from "../services/mock/discovery"; void createMockDiscovery;',
       { filePath: "src/app/composition.ts" },

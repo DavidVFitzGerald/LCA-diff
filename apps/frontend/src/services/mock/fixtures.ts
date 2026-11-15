@@ -108,6 +108,18 @@ export function createSyntheticFixtures(): SyntheticFixtures {
       unit: "kg",
     },
     {
+      // Alpha's reference flow consumed as a Technosphere input (by Gamma):
+      // the same flow ID under two types stays two distinct rows (#24).
+      flow_id: FIXTURE_IDS.reference,
+      flow_type: "Technosphere",
+      name: "Synthetic transport service",
+      location: "CH",
+      process_name: "Synthetic road service Alpha",
+      category: "transport systems",
+      subcategory: "road\\operations",
+      unit: "km",
+    },
+    {
       flow_id: FIXTURE_IDS.water,
       flow_type: "Ecosphere Input",
       name: "Synthetic water",
@@ -134,7 +146,8 @@ export function createSyntheticFixtures(): SyntheticFixtures {
       location: null,
       process_name: null,
       category: "air",
-      subcategory: "upper atmosphere",
+      // Mixed case: sorts after "lower atmosphere" only case-insensitively.
+      subcategory: "Upper atmosphere",
       unit: "kg",
     },
   ];
@@ -242,28 +255,41 @@ export function createSyntheticFixtures(): SyntheticFixtures {
                         "Synthetic duplicate exchanges aggregated during ingestion",
                     },
                   ]
-                : [],
+                : row.flow_id === FIXTURE_IDS.technosphere && processIndex === 1
+                  ? [
+                      {
+                        code: "UNRESOLVED_REFERENCE_FALLBACK",
+                        message:
+                          "Unresolved reference: the synthetic supplier reference was not verified, so an isolated fallback flow is used",
+                      },
+                    ]
+                  : [],
           };
           if (
             (row.flow_type === "Reference" &&
               row.process_name !== header.name) ||
+            (row.flow_id === FIXTURE_IDS.reference &&
+              row.flow_type === "Technosphere" &&
+              processIndex !== 2) ||
             (row.flow_id === FIXTURE_IDS.airHigh && processIndex === 1)
           )
             return { ...base, present: false, amount: null };
           const amount =
             row.flow_type === "Reference"
               ? header.reference_amount
-              : row.flow_id === FIXTURE_IDS.technosphere
-                ? processIndex === 0
-                  ? "-80.000000000000000000000001"
-                  : "20"
-                : row.flow_id === FIXTURE_IDS.water
-                  ? "0"
-                  : row.flow_id === FIXTURE_IDS.airLow
-                    ? revisionIndex === 0
-                      ? "0.000000000000000000000000000000123456789"
-                      : "0.000000000000000000000000000000123456790"
-                    : "-0";
+              : row.flow_id === FIXTURE_IDS.reference
+                ? "3.5"
+                : row.flow_id === FIXTURE_IDS.technosphere
+                  ? processIndex === 0
+                    ? "-80.000000000000000000000001"
+                    : "20"
+                  : row.flow_id === FIXTURE_IDS.water
+                    ? "0"
+                    : row.flow_id === FIXTURE_IDS.airLow
+                      ? revisionIndex === 0
+                        ? "0.000000000000000000000000000000123456789"
+                        : "0.000000000000000000000000000000123456790"
+                      : "-0";
           return {
             ...base,
             present: true,

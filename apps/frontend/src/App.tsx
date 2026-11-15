@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { memo, useEffect, useState, useSyncExternalStore } from "react";
 import type { KeyboardEvent } from "react";
 import type { SearchFields } from "./services/contracts";
 import {
@@ -10,7 +10,8 @@ import { AuthDialog } from "./auth/AuthDialog";
 import { ProcessSearch } from "./components/process-search/ProcessSearch";
 import { ProcessTree } from "./components/process-tree/ProcessTree";
 import { SelectedProcesses } from "./components/selected-processes/SelectedProcesses";
-import { SelectionProvider } from "./app/selection";
+import { SelectionProvider, useSelection } from "./app/selection";
+import { FlowsGrid } from "./components/comparison/FlowsGrid";
 import "./app/shell.css";
 
 const desktopQuery = "(min-width: 960px)";
@@ -22,6 +23,27 @@ function subscribeViewport(listener: () => void) {
 function isDesktop() {
   return window.matchMedia?.(desktopQuery).matches ?? true;
 }
+
+function EmptyComparison({ title }: { title: string }) {
+  return (
+    <div className="empty-comparison">
+      <h2>{title}</h2>
+      <p>Select processes in the left sidebar to start your comparison.</p>
+    </div>
+  );
+}
+
+/** Flows: shared headers (#21) over the windowed flow grid (#23). */
+const FlowsPanel = memo(function FlowsPanel() {
+  const { entries } = useSelection();
+  if (!entries.length) return <EmptyComparison title="Compare process flows" />;
+  return (
+    <>
+      <h2 className="visually-hidden">Compare process flows</h2>
+      <FlowsGrid />
+    </>
+  );
+});
 
 type Tab = "flows" | "scores";
 function Workspace({ email, signOut }: { email: string; signOut: () => void }) {
@@ -121,16 +143,12 @@ function Workspace({ email, signOut }: { email: string; signOut: () => void }) {
               aria-labelledby={`tab-${value}`}
               tabIndex={0}
               hidden={tab !== value}
-              className="empty-comparison"
             >
-              <h2>
-                {value === "flows"
-                  ? "Compare process flows"
-                  : "Compare impact scores"}
-              </h2>
-              <p>
-                Select processes in the left sidebar to start your comparison.
-              </p>
+              {value === "flows" ? (
+                <FlowsPanel />
+              ) : (
+                <EmptyComparison title="Compare impact scores" />
+              )}
             </section>
           ))}
         </main>
@@ -156,7 +174,7 @@ function Workspace({ email, signOut }: { email: string; signOut: () => void }) {
 }
 
 export function App() {
-  const { mode, services } = useServiceContext();
+  const { mode, services, demo } = useServiceContext();
   const auth = useAuthState();
   const desktop = useSyncExternalStore(
     subscribeViewport,
@@ -186,7 +204,11 @@ export function App() {
     <div className="app">
       <p role="status" className="demo-marker">
         {mode === "mock"
-          ? "Local demo mode — synthetic services"
+          ? `Local demo mode — synthetic services${
+              demo?.scenario === "large"
+                ? " (large synthetic scenario: 220 processes, 2,000+ flows)"
+                : ""
+            }`
           : "Injected test services"}
         . Auth: {auth.status}.
       </p>
