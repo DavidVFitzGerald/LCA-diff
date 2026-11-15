@@ -27,6 +27,12 @@ Any email-verified registered user may access **BAFU:2026 v1**. Initially suppor
 
 Import approximately **11,947 BAFU EcoSpold XML files** and the supplied LCIA workbook via **Airflow + PySpark**. Archive immutable raw sources; preserve raw extracted values in **BAFU-specific staging tables shared across BAFU versions**; transform to PostgreSQL harmonized tables `flow`, `process`, `process_flows`, `flow_provenance`, and `lcia_score`. Flow IDs are deterministic UUIDv5 identities, stable across reprocessing revisions of a release. Preserve source exchange provenance, distinguish environmental subcompartments, resolve missing references through approved mapping/fallback, and aggregate duplicated exchanges during ETL while retaining warnings. Exclude multi-output processes (more than one `outputGroup=0`) but retain their staging records.
 
+**Input availability, 15 November 2026:** the maintainer has supplied three private
+ZIP archives containing 11,947 XML files, the complete impact-score workbook and
+three XML schema-description HTML files. B3's five-process representative import
+is separate from this full input inventory; full reconciliation, licensing and
+production release validation remain R2 gates. No licensed inputs are committed.
+
 Conservatively match workbook rows to XML processes without assuming row order or invented identifiers. **Convert LCIA scores to the XML reference quantity/unit only with verified, approved conversion rules**, retaining original values/factors. Unverified scores show N/A. Output an **auditable CSV with every inconsistent Excel row in full (original A:AY cells) and added issue, evidence and resolution columns**, including successfully resolved issues; report header issues and XML-only processes separately. Import and validation are CLI-operated. Publication is a **separate manual, atomic action**; unresolved critical issues block it. Preserve immutable release revisions, active-publication pointers, rollback and audit history.
 
 ## 5. Technology, quality and deployment

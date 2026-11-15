@@ -190,7 +190,7 @@ def _execute(manifest: Manifest, *, use_spark: bool = True) -> dict[str, Any]:
     `use_spark=False` is explicit unit-test support; normal CLI/DAG execution
     always uses Spark and real integration is mandatory for the B3 gate.
     """
-    from lca_etl.artifact import build_artifact
+    from lca_etl.artifact import build_artifact, verify_artifact
     from lca_etl.harmonize import harmonize
     from lca_etl.reconcile import reconcile
     from lca_etl.reports import reports
@@ -221,9 +221,7 @@ def _execute(manifest: Manifest, *, use_spark: bool = True) -> dict[str, Any]:
         if revision["status"] == "ready":
             artifact = directory / "artifact" / "manifest.json"
             if artifact.exists():
-                expected = (artifact.parent / "manifest.sha256").read_text().split()[0]
-                if sha256(artifact) != expected:
-                    raise ValueError("Existing completed artifact was modified")
+                verify_artifact(artifact)
             else:
                 with database.connect().execution_options(
                     isolation_level="REPEATABLE READ"

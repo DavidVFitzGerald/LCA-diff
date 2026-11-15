@@ -67,7 +67,7 @@ def workbook(path: Path) -> None:
         ("Missing reference - CH", "kg"),
         ("Missing reference - CH", "kg"),
         ("No XML process - CH", "kg"),
-        ("Manual reference - CH", "kg"),
+        ("Approved synthetic alias - CH", "kg"),
     ]
     content = first + second
     for row, (name, unit) in enumerate(source_rows, start=3):
@@ -146,6 +146,18 @@ def fixture(directory: Path, *, invalid: bool = False) -> Manifest:
         "format_version": 1,
         "version": "synthetic-1",
         "rules": [
+            {
+                "id": str(uuid4()),
+                "rule_type": "row_mapping",
+                "release_version": version,
+                "excel_row": 10,
+                "target_number": "7",
+                "author": "synthetic fixture",
+                "evidence": "Invented explicit verified row alias; test-only approval",
+                "approved": True,
+                "approved_by": "fixture",
+                "version": "1",
+            },
             {
                 "id": str(uuid4()),
                 "rule_type": "reference_mapping",

@@ -24,6 +24,44 @@ def json_value(value: Any) -> Any:
     raise TypeError(f"Unsupported artifact value {type(value).__name__}")
 
 
+def verify_artifact(path: Path) -> dict[str, Any]:
+    """Verify every payload before treating a completed candidate as reusable."""
+    expected = (path.parent / "manifest.sha256").read_text().split()[0]
+    if sha256(path) != expected:
+        raise ValueError("Existing completed artifact manifest was modified")
+    payload: dict[str, Any] = json.loads(path.read_bytes())
+    if (
+        payload.get("format_version") != 1
+        or payload.get("artifact_type") != "lca-release-candidate"
+    ):
+        raise ValueError("Unknown candidate artifact contract")
+    seen = set()
+    root = path.parent.resolve()
+    for item in payload["tables"] + payload["objects"]:
+        relative = Path(item["path"])
+        candidate = path.parent / relative
+        if (
+            relative.is_absolute()
+            or ".." in relative.parts
+            or str(relative) in seen
+            or not candidate.resolve().is_relative_to(root)
+            or candidate.is_symlink()
+        ):
+            raise ValueError("Artifact payload path is unsafe or repeated")
+        seen.add(str(relative))
+        if (
+            not candidate.is_file()
+            or candidate.stat().st_size != item["byte_size"]
+            or sha256(candidate) != item["sha256"]
+        ):
+            raise ValueError("Completed artifact payload is missing or corrupt")
+        if "row_count" in item:
+            with candidate.open() as stream:
+                if sum(1 for _ in stream) != item["row_count"]:
+                    raise ValueError("Completed artifact table row count differs")
+    return payload
+
+
 def build_artifact(
     connection: Connection,
     release_id: UUID,

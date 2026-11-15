@@ -195,6 +195,24 @@ def reconcile(
         if override is not None:
             target = by_number.get(override.target_number)
             possible = [target] if target is not None else []
+            issue(
+                connection,
+                revision_id,
+                run_id,
+                code="LCIA_ROW_MAPPING_APPLIED"
+                if target is not None
+                else "LCIA_ROW_MAPPING_TARGET_UNAVAILABLE",
+                stage="reconcile",
+                source_object_id=row["source_object_id"],
+                spreadsheet_row=row["excel_row"],
+                process_source_id=override.target_number,
+                message="Approved explicit row mapping; original candidates="
+                + ",".join(row_candidates[row["excel_row"]])
+                + "; evidence="
+                + override.evidence,
+                resolution_state="resolved" if target is not None else "unresolved",
+                resolution_rule_id=override.id,
+            )
         connection.execute(
             db.stg_bafu_lcia_row.update()
             .where(db.stg_bafu_lcia_row.c.id == row["id"])

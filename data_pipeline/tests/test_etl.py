@@ -168,7 +168,7 @@ def test_golden_spark_postgres_and_failed_audit(tmp_path: Path) -> None:
     report = Path(result["directory"]) / "reports" / "lcia_workbook_issues.csv"
     with report.open(newline="") as stream:
         audit = list(csv.DictReader(stream))
-    assert {int(row["excel_row_number"]) for row in audit} == set(range(3, 10))
+    assert {int(row["excel_row_number"]) for row in audit} == set(range(3, 11))
     assert all(
         sum(key.startswith("original_") and not key.startswith("original_cell_") for key in row)
         == 51
@@ -180,6 +180,11 @@ def test_golden_spark_postgres_and_failed_audit(tmp_path: Path) -> None:
         and audit[1]["resolution_status"] == "resolved"
     )
     artifact_dir = Path(result["directory"]) / "artifact"
+    assert "LCIA_ROW_MAPPING_APPLIED" in audit[-1]["issue_codes"]
+    assert (
+        audit[-1]["resolution_status"] == "resolved"
+        and "Invented explicit verified row alias" in audit[-1]["rule_evidence"]
+    )
     artifact = json.loads((artifact_dir / "manifest.json").read_bytes())
     assert not artifact["representative"]
     assert all(
@@ -197,6 +202,12 @@ def test_golden_spark_postgres_and_failed_audit(tmp_path: Path) -> None:
     (artifact_dir / "manifest.json").unlink()
     assert execute(manifest)["reused"] is True
     assert (artifact_dir / "manifest.json").is_file()
+    table_path = artifact_dir / "tables" / "process.jsonl"
+    original = table_path.read_bytes()
+    table_path.write_bytes(original + b"\n")
+    with pytest.raises(ValueError, match="payload"):
+        execute(manifest)
+    table_path.write_bytes(original)
     failed, _ = run_fixture(tmp_path / "failed", invalid=True, spark=True)
     assert failed["status"] == "rejected" and failed["counts"]["unresolved_critical"] >= 2
     with (Path(failed["directory"]) / "reports" / "lcia_workbook_issues.csv").open(
