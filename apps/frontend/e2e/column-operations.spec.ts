@@ -38,9 +38,23 @@ const centre = async (locator: Locator) => {
 const strip = (page: Page) => page.locator(".process-header-scroller");
 const grid = (page: Page) =>
   page.getByRole("grid", { name: "Flows comparison" });
+/**
+ * The Flows tabpanel, located by ID rather than by role and name (#75). In
+ * Playwright 1.65.1's Firefox build, a named role query whose name comes
+ * from `aria-labelledby` crashes the content process (signal 11) once the
+ * same element has been read in both the isolated and main worlds, as
+ * `expect` and `evaluateAll`/`boundingBox` do here. Upstream:
+ * https://github.com/microsoft/playwright/issues/43967 (Mozilla bug
+ * 2090055). `expectFlowsPanel` keeps the role and name assertion.
+ */
+const flowsPanel = (page: Page) => page.locator("#panel-flows");
+async function expectFlowsPanel(page: Page) {
+  await expect(flowsPanel(page)).toBeVisible();
+  await expect(flowsPanel(page)).toHaveRole("tabpanel");
+  await expect(flowsPanel(page)).toHaveAccessibleName("Flows");
+}
 const columns = (page: Page) =>
-  page
-    .getByRole("tabpanel", { name: "Flows" })
+  flowsPanel(page)
     .getByRole("list", { name: "Process columns" })
     .getByRole("group");
 const announcer = (page: Page) => page.getByTestId("workspace-announcer");
@@ -145,6 +159,7 @@ test("drag, keyboard reorder and × removal keep one order across tabs and the S
     await expect.poll(() => headerNames(page)).toEqual(names);
     expect(await selectedNames(page)).toEqual(names);
   };
+  await expectFlowsPanel(page);
   await order(["Alpha", "Gamma", "Beta"]);
   await expect(
     grid(page).locator('[role="gridcell"][data-state]').first(),
@@ -198,7 +213,14 @@ test("drag, keyboard reorder and × removal keep one order across tabs and the S
   await order(["Gamma", "Beta", "Alpha"]);
 
   // Keyboard: pick Alpha up, move it first, drop it; focus stays on it.
+  // Alpha is reached by keyboard (Shift+Tab back from its ×), as a
+  // keyboard user would: after the tab clicks, Firefox never shows the
+  // focus ring for focus set by script, even on later key presses (#75).
   await header("Alpha").focus();
+  await page.keyboard.press("Tab");
+  await expect(remove("Alpha — CH")).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(header("Alpha")).toBeFocused();
   await page.keyboard.press("Space");
   await expect(announcer(page)).toContainText(
     `Picked up ${NAME} Alpha — CH at position 3 of 3.`,
@@ -238,9 +260,10 @@ test("drag, keyboard reorder and × removal keep one order across tabs and the S
   await page.keyboard.press("Tab");
   await expect(remove("Alpha — CH")).toBeFocused();
   await page.keyboard.press("Space");
-  const empty = page
-    .getByRole("tabpanel", { name: "Flows" })
-    .getByRole("heading", { name: "Compare process flows" });
+  const empty = flowsPanel(page).getByRole("heading", {
+    name: "Compare process flows",
+  });
+  await expectFlowsPanel(page);
   await expect(empty).toBeFocused();
   expect(await selectedNames(page)).toEqual([]);
   await expect(node(`${NAME} Alpha — CH`)).toHaveAttribute(
@@ -264,6 +287,7 @@ async function openLarge(page: Page) {
   await expect(
     grid(page).locator('[role="gridcell"][data-state]').first(),
   ).toBeVisible();
+  await expectFlowsPanel(page);
   await expect(columns(page).first()).toHaveAttribute("aria-busy", "false");
   return problems;
 }
