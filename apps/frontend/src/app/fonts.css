@@ -1,0 +1,22 @@
+/*
+ * Bundled Inter (#79): identity-block layout must not depend on the fonts a
+ * machine happens to have, so the face the shell's stack names first ships
+ * as a same-origin, hashed Vite asset. No local() source and no CDN.
+ *
+ * Source: official rsms/inter release v4.1, unmodified web/InterVariable.woff2
+ *   https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip
+ *   (zip SHA-256 9883fdd4a49d4fb66bd8177ba6625ef9a64aa45899767dde3d36aa425756b11e)
+ * InterVariable.woff2 SHA-256:
+ *   693b77d4f32ee9b8bfc995589b5fad5e99adf2832738661f5402f9978429a8e3
+ *   (Git blob 5a8d3e72ad7ffb62af3b146e1b1f54ab5813a212, identical to
+ *   docs/font-files/InterVariable.woff2 at tag v4.1)
+ * Licence: SIL Open Font License 1.1, ../assets/fonts/OFL.txt (the
+ *   release's LICENSE.txt, unmodified).
+ */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../assets/fonts/InterVariable.woff2") format("woff2");
+}
