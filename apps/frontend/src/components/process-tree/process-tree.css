@@ -1,6 +1,7 @@
 .process-tree {
   position: relative;
-  height: calc(100dvh - 480px);
+  /* Fills the rest of the process sidebar's flex column (shell.css, #77). */
+  flex: 1 0 12rem;
   min-height: 12rem;
   overflow: auto;
   border: 1px solid #d4ded7;
