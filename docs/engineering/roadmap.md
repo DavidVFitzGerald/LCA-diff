@@ -55,11 +55,15 @@ B2 [#58](https://github.com/DavidVFitzGerald/LCA-diff/issues/58),
 B3 [#59](https://github.com/DavidVFitzGerald/LCA-diff/issues/59),
 B4 [#60](https://github.com/DavidVFitzGerald/LCA-diff/issues/60).
 B1 PR #61 is merged into `main` at `f790803`. B2 PR #70 and B3 PR #72 passed
-independent QA and hosted CI, but their merges targeted predecessor feature
-branches and did not deliver those milestones to `main`. Recovery issue
-[#81](https://github.com/DavidVFitzGerald/LCA-diff/issues/81) brings the unchanged
-reviewed B2/B3 code to `main` through one recovery PR. See
-[delivery recovery](backend-delivery-recovery.md). B4 remains unimplemented.
+independent QA and hosted CI. Their initial merges targeted predecessor feature
+branches; recovery [PR #82](https://github.com/DavidVFitzGerald/LCA-diff/pull/82)
+delivered the unchanged reviewed B2/B3 code to `main` at `9b0ebba` after independent
+QA and hosted CI. The maintainer confirmed merge; #58, #59 and recovery #81 are
+closed. See [delivery recovery](backend-delivery-recovery.md).
+B4 #60 is in draft [PR #86](https://github.com/DavidVFitzGerald/LCA-diff/pull/86)
+on `feat/b4-publication`; its operator workflow is
+documented in [B4 publication](b4-publication.md). Independent QA, hosted checks
+and maintainer merge remain B4 completion gates.
 
 | Milestone | Status | Dependency |
 | --- | --- | --- |
@@ -69,7 +73,7 @@ reviewed B2/B3 code to `main` through one recovery PR. See
 | F1 — frontend foundation | Complete: #5–#10 merged; final PR #44 at `9612943`, independent QA and hosted CI passed | M2 activation delivered; protection tracked separately in #4 |
 | F2 — shell and simulated authentication | Complete: #11–#15 merged after independent QA and hosted CI (final PR #49 at `1f82774`) | F1 complete; each task's issue dependencies |
 | F3–F5 — remaining mock frontend journeys | F3 complete: #16–#19 merged after independent QA and hosted CI (final PR #62 at `d3fddb1`). F4: #20 (flow windows and row summaries) in progress; later F4–F5 tasks not started; predecessor gates retained | F2 completion and each task's issue dependencies |
-| B1–B4 — Phase 2, backend and ingestion | B1 #57 / PR #61 merged; B2 #58 / PR #70 and B3 #59 / PR #72 passed QA/CI but await delivery to main through recovery #81; B4 #60 not started | M1/M2 and accepted ADR 0005, then milestone gates below |
+| B1–B4 — Phase 2, backend and ingestion | B1 #57 / PR #61 merged; B2 #58 and B3 #59 delivered to main through recovery PR #82 after QA/CI; B4 #60 in implementation | M1/M2 and accepted ADR 0005, then milestone gates below |
 | I1 — real frontend integration | Not started | Phase 1 gate, B2 and validated synthetic publication from B4 |
 | R1–R2 — production readiness and release | Not started | Dependencies below |
 
@@ -258,10 +262,16 @@ Implementation in [#57](https://github.com/DavidVFitzGerald/LCA-diff/issues/57) 
 member, single constrained uv lock, full schema and immutable publication guards,
 safe API views/roles, isolated Postgres and backend CI. Local container checks
 pass (9 unit cases, 5 database scenarios, Ruff/MyPy and compatible API/ETL
-resolver probes); independent QA and merge remain pending. See
+resolver probes); independent QA passed and the maintainer merged PR #61 at
+`f790803`. Issue #57 is closed. See
 [B1 verification](b1-verification.md) for commands, scope and B2/B3/B4 handoff.
 
 ### B2 — read API and real authorization
+
+Delivered to `main` through recovery PR #82 at `9b0ebba`, preserving the reviewed
+PR #70 implementation. Independent QA and all hosted checks passed; #58 is
+closed. See [B2 verification](b2-verification.md) and the recovery record for the
+original test evidence and subsequent main-delivery evidence.
 
 Depends on B1. One issue and one PR for all B2. Implement §7 endpoints with validated DTOs and safe error envelopes,
 indexed/batched reads, cursor/window budgets, revision snapshots and on-demand
@@ -280,15 +290,16 @@ Firebase email-enumeration protection, and map real 401/403 to the frontend
 
 ### B3 — miniature golden ingestion and LCIA reconciliation
 
-Implementation is delivered for review in
+Implementation was delivered in
 [#59](https://github.com/DavidVFitzGerald/LCA-diff/issues/59) /
-[PR #72](https://github.com/DavidVFitzGerald/LCA-diff/pull/72), stacked on B2.
+[PR #72](https://github.com/DavidVFitzGerald/LCA-diff/pull/72), originally stacked on B2.
 The actual bounded Spark/Airflow pipeline, private source staging and full-row
 audits, conservative score reconciliation and portable candidate artifact are
 implemented. Focused golden/failure and actual Airflow integration pass; the
 representative private validation retains unverified score bases as N/A; detailed
-findings remain local. This is not full corpus validation. Independent final-SHA QA, hosted
-checks and maintainer merge remain completion gates; see
+findings remain local. This is not full corpus validation. Independent final-SHA
+QA and hosted checks passed; recovery PR #82 delivered it to main at `9b0ebba`
+with the maintainer's confirmed merge. Issue #59 is closed; see
 [B3 verification](b3-verification.md) and [operator workflow](b3-ingestion.md).
 
 Depends on B1; B2 may proceed independently after B1. One issue and one PR for all
@@ -312,6 +323,12 @@ XML, exclusions and matching ambiguities. Neither five samples nor synthetic dat
 prove full BAFU import completeness.
 
 ### B4 — promotion, atomic publication and rollback
+
+Implementation is in draft PR #86 under #60 on `feat/b4-publication`, preserving one
+issue and one PR. The CLI, immutable target archive transfer, transactional audit,
+publication/rollback and synthetic B2 visibility checks are implemented locally.
+See [operator commands](b4-publication.md) and [verification](b4-verification.md).
+Do not mark complete until final-SHA independent QA, hosted checks and merge.
 
 Depends on B3; the API visibility gate also requires B2. One issue and one PR for
 all B4. Implement readiness gates, checksummed artifacts, self-contained

@@ -1,4 +1,4 @@
-"""Maintainer-only local import controls; promotion/publication belong to B4."""
+"""Maintainer import and explicit authenticated publication controls."""
 
 import argparse
 import json
@@ -87,9 +87,44 @@ def main() -> None:
             command.add_argument("--timeout", type=int, default=600)
     report = subcommands.add_parser("report")
     report.add_argument("--run-id", required=True, type=UUID)
+    for name in ("promote", "publish", "rollback"):
+        operation = subcommands.add_parser(name)
+        operation.add_argument("--target", required=True, type=Path)
+        operation.add_argument("--operation-id", required=True, type=UUID)
+        operation.add_argument("--dry-run", action="store_true")
+        if name == "promote":
+            operation.add_argument("--artifact", required=True, type=Path)
+        else:
+            operation.add_argument("--revision", required=True, type=UUID)
+            operation.add_argument("--release", required=True, type=UUID)
+            operation.add_argument(
+                "--expected-active",
+                required=True,
+                help="Revision UUID, or none for first publication",
+            )
+            operation.add_argument("--approval", type=Path)
     args = parser.parse_args()
     try:
-        if args.command == "prepare":
+        if args.command in ("promote", "publish", "rollback"):
+            from lca_etl.publication import activate, promote
+            from lca_etl.publication_models import Target
+
+            target = Target.model_validate_json(args.target.read_bytes())
+            if args.command == "promote":
+                result = promote(args.artifact, target, args.operation_id, dry_run=args.dry_run)
+            else:
+                expected = None if args.expected_active == "none" else UUID(args.expected_active)
+                result = activate(
+                    target,
+                    args.command,
+                    args.revision,
+                    args.operation_id,
+                    expected=expected,
+                    release_id=args.release,
+                    approval=args.approval,
+                    dry_run=args.dry_run,
+                )
+        elif args.command == "prepare":
             result = prepare(load_manifest(args.manifest))
             result = {
                 key: result[key] for key in ("manifest_sha256", "directory", "representative")
@@ -119,10 +154,18 @@ def main() -> None:
                 }
             database.dispose()
     except Exception as error:
+        from lca_etl.publication_models import OperationError
+
         # Keep provider rows, input exception strings and credentials out of logs.
         print(
             json.dumps(
-                {"ok": False, "code": "IMPORT_COMMAND_FAILED", "error_type": type(error).__name__}
+                {
+                    "ok": False,
+                    "code": str(error)
+                    if isinstance(error, OperationError)
+                    else "IMPORT_COMMAND_FAILED",
+                    "error_type": type(error).__name__,
+                }
             )
         )
         raise SystemExit(1) from None
