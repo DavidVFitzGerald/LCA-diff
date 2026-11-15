@@ -33,12 +33,12 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: uv lock --check
       - run: uv sync --frozen --all-packages
-      - run: uv run --frozen ruff format --check packages/python apps/api db/migrations scripts data_pipeline
-      - run: uv run --frozen ruff check packages/python apps/api db/migrations scripts data_pipeline
+      - run: uv run --frozen ruff format --check packages/python apps/api db/migrations scripts
+      - run: uv run --frozen ruff check packages/python apps/api db/migrations scripts
       - run: uv run --frozen mypy
       - run: uv run --frozen python scripts/bootstrap_test_db.py
       - run: uv run --frozen pytest -m unit
-      - run: uv run --frozen pytest -m 'integration and not etl and not airflow'
+      - run: uv run --frozen pytest -m integration
       - run: uv run --frozen alembic upgrade head
       - run: uv run --frozen python scripts/backend_compat.py
       - run: uv run --frozen lca-openapi --check

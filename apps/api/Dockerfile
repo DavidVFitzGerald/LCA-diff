@@ -5,7 +5,6 @@ COPY pyproject.toml uv.lock ./
 COPY packages/python/lca_shared ./packages/python/lca_shared
 COPY apps/api/pyproject.toml ./apps/api/pyproject.toml
 COPY apps/api/src ./apps/api/src
-COPY data_pipeline/pyproject.toml ./data_pipeline/pyproject.toml
 RUN uv sync --frozen --no-dev --package lca-api --no-editable \
     && .venv/bin/python -c "import importlib.util; assert not importlib.util.find_spec('pyspark'); assert not importlib.util.find_spec('airflow')"
 FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim@sha256:7cf77f594be8042dab6daa9fe326f90962252268b4f120a7f5dccce4d947e6c1

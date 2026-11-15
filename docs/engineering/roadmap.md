@@ -278,17 +278,6 @@ Firebase email-enumeration protection, and map real 401/403 to the frontend
 
 ### B3 — miniature golden ingestion and LCIA reconciliation
 
-Implementation is delivered for review in
-[#59](https://github.com/DavidVFitzGerald/LCA-diff/issues/59) /
-[PR #72](https://github.com/DavidVFitzGerald/LCA-diff/pull/72), stacked on B2.
-The actual bounded Spark/Airflow pipeline, private source staging and full-row
-audits, conservative score reconciliation and portable candidate artifact are
-implemented. Focused golden/failure and actual Airflow integration pass; the
-representative private validation retains unverified score bases as N/A; detailed
-findings remain local. This is not full corpus validation. Independent final-SHA QA, hosted
-checks and maintainer merge remain completion gates; see
-[B3 verification](b3-verification.md) and [operator workflow](b3-ingestion.md).
-
 Depends on B1; B2 may proceed independently after B1. One issue and one PR for all
 B3. Introduce private Airflow
 and ETL profiles, segregated metadata, portable local Spark entry point and
