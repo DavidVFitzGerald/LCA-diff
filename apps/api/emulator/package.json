@@ -1,0 +1,6 @@
+{
+  "name": "lca-auth-emulator",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {"firebase-tools": "15.36.0"}
+}
