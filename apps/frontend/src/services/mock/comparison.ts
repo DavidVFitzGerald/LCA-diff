@@ -79,10 +79,36 @@ function indicators(revisions: readonly ComparisonRevision[]): Indicator[] {
     .sort((a, b) => a.source_order - b.source_order || compare(a.id, b.id));
 }
 
+/** Catalogs deep-frozen by `freezeComparisonCatalog`. */
+const frozenCatalogs = new WeakSet<ComparisonCatalog>();
+function deepFreeze(value: unknown) {
+  if (value === null || typeof value !== "object" || Object.isFrozen(value))
+    return;
+  Object.freeze(value);
+  for (const item of Object.values(value)) deepFreeze(item);
+}
+/**
+ * Deep-freezes a catalog so that mocks created from it read it directly
+ * instead of taking a defensive copy, which costs ~2 s for the 220 × 2,000+
+ * workload (#76). A mock never writes its catalog and copies every
+ * response, so outputs are unchanged; a frozen catalog cannot be changed
+ * afterwards by its creator either.
+ */
+export function freezeComparisonCatalog<T extends ComparisonCatalog>(
+  catalog: T,
+): T {
+  deepFreeze(catalog);
+  frozenCatalogs.add(catalog);
+  return catalog;
+}
+
 export function createMockComparison(
   options: ComparisonOptions = {},
 ): ComparisonService {
-  const catalog = copy(options.catalog ?? createComparisonCatalog());
+  const catalog =
+    options.catalog && frozenCatalogs.has(options.catalog)
+      ? options.catalog
+      : copy(options.catalog ?? createComparisonCatalog());
   const windowLimit = options.window_limit ?? 100;
   const cellLimit = options.cell_limit ?? 1000;
   const tokenLimit = options.token_limit ?? 128;
@@ -106,6 +132,11 @@ export function createMockComparison(
   const contexts = new Map<string, Context>();
   const byKey = new Map<string, string>();
   let tokenSequence = 0;
+  // Sorted flow rows of a selection, by snapshot and process set (rows do
+  // not depend on process order). This instance's catalog never changes,
+  // and building the union costs ~150 ms per page read for 220 × 2,000+
+  // (#76), so it is built once per selection; bounded like the tokens.
+  const flowRowSets = new Map<string, readonly FlowRow[]>();
 
   function snapshot(refs: RevisionSnapshot) {
     if (!Array.isArray(refs) || refs.length === 0) invalid();
@@ -232,6 +263,39 @@ export function createMockComparison(
       request_id,
     };
   }
+  /** The represented flow rows of a selection, in service order. */
+  function flowRowSet(result: ReturnType<typeof selected>): FlowRow[] {
+    const represented = new Set(
+      [...result.processes.values()].flatMap(({ process }) =>
+        Object.entries(process.flows)
+          .filter(([, value]) => value.present)
+          .map(([id]) => id),
+      ),
+    );
+    for (const revision of result.revisions) {
+      const selectedProcesses = [...result.processes.values()]
+        .filter((entry) => entry.revision === revision)
+        .map((entry) => entry.process);
+      for (const [id, value] of Object.entries(revision.shared_flows)) {
+        if (
+          value.present &&
+          selectedProcesses.some(
+            (process) =>
+              process.flows[id] === undefined || process.flows[id].present,
+          )
+        )
+          represented.add(id);
+      }
+    }
+    return [
+      ...new Map(
+        result.revisions
+          .flatMap((revision) => revision.flow_rows)
+          .filter((row) => represented.has(row.row_key))
+          .map((row) => [row.row_key, row]),
+      ).values(),
+    ].sort(rowOrder);
+  }
   function differences(input: ComparisonRowsRequest) {
     if (
       input.differences_only !== undefined &&
@@ -303,36 +367,17 @@ export function createMockComparison(
           captured.revision_snapshot,
           captured.process_ids,
         );
-        const represented = new Set(
-          [...result.processes.values()].flatMap(({ process }) =>
-            Object.entries(process.flows)
-              .filter(([, value]) => value.present)
-              .map(([id]) => id),
-          ),
-        );
-        for (const revision of result.revisions) {
-          const selectedProcesses = [...result.processes.values()]
-            .filter((entry) => entry.revision === revision)
-            .map((entry) => entry.process);
-          for (const [id, value] of Object.entries(revision.shared_flows)) {
-            if (
-              value.present &&
-              selectedProcesses.some(
-                (process) =>
-                  process.flows[id] === undefined || process.flows[id].present,
-              )
-            )
-              represented.add(id);
-          }
+        const key = JSON.stringify([
+          result.refs,
+          [...result.processes.keys()].sort(compare),
+        ]);
+        let rows = flowRowSets.get(key);
+        if (!rows) {
+          rows = flowRowSet(result);
+          if (flowRowSets.size >= tokenLimit)
+            flowRowSets.delete(flowRowSets.keys().next().value!);
+          flowRowSets.set(key, rows);
         }
-        const rows = [
-          ...new Map(
-            result.revisions
-              .flatMap((revision) => revision.flow_rows)
-              .filter((row) => represented.has(row.row_key))
-              .map((row) => [row.row_key, row]),
-          ).values(),
-        ].sort(rowOrder);
         return rowPage(captured, "flows", rows, result, [], request_id);
       });
     },

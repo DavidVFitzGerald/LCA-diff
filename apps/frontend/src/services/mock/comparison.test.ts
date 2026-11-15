@@ -6,7 +6,7 @@ import type {
   ScoreRowsRequest,
   ServiceResult,
 } from "../contracts";
-import { createMockComparison } from "./comparison";
+import { createMockComparison, freezeComparisonCatalog } from "./comparison";
 import { createComparisonCatalog } from "./comparison-fixtures";
 import { FIXTURE_IDS } from "./fixtures";
 
@@ -613,6 +613,77 @@ describe("mock comparison snapshots and bounded windows", () => {
         }),
       ),
     ).toMatchObject({ ok: false, error: { code: "STALE_SNAPSHOT" } });
+  });
+
+  it("serves a frozen catalog without copying it and repeats row pages exactly (#76)", async () => {
+    const frozen = freezeComparisonCatalog(createComparisonCatalog(30, 250));
+    const revision = frozen.revisions[1];
+    expect(Object.isFrozen(revision.processes[0].flows)).toBe(true);
+    expect(() => {
+      (revision.flow_rows as unknown[]).push(null);
+    }).toThrow(TypeError);
+    const selectedIds = revision.processes.map((process) => process.header.id);
+    // The comparison token of the last page read.
+    let token = "";
+    const pages = async (
+      service: ReturnType<typeof createMockComparison>,
+      process_ids: string[],
+    ) => {
+      const result = [];
+      let cursor: string | undefined;
+      do {
+        const page = data(
+          await finish(
+            service.flowRows({
+              ...base,
+              process_ids,
+              ...(cursor === undefined ? {} : { cursor }),
+            }),
+          ),
+        );
+        // Tokens and request IDs are per mock instance; the rest must match.
+        result.push({
+          items: page.items,
+          total_count: page.total_count,
+          revision_snapshot: page.revision_snapshot,
+          more: page.next_cursor !== null,
+        });
+        token = page.comparison_token;
+        cursor = page.next_cursor ?? undefined;
+      } while (cursor !== undefined);
+      return result;
+    };
+    // The same pages as a mock over an unfrozen (copied) catalog, for the
+    // whole selection and a subset, read twice and in another order.
+    const copied = createMockComparison({
+      catalog: createComparisonCatalog(30, 250),
+    });
+    const service = createMockComparison({ catalog: frozen });
+    const subset = selectedIds.slice(5, 17);
+    for (const ids of [selectedIds, subset, selectedIds]) {
+      const expected = await pages(copied, ids);
+      expect(expected.length).toBeGreaterThan(1);
+      expect(await pages(service, ids)).toEqual(expected);
+      expect(await pages(service, [...ids].reverse())).toEqual(expected);
+    }
+    // Responses are still copies: changing one changes nothing served.
+    const [first] = await pages(service, subset);
+    (first.items[0] as { name: string }).name = "changed";
+    expect((await pages(service, subset))[0].items[0].name).not.toBe("changed");
+    // A second mock over the same catalog has no tokens of the first.
+    const [own] = await pages(service, subset);
+    const cells = {
+      ...base,
+      process_ids: subset.slice(0, 2),
+      row_keys: [own.items[0].row_key],
+      comparison_token: token,
+    };
+    expect(data(await finish(service.flowCells(cells))).cells).toHaveLength(2);
+    const other = createMockComparison({ catalog: frozen });
+    expect(await finish(other.flowCells(cells))).toMatchObject({
+      ok: false,
+      error: { code: "STALE_SNAPSHOT" },
+    });
   });
 });
 
