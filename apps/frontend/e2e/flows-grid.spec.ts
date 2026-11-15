@@ -174,22 +174,37 @@ test("220 × 2,000+ flows mount only a window with sticky, aligned headers and i
     await grid.locator('[role="row"]').first().getAttribute("aria-rowindex"),
   ).toBe(firstRow);
 
-  // QA D1: removing a process while deep keeps rows and the position.
-  const selected = page.getByRole("button", { name: /^Selected processes/ });
-  if ((await selected.getAttribute("aria-expanded")) === "false")
-    await selected.click();
+  // QA D1/D2: deselecting 110 processes while deep (removing their reference
+  // rows above the view) keeps rows shown and the same flow at the top.
+  const topFlow = () =>
+    grid.evaluate((element) => {
+      const top = element.getBoundingClientRect().top;
+      const row = [...element.querySelectorAll('[role="row"]')].find(
+        (candidate) => {
+          const rect = candidate.getBoundingClientRect();
+          return rect.top <= top + 1 && rect.bottom > top + 1;
+        },
+      );
+      return row
+        ?.querySelector('[role="rowheader"]')
+        ?.getAttribute("aria-label");
+    });
+  const flowBefore = await topFlow();
+  expect(flowBefore).toBeTruthy();
   await page
-    .getByRole("button", { name: /^Remove .+ from selection$/ })
-    .first()
-    .click();
-  await expect(grid).toHaveAttribute("aria-colcount", String(columns));
+    .getByRole("textbox", { name: "Process Name" })
+    .fill("generated 0001");
+  await page.getByRole("button", { name: "Deselect all matches" }).click();
+  await expect
+    .poll(async () => Number(await grid.getAttribute("aria-colcount")))
+    .toBeLessThan(columns + 1);
   expect(Number(await grid.getAttribute("aria-rowcount"))).toBeGreaterThan(0);
   await expect(grid).not.toHaveAttribute("aria-busy");
   await expect(
     grid.locator('[role="gridcell"][data-state]').first(),
   ).toBeVisible();
-  const kept = await grid.evaluate((element) => element.scrollTop);
-  expect(Math.abs(kept - settled)).toBeLessThan(52);
+  await expect.poll(topFlow).toBe(flowBefore);
+  expect(Number(await grid.getAttribute("aria-rowcount"))).toBeLessThan(rows);
   expect(problems).toEqual([]);
 });
 

@@ -43,6 +43,11 @@ export interface FlowGridData {
   readonly updating: boolean;
   readonly error: Error | null;
   row(index: number): FlowRow | undefined;
+  /**
+   * Index of a flow in the shown comparison: undefined while it may still
+   * be in an unloaded page (pass it as `seekKey` to load on), null if absent.
+   */
+  locate(key: string): number | null | undefined;
   /** Whole-selection geometry once the row's summary has arrived. */
   geometry(index: number): RowGeometry | undefined;
   /** Row heights known from summaries, by row index. */
@@ -65,6 +70,8 @@ export function useFlowGrid(
   entries: readonly SelectedProcess[],
   rows: IndexRange,
   columns: IndexRange,
+  /** A flow to keep loading row pages for until found (view anchoring). */
+  seekKey: string | null = null,
 ): FlowGridData {
   const queries = useServiceQueries();
   const snapshot = useMemo(() => selectionSnapshot(entries), [entries]);
@@ -96,6 +103,14 @@ export function useFlowGrid(
     [loadedPages],
   );
 
+  const keyIndex = useMemo(
+    () =>
+      new Map<string, number>(
+        loadedRows.map((row, index) => [row.row_key, index]),
+      ),
+    [loadedRows],
+  );
+  const seeking = seekKey !== null && !keyIndex.has(seekKey);
   const wantedEnd = rows ? rows[1] + ROW_LOOKAHEAD : 0;
   const { hasNextPage, isFetchingNextPage, fetchNextPage, isError } = pages;
   useEffect(() => {
@@ -104,7 +119,7 @@ export function useFlowGrid(
       !isFetchingNextPage &&
       !isError &&
       !updating &&
-      loadedRows.length <= wantedEnd
+      (loadedRows.length <= wantedEnd || seeking)
     )
       void fetchNextPage();
   }, [
@@ -114,6 +129,7 @@ export function useFlowGrid(
     updating,
     loadedRows.length,
     wantedEnd,
+    seeking,
     fetchNextPage,
   ]);
 
@@ -185,6 +201,9 @@ export function useFlowGrid(
     updating,
     error: failed,
     row: (index) => loadedRows[index],
+    locate: (key) =>
+      keyIndex.get(key) ??
+      (updating || (hasNextPage && !isError) ? undefined : null),
     geometry: (index) => geometries.get(index),
     heights,
     cell: (index, processId) => {

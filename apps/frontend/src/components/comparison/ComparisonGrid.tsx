@@ -64,6 +64,9 @@ export function ComparisonGrid({
   rowCount,
   rowKey,
   busy = false,
+  version,
+  locate,
+  onSeek,
   heights,
   renderLeading,
   renderCell,
@@ -79,6 +82,15 @@ export function ComparisonGrid({
   rowKey: (index: number) => string;
   /** A changed row set is loading; the previous rows stay shown. */
   busy?: boolean;
+  /** Identity of the shown row set (e.g. its comparison token). */
+  version?: string;
+  /**
+   * Index of a row key in the shown rows: undefined while unknown (still
+   * loading), null when absent. Enables anchoring the view on flows.
+   */
+  locate?: (key: string) => number | null | undefined;
+  /** Asks the owner to load rows until `key` can be located (null: done). */
+  onSeek?: (key: string | null) => void;
   heights: ReadonlyMap<number, number>;
   renderLeading: (index: number, cell: CellAttributes) => ReactNode;
   renderCell: (
@@ -97,6 +109,18 @@ export function ComparisonGrid({
     columnKey: null,
   });
   const pendingFocus = useRef(false);
+  // Whether keyboard focus belongs to the grid: set on focus, cleared when
+  // focus moves elsewhere or the user presses outside. If its focused cell
+  // unmounts (focus falls to the body), focus returns to the active cell.
+  const ownsFocus = useRef(false);
+  useEffect(() => {
+    const press = (event: PointerEvent) => {
+      if (!scroller.current?.contains(event.target as Node))
+        ownsFocus.current = false;
+    };
+    document.addEventListener("pointerdown", press, true);
+    return () => document.removeEventListener("pointerdown", press, true);
+  }, []);
 
   // Resolve the active cell by key first, so reordering or new rows never
   // move the tab stop onto a different process or flow.
@@ -105,7 +129,9 @@ export function ComparisonGrid({
     [columns],
   );
   let activeRow = Math.min(active.row, rowCount - 1);
-  if (active.rowKey !== null)
+  const located = active.rowKey === null ? undefined : locate?.(active.rowKey);
+  if (typeof located === "number") activeRow = located;
+  else if (active.rowKey !== null && located !== null)
     for (
       let index = Math.max(0, activeRow - 200);
       index < Math.min(rowCount, activeRow + 200);
@@ -170,6 +196,46 @@ export function ComparisonGrid({
   }, [heights, rowCount, rowWindow]);
 
   const rowItems = rowWindow.getVirtualItems();
+
+  // View anchoring across row-set changes (#23 QA D2): remember the first
+  // visible flow and how far into it the view is scrolled; when a new row
+  // set is shown, load until that flow is located and put it back at the
+  // same offset, so rows added or removed above never shift what is read.
+  // Focus follows its flow by key.
+  const anchor = useRef<{ key: string; into: number } | null>(null);
+  const restoring = useRef<{ key: string; into: number } | null>(null);
+  const shownVersion = useRef(version);
+  useLayoutEffect(() => {
+    if (version !== shownVersion.current) {
+      shownVersion.current = version;
+      if (anchor.current && version !== undefined && locate) {
+        restoring.current = anchor.current;
+        onSeek?.(anchor.current.key);
+      }
+    }
+    const target = restoring.current;
+    if (target && locate) {
+      const index = locate(target.key);
+      if (index === undefined) return;
+      restoring.current = null;
+      onSeek?.(null);
+      if (index !== null) {
+        const start = rowWindow.measurementsCache[index]?.start;
+        // Scroll the element itself (the virtualizer follows its scroll event).
+        if (start !== undefined)
+          scroller.current?.scrollTo({ top: start + target.into });
+      }
+      if (ownsFocus.current) pendingFocus.current = true;
+      return;
+    }
+    if (busy || !locate) return;
+    const first = rowWindow.range?.startIndex;
+    const item = rowItems.find((candidate) => candidate.index === first);
+    if (first === undefined || !item) return;
+    const key = rowKey(first);
+    if (locate(key) !== first) return;
+    anchor.current = { key, into: (rowWindow.scrollOffset ?? 0) - item.start };
+  });
   const columnItems = columnWindow.getVirtualItems();
   // The viewport plus overscan, excluding the always-mounted active cell,
   // so a far-away tab stop never widens the data window.
@@ -210,7 +276,11 @@ export function ComparisonGrid({
   }
 
   useEffect(() => {
-    if (!pendingFocus.current) return;
+    const lost =
+      ownsFocus.current &&
+      (document.activeElement === null ||
+        document.activeElement === document.body);
+    if (!pendingFocus.current && !lost) return;
     const target = scroller.current?.querySelector<HTMLElement>(
       `[data-row="${activeRow}"][data-col="${activeColumn}"]`,
     );
@@ -233,7 +303,12 @@ export function ComparisonGrid({
       rowKey: rowKey(row),
       columnKey: column < 0 ? null : columns[column].key,
     });
+  function onBlur(event: FocusEvent<HTMLDivElement>) {
+    const next = event.relatedTarget;
+    if (next && !scroller.current?.contains(next)) ownsFocus.current = false;
+  }
   function onFocus(event: FocusEvent<HTMLDivElement>) {
+    ownsFocus.current = true;
     const at = position(event.target);
     if (at && (at.row !== activeRow || at.column !== activeColumn))
       activate(at.row, at.column);
@@ -277,6 +352,7 @@ export function ComparisonGrid({
       data-mounted-columns={columnItems.length}
       onScroll={onScroll}
       onFocus={onFocus}
+      onBlur={onBlur}
       onKeyDown={onKeyDown}
     >
       <div

@@ -462,8 +462,15 @@ columns with TanStack Virtual:
 - **Selection changes.** Rows are read for the canonical sorted process set,
   so reordering columns re-reads no rows or summaries. While a changed
   selection loads, the previous comparison stays shown (`aria-busy`, with an
-  "Updating the comparison…" status). Nothing is read with the old token, and
-  scroll position and focus are kept (#23 QA D1).
+  "Updating the comparison…" status). Nothing is read with the old token
+  (#23 QA D1).
+- **View anchoring.** The view is anchored on flows, not pixels: the grid
+  records the flow at the viewport top and how far into it the view is
+  scrolled. When a new row set is shown, it loads row pages until that flow
+  is found (`seekKey`), then restores it at the same offset, so rows added or
+  removed above never shift what is read. The active cell follows its flow
+  and process by key, and keyboard focus returns to it if its node changed
+  (#23 QA D2).
 - **Stripes.** Alternating backgrounds follow the row index.
 - **Identifying block.** A bounded sticky left block, 36% of the grid width
   clamped to 300–560 px, holds compact inner columns. For Flows these are the

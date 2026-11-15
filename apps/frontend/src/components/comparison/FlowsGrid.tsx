@@ -104,7 +104,8 @@ function FlowsBody({
     (rows: IndexRange, columns: IndexRange) => setRange({ rows, columns }),
     [],
   );
-  const data = useFlowGrid(entries, range.rows, range.columns);
+  const [seek, setSeek] = useState<string | null>(null);
+  const data = useFlowGrid(entries, range.rows, range.columns, seek);
   const columns = useMemo(
     (): GridColumn[] =>
       entries.map((entry) => {
@@ -188,6 +189,9 @@ function FlowsBody({
         rowCount={data.rowCount}
         rowKey={rowKey}
         busy={data.updating}
+        version={data.token}
+        locate={data.locate}
+        onSeek={setSeek}
         heights={data.heights}
         renderLeading={renderLeading}
         renderCell={renderCell}

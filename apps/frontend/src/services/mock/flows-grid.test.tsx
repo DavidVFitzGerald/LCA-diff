@@ -101,16 +101,25 @@ function render(latency = 0) {
     scenario: { latency_ms: latency },
   });
   const signals: AbortSignal[] = [];
+  // Reads issued while the previous comparison is shown (must be none).
+  const busyReads: string[] = [];
+  const busy = (name: string) => {
+    if (document.querySelector('[role="grid"][aria-busy="true"]'))
+      busyReads.push(name);
+  };
   const flowRows = vi.fn(
     (input: ComparisonRowsRequest, options?: RequestOptions) =>
       comparison.flowRows(input, options),
   );
   const flowSummaries = vi.fn(
-    (input: FlowSummariesRequest, options?: RequestOptions) =>
-      comparison.flowSummaries(input, options),
+    (input: FlowSummariesRequest, options?: RequestOptions) => (
+      busy("flowSummaries"),
+      comparison.flowSummaries(input, options)
+    ),
   );
   const flowCells = vi.fn(
     (input: FlowCellsRequest, options?: RequestOptions) => {
+      busy("flowCells");
       if (options?.signal) signals.push(options.signal);
       return comparison.flowCells(input, options);
     },
@@ -129,7 +138,7 @@ function render(latency = 0) {
       ),
     ),
   });
-  return { ...app, flowRows, flowSummaries, flowCells, signals };
+  return { ...app, flowRows, flowSummaries, flowCells, signals, busyReads };
 }
 
 const grid = () => screen.getByRole("grid", { name: "Flows comparison" });
@@ -328,62 +337,106 @@ describe("windowed Flows grid (#23)", () => {
     expect(app.flowRows.mock.calls.length).toBeGreaterThan(1);
   }, 30000);
 
-  it("keeps rows, scroll and focus when a process is removed or added while deep (QA D1)", async () => {
+  it("keeps the same flows in view and focused when processes are removed or added while deep (QA D1, D2)", async () => {
     const app = render(30);
     await selectAll();
     const before = Number(grid().getAttribute("aria-rowcount"));
-    scrollTo(1300 * STANDARD_ROW_HEIGHT);
+    scrollTo(1300 * STANDARD_ROW_HEIGHT + 20);
     await waitFor(
       () =>
         expect(
           grid().querySelector(
-            '[role="rowheader"][data-row="1300"]:not([aria-busy])',
+            '[role="rowheader"][data-row="1310"]:not([aria-busy])',
           ),
         ).not.toBeNull(),
       { timeout: 10000 },
     );
-    act(() => at(1300, -1)!.focus());
-    const focused = document.activeElement;
-    // Where the focused row sits in the viewport; anchoring may adjust
-    // scrollTop when rows above get their real heights, never the view.
-    const offset = () =>
-      Number(
-        /translateY\((.+)px\)/.exec(
-          at(1300, -1)!.closest<HTMLElement>('[role="row"]')!.style.transform,
-        )![1],
-      ) - scroller().scrollTop;
-    const top = offset();
-    // Remove a process: the previous comparison stays while the new loads.
-    act(() => store.deselect(selectionKey(entries[5])));
+    act(() => at(1310, -1)!.focus());
+    const flow = at(1310, -1)!.getAttribute("aria-label")!;
+    // Where a flow's row sits relative to the viewport top.
+    const rowOf = (name: string) =>
+      [...grid().querySelectorAll<HTMLElement>('[role="rowheader"]')]
+        .find((header) => header.getAttribute("aria-label") === name)
+        ?.closest<HTMLElement>('[role="row"]');
+    const offset = (name: string) => {
+      const row = rowOf(name)!;
+      return (
+        Number(/translateY\((.+)px\)/.exec(row.style.transform)![1]) -
+        scroller().scrollTop
+      );
+    };
+    // The first visible flow is the anchor; the focused flow must stay in
+    // view (rows between them may legitimately change height).
+    // The row containing the viewport top: offset ≤ 0 < offset + height.
+    const anchorFlow = [
+      ...grid().querySelectorAll<HTMLElement>('[role="rowheader"]'),
+    ]
+      .map((header) => header.getAttribute("aria-label")!)
+      .find((name) => {
+        const height = parseFloat(rowOf(name)!.style.height);
+        return offset(name) <= 0 && offset(name) + height > 0;
+      })!;
+    expect(anchorFlow).toBeDefined();
+    // Still the row at the viewport top (its own height may change).
+    const firstVisible = (name: string) =>
+      !!rowOf(name) &&
+      offset(name) <= 0 &&
+      offset(name) + parseFloat(rowOf(name)!.style.height) > 0;
+    const inView = (name: string) =>
+      offset(name) >= -1 && offset(name) < layout.height;
+    expect(inView(flow)).toBe(true);
+    // Remove 110 processes: their reference rows above the view disappear.
+    act(() =>
+      store.deselectMany(
+        entries.slice(3, 113).map((entry) => selectionKey(entry)),
+      ),
+    );
+    // The previous comparison stays shown while the new one loads (D1).
     expect(Number(grid().getAttribute("aria-rowcount"))).toBe(before);
     expect(grid()).toHaveAttribute("aria-busy", "true");
     expect(screen.getByText("Updating the comparison…")).toBeInTheDocument();
-    expect(Math.abs(offset() - top)).toBeLessThanOrEqual(1);
-    expect(document.activeElement).toBe(focused);
     await waitFor(() => expect(grid()).not.toHaveAttribute("aria-busy"), {
       timeout: 10000,
     });
-    expect(Number(grid().getAttribute("aria-rowcount"))).toBeGreaterThan(0);
-    expect(Math.abs(offset() - top)).toBeLessThanOrEqual(1);
-    expect(document.activeElement).toBe(focused);
-    expect(grid().getAttribute("aria-colcount")).toBe(String(PROCESSES));
-    // Values return for the new comparison at the same position.
+    // The same flow is at the same place and still focused (D2).
+    await waitFor(
+      () => {
+        expect(Number(grid().getAttribute("aria-rowcount"))).toBeLessThan(
+          before,
+        );
+        expect(rowOf(anchorFlow)).toBeDefined();
+        expect(firstVisible(anchorFlow)).toBe(true);
+        expect(inView(flow)).toBe(true);
+        expect(document.activeElement).toHaveAttribute("aria-label", flow);
+        expect(document.activeElement).toHaveAttribute("tabindex", "0");
+      },
+      { timeout: 10000 },
+    );
+    expect(grid().getAttribute("aria-colcount")).toBe(String(PROCESSES - 109));
     await waitFor(
       () =>
         expect(
-          grid().querySelector(
-            '[data-row="1300"][role="gridcell"][data-state]',
-          ),
+          rowOf(flow)!.querySelector('[role="gridcell"][data-state]'),
         ).not.toBeNull(),
       { timeout: 10000 },
     );
-    // Re-adding appends a column immediately and keeps the position.
-    act(() => store.select(entries[5]));
+    // Re-adding appends columns immediately and again keeps the flow in view.
+    act(() => store.selectMany(entries.slice(3, 113)));
     expect(grid().getAttribute("aria-colcount")).toBe(String(PROCESSES + 1));
-    expect(Number(grid().getAttribute("aria-rowcount"))).toBeGreaterThan(0);
-    expect(Math.abs(offset() - top)).toBeLessThanOrEqual(1);
+    await waitFor(
+      () => {
+        expect(grid()).not.toHaveAttribute("aria-busy");
+        expect(Number(grid().getAttribute("aria-rowcount"))).toBe(before);
+        expect(firstVisible(anchorFlow)).toBe(true);
+        expect(inView(flow)).toBe(true);
+        expect(document.activeElement).toHaveAttribute("aria-label", flow);
+      },
+      { timeout: 10000 },
+    );
     expect(app.flowRows).toHaveBeenCalled();
-  }, 30000);
+    // Nothing was read with the previous token for the new columns (O6).
+    expect(app.busyReads).toEqual([]);
+  }, 40000);
 
   it("reorders columns without re-reading rows or losing focus (QA D1)", async () => {
     const app = render();
