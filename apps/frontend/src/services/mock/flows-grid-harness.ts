@@ -19,7 +19,7 @@ import type {
   ComparisonRowsRequest,
   RequestOptions,
 } from "../contracts";
-import { createMockComparison } from "./comparison";
+import { createMockComparison, freezeComparisonCatalog } from "./comparison";
 import { createComparisonCatalog } from "./comparison-fixtures";
 import { createDiscoveryCatalog } from "./discovery";
 import { failure, mount } from "./test-harness";
@@ -27,10 +27,10 @@ import { failure, mount } from "./test-harness";
 export const PROCESSES = 220;
 export const GENERATED_ROWS = 2000;
 const discovery = createDiscoveryCatalog(PROCESSES);
-const comparisonCatalog = createComparisonCatalog(
-  PROCESSES,
-  GENERATED_ROWS,
-  true,
+// Frozen once per file, so each test's mock reads it without a ~2 s
+// defensive copy (#76); every test still gets its own mock instance.
+const comparisonCatalog = freezeComparisonCatalog(
+  createComparisonCatalog(PROCESSES, GENERATED_ROWS, true),
 );
 export const entries: SelectedProcess[] = discovery.revisions[0].headers.map(
   (header) => ({
