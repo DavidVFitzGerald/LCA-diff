@@ -2,7 +2,8 @@
 
 Issue [#60](https://github.com/DavidVFitzGerald/LCA-diff/issues/60), branch
 `feat/b4-publication`, [PR #86](https://github.com/DavidVFitzGerald/LCA-diff/pull/86),
-based on main recovery merge `9b0ebba`. Application delivery commit: `1b9ee46`.
+based on main recovery merge `9b0ebba`, reconciled with main `f1fd944`.
+Initial application delivery: `1b9ee46`; target-content fix: `7dc0802`.
 Implementation uses one issue and one PR. Independent final-SHA QA, hosted CI
 and maintainer merge remain pending. No frontend implementation changed and no
 production operation, infrastructure provisioning or proprietary import occurred.
@@ -59,6 +60,9 @@ verified on publish/rollback and retry. A regression changes an unpublished amou
 and its provenance sum together and proves activation/retry are denied. The
 focused suite passes all 3 scenarios in 62.81 seconds after this fix; Ruff and
 MyPy pass (44 source files). Final-SHA QA remains required.
+Promotion also holds compared existing shared rows locked through receipt
+creation/commit, preventing their metadata from changing between equality
+verification and the content hash. The PR diff contains no frontend files.
 
 The publication suite migrates clean disposable source/target databases, creates
 three synthetic ready candidates (first through real Spark), and exercises real

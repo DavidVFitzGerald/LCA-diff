@@ -154,7 +154,10 @@ def insert_candidate(connection: Connection, candidate: Candidate, store: Object
             }
             if conflicts:
                 rows = connection.execute(
-                    select(table).where(tuple_(*keys).in_(list(conflicts)))
+                    select(table)
+                    .where(tuple_(*keys).in_(list(conflicts)))
+                    .order_by(*keys)
+                    .with_for_update()
                 ).mappings()
                 seen = set()
                 for existing in rows:
