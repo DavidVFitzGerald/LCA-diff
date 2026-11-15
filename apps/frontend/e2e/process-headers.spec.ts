@@ -130,7 +130,9 @@ test("headers follow the selection and warn on different reference bases", async
   );
   await page.keyboard.press("ArrowLeft");
   await expect(header("Gamma")).toBeFocused();
-  await expect(columns.locator('[tabindex="0"]')).toHaveCount(1);
+  // One header tab stop, plus its × (#25): one extra stop, not one per column.
+  await expect(columns.locator('[role="group"][tabindex="0"]')).toHaveCount(1);
+  await expect(columns.locator('button[tabindex="0"]')).toHaveCount(1);
 
   // Removing Gamma elsewhere updates the headers and narrows the warning.
   await page
