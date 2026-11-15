@@ -271,6 +271,115 @@ describe("process tree keyboard and ARIA", () => {
   });
 });
 
+/** [aria-level, aria-posinset, aria-setsize] of one treeitem. */
+const position = (row: HTMLElement) =>
+  ["aria-level", "aria-posinset", "aria-setsize"].map((name) =>
+    row.getAttribute(name),
+  );
+
+describe("process tree pseudo-row ARIA positions (#52)", () => {
+  // A pseudo row is the last member of its branch's child set: posinset is
+  // the real children + 1; setsize is -1 while the branch is incomplete
+  // (as on its real siblings), else the real children + 1.
+  it("places a first-page loading row at 1 of unknown", async () => {
+    mount({ scenario: { latency_ms: (op) => (op === "search" ? 10_000 : 0) } });
+    await focusTree();
+    key("ArrowRight");
+    const loading = item("Loading Alpha catalog…");
+    expect(position(loading)).toEqual(["2", "1", "-1"]);
+    // No real children are rendered yet; the real roots are unchanged.
+    expect(position(item(/^Alpha catalog 2026 v1/))).toEqual(["1", "1", "2"]);
+    expect(position(item("Alpha catalog 2026 v2"))).toEqual(["1", "2", "2"]);
+  });
+
+  it("places a Load more row after the loaded children at unknown set size", async () => {
+    geometry.tree = TREE_ROW_HEIGHT * 100;
+    mount({
+      catalog: catalog([
+        { id: "r1", name: "Big", version: "v", leaves: many(60, ["t"]) },
+      ]),
+    });
+    await focusTree();
+    key("ArrowRight");
+    await waitFor(() => expect(item(/^t, 60 processes/)).toBeVisible());
+    key("ArrowDown");
+    key("ArrowRight");
+    const more = await screen.findByRole("treeitem", {
+      name: "Load more in t (50 of 60 loaded)",
+    });
+    expect(position(more)).toEqual(["3", "51", "-1"]);
+    expect(position(item("Leaf 0000 — CH"))).toEqual(["3", "1", "-1"]);
+    expect(position(item("Leaf 0049 — CH"))).toEqual(["3", "50", "-1"]);
+    // The root's own continuation follows its one loaded child.
+    expect(position(item("Load more in Big (50 of 60 loaded)"))).toEqual([
+      "2",
+      "2",
+      "-1",
+    ]);
+    expect(position(item(/^t, 60 processes/))).toEqual(["2", "1", "-1"]);
+    expect(position(item(/^Big v/))).toEqual(["1", "1", "1"]);
+  });
+
+  it("places a first-page error row at 1 of unknown", async () => {
+    mount({ scenario: { failures: { search: "STALE_SNAPSHOT" } } });
+    await focusTree();
+    key("Enter");
+    const error = await screen.findByRole("treeitem", {
+      name: "Could not load Alpha catalog. Revision snapshot unavailable",
+    });
+    expect(position(error)).toEqual(["2", "1", "-1"]);
+    expect(position(item(/^Alpha catalog 2026 v1/))).toEqual(["1", "1", "2"]);
+    expect(position(item("Alpha catalog 2026 v2"))).toEqual(["1", "2", "2"]);
+  });
+
+  it("places a later-page error row after the loaded children at unknown set size", async () => {
+    geometry.tree = TREE_ROW_HEIGHT * 100;
+    let searches = 0;
+    mount({
+      catalog: catalog([
+        { id: "r1", name: "Big", version: "v", leaves: many(60, ["t"]) },
+      ]),
+      wrap: (discovery) => ({
+        search: async (...args) => {
+          searches += 1;
+          if (searches === 3) return failure("TEMPORARILY_UNAVAILABLE", true);
+          return discovery.search(...args);
+        },
+      }),
+    });
+    await focusTree();
+    key("ArrowRight");
+    await waitFor(() => expect(item(/^t, 60 processes/)).toBeVisible());
+    key("ArrowDown");
+    key("ArrowRight");
+    fireEvent.click(
+      await screen.findByRole("treeitem", {
+        name: "Load more in t (50 of 60 loaded)",
+      }),
+    );
+    const error = await screen.findByRole("treeitem", {
+      name: "Could not load t. Synthetic TEMPORARILY_UNAVAILABLE Retry",
+    });
+    expect(position(error)).toEqual(["3", "51", "-1"]);
+    expect(position(item("Leaf 0000 — CH"))).toEqual(["3", "1", "-1"]);
+    expect(position(item("Leaf 0049 — CH"))).toEqual(["3", "50", "-1"]);
+    expect(position(item(/^t, 60 processes/))).toEqual(["2", "1", "-1"]);
+  });
+
+  it("places an empty branch's row at 1 of 1", async () => {
+    mount({
+      catalog: catalog([{ id: "r1", name: "Empty", version: "v", leaves: [] }]),
+    });
+    await focusTree();
+    key("Enter");
+    const empty = await screen.findByRole("treeitem", {
+      name: "No processes in Empty",
+    });
+    expect(position(empty)).toEqual(["2", "1", "1"]);
+    expect(position(item(/^Empty v/))).toEqual(["1", "1", "1"]);
+  });
+});
+
 describe("process tree states and cancellation", () => {
   it("shows loading releases and branch loading under latency", async () => {
     mount({ scenario: { latency_ms: 40 } });
