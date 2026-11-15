@@ -520,15 +520,22 @@ class Queries:
         if {r["id"] for r in indicators} != set(request.indicator_ids):
             raise ApiError("INVALID_FILTER", 422)
         score = s.lcia_score
-        stats = await self.rows(
-            select(
-                score.c.indicator_id,
-                func.min(score.c.amount).label("minimum"),
-                func.max(score.c.amount).label("maximum"),
-                func.count(score.c.amount).label("valid_count"),
-                func.count().label("record_count"),
-                func.array_agg(func.distinct(score.c.status)).label("statuses"),
+        differences = request.differences_only and len(request.process_ids) >= 2
+        columns = [
+            score.c.indicator_id,
+            func.min(score.c.amount).label("minimum"),
+            func.max(score.c.amount).label("maximum"),
+            func.count(score.c.amount).label("valid_count"),
+        ]
+        if differences:
+            columns.extend(
+                [
+                    func.count().label("record_count"),
+                    func.array_agg(func.distinct(score.c.status)).label("statuses"),
+                ]
             )
+        stats = await self.rows(
+            select(*columns)
             .where(
                 score.c.process_id.in_(request.process_ids),
                 score.c.indicator_id.in_(request.indicator_ids),
@@ -548,16 +555,12 @@ class Queries:
                     "statuses": [],
                 },
             )
-            statuses = set(stat["statuses"])
-            if stat["record_count"] < len(request.process_ids):
-                statuses.add("missing")
-            if (
-                request.differences_only
-                and len(request.process_ids) >= 2
-                and len(statuses) <= 1
-                and stat["minimum"] == stat["maximum"]
-            ):
-                continue
+            if differences:
+                statuses = set(stat["statuses"])
+                if stat["record_count"] < len(request.process_ids):
+                    statuses.add("missing")
+                if len(statuses) <= 1 and stat["minimum"] == stat["maximum"]:
+                    continue
             rows.append(
                 self.indicator(
                     indicator,

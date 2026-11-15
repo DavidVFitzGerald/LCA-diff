@@ -57,3 +57,28 @@ def test_disconnect_cancels_inflight_work():
         assert cancelled.is_set()
 
     asyncio.run(scenario())
+
+    async def outer_cancellation():
+        entered, cancelled = asyncio.Event(), asyncio.Event()
+
+        async def receive():
+            await asyncio.sleep(30)
+            return {"type": "http.disconnect"}
+
+        request = Request({"type": "http", "method": "POST", "path": "/", "headers": []}, receive)
+
+        async def work():
+            entered.set()
+            try:
+                await asyncio.sleep(30)
+            finally:
+                cancelled.set()
+
+        wrapper = asyncio.create_task(cancellable(request, work()))
+        await entered.wait()
+        wrapper.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await wrapper
+        assert cancelled.is_set()
+
+    asyncio.run(outer_cancellation())

@@ -62,6 +62,9 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
     engine = create_async_engine(
         config.database_url.get_secret_value(),
         pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=5,
+        pool_timeout=5,
         isolation_level="REPEATABLE READ",
         execution_options={"schema_translate_map": {None: "api"}},
     )
@@ -215,7 +218,7 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
     @app.get("/api/v1/ready", response_model=d.Health)
     async def ready() -> d.Health:
         async with engine.connect() as connection:
-            await connection.execute(text("SELECT 1"))
+            await connection.execute(text("SELECT 1 FROM api.release_publication LIMIT 1"))
         return d.Health()
 
     @app.get("/api/v1/me", response_model=d.Identity)
