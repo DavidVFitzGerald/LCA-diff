@@ -6,8 +6,9 @@
  * adds ~100 MB to the worker heap.
  */
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
-import { createElement, Fragment, useEffect } from "react";
+import { createElement, useEffect } from "react";
 import { afterAll, beforeAll, expect, vi } from "vitest";
+import { AnnouncerProvider } from "../../app/announcer";
 import { SelectionProvider, useSelectionStore } from "../../app/selection";
 import type { SelectedProcess, SelectionStore } from "../../app/selection";
 import { FlowsGrid } from "../../components/comparison/FlowsGrid";
@@ -160,7 +161,7 @@ export function render(latency = 0) {
       SelectionProvider,
       null,
       createElement(
-        Fragment,
+        AnnouncerProvider,
         null,
         createElement(Probe),
         createElement(FlowsGrid),
