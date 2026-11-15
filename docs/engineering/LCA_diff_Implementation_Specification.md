@@ -86,8 +86,8 @@ A process containing **more than one exchange with `outputGroup=0`** is classifi
 
 - `LCA-diff description for initial prompt.md` — original UX and ingestion requirements.
 - The original five `process_*.xml` examples are now supplemented by the
-  maintainer's private full-input ZIP containing **11,947 XML files** (inventory
-  verified 15 November 2026), in an EcoSpold 01-like structure.
+  maintainer's private full-input ZIP, in an EcoSpold 01-like structure. Actual
+  inventory counts and checksums remain in private verification records.
 - A private schema-description ZIP contains three `EcoSpold01*Simple.html` files;
   these are guidance, **not** an unquestioned validator or workbook-basis proof.
 - A private scores ZIP contains the full
@@ -304,11 +304,11 @@ All public read paths must join through `release_publication.active_revision_id`
 
 ### 5.1 Inputs, manifest, and CLI
 
-The maintainer has now supplied three private archives with **11,947 XML files**,
-the full workbook and three schema-description HTML files. Retain their original
+The maintainer has now supplied private archives for the XML release, workbook
+and schema descriptions. Retain their original
 bytes/checksums and validate the actual manifest; availability is not proof of
-full reconciliation or release readiness. B3 exercises a five-process
-representative subset and the full workbook; full-data validation remains R2.
+full reconciliation or release readiness. B3 exercises a configured
+representative subset and the workbook; full-data validation remains R2.
 Public CI uses only small invented fixtures, never the private provider inputs.
 
 A maintainer-owned versioned manifest (YAML/JSON) must contain at least:
@@ -769,7 +769,7 @@ The brainstorming is finished; the following are **implementation-time verificat
 
 | Risk / unresolved fact | Required default and action |
 |---|---|
-| The private input archive now contains **11,947 XML files**, alongside the full workbook/schema archives | B3's five-process representative import is not full-data validation; **do not claim the full BAFU database is imported** until the actual manifest and full reconciliation pass R2 |
+| Private XML/workbook/schema archives are now available | B3's representative import is not full-data validation; keep observed inventory and processing evidence private, and **do not claim the full BAFU database is imported** until the actual manifest and full reconciliation pass R2 |
 | Workbook has **no numeric process ID** column | Use strict composite matching plus version-controlled curated overrides; unresolved rows never auto-associate |
 | Workbook/XML unit mismatch (`m`/`km`, `t*km`/`tkm`) | Use **verified, approved ETL conversion to the XML reference quantity/unit**; capture full original Excel row in audit CSV; leave unverified values `N/A` |
 | Provider licensing for centralized storage/redistribution | Confirm legally before public deployment; product decision on all-registered access remains, subject to permission |

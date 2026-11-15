@@ -28,8 +28,8 @@ Any email-verified registered user may access **BAFU:2026 v1**. Initially suppor
 Import approximately **11,947 BAFU EcoSpold XML files** and the supplied LCIA workbook via **Airflow + PySpark**. Archive immutable raw sources; preserve raw extracted values in **BAFU-specific staging tables shared across BAFU versions**; transform to PostgreSQL harmonized tables `flow`, `process`, `process_flows`, `flow_provenance`, and `lcia_score`. Flow IDs are deterministic UUIDv5 identities, stable across reprocessing revisions of a release. Preserve source exchange provenance, distinguish environmental subcompartments, resolve missing references through approved mapping/fallback, and aggregate duplicated exchanges during ETL while retaining warnings. Exclude multi-output processes (more than one `outputGroup=0`) but retain their staging records.
 
 **Input availability, 15 November 2026:** the maintainer has supplied three private
-ZIP archives containing 11,947 XML files, the complete impact-score workbook and
-three XML schema-description HTML files. B3's five-process representative import
+ZIP archives for the XML release, impact-score workbook and XML schema
+descriptions. B3's representative import
 is separate from this full input inventory; full reconciliation, licensing and
 production release validation remain R2 gates. No licensed inputs are committed.
 

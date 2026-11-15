@@ -84,8 +84,8 @@ No gate was skipped or weakened.
 
 ## Representative supplied-input evidence
 
-The original archive inventory contains 11,947 XML files, one complete XLSX and
-three schema-description HTML files. The actual representative command was:
+The private intake supports the supplied XML, workbook and schema archives.
+The representative validation command was:
 
 ```sh
 ./dev etl-run uv run --frozen --package lca-etl lca-import run-local --manifest data_pipeline/examples/bafu-private-representative.json

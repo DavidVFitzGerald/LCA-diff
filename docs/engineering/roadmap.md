@@ -284,8 +284,8 @@ Implementation is delivered for review in
 The actual bounded Spark/Airflow pipeline, private source staging and full-row
 audits, conservative score reconciliation and portable candidate artifact are
 implemented. Focused golden/failure and actual Airflow integration pass; the
-five-process private representative run preserves 94 unresolved-basis scores
-as N/A. This is not full corpus validation. Independent final-SHA QA, hosted
+representative private validation retains unverified score bases as N/A; detailed
+findings remain local. This is not full corpus validation. Independent final-SHA QA, hosted
 checks and maintainer merge remain completion gates; see
 [B3 verification](b3-verification.md) and [operator workflow](b3-ingestion.md).
 
