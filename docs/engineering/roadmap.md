@@ -54,7 +54,10 @@ Backend issues are published: B1 [#57](https://github.com/DavidVFitzGerald/LCA-d
 B2 [#58](https://github.com/DavidVFitzGerald/LCA-diff/issues/58),
 B3 [#59](https://github.com/DavidVFitzGerald/LCA-diff/issues/59),
 B4 [#60](https://github.com/DavidVFitzGerald/LCA-diff/issues/60).
-B1 foundation implementation is in PR #61; independent QA/merge remain pending.
+B1 foundation PR #61 passed independent QA and hosted checks at `d3a2389`; merge
+is pending. B2 read API implementation is in PR #70, with focused local checks
+and [verification evidence](b2-verification.md); final independent QA/checks are
+pending. B3 is implementing separately from the verified B1 contracts.
 
 | Milestone | Status | Dependency |
 | --- | --- | --- |
@@ -64,7 +67,7 @@ B1 foundation implementation is in PR #61; independent QA/merge remain pending.
 | F1 — frontend foundation | Complete: #5–#10 merged; final PR #44 at `9612943`, independent QA and hosted CI passed | M2 activation delivered; protection tracked separately in #4 |
 | F2 — shell and simulated authentication | Complete: #11–#15 merged after independent QA and hosted CI (final PR #49 at `1f82774`) | F1 complete; each task's issue dependencies |
 | F3–F5 — remaining mock frontend journeys | F3: #16 (paged process tree) merged (PR #50); #18 (ordered selection) merged (PR #53); #17 (search) in progress; later F3–F5 tasks not started; predecessor gates retained | F2 completion and each task's issue dependencies |
-| B1–B4 — Phase 2, backend and ingestion | B1 #57 in PR #61, QA/merge pending; B2 #58 and B3 #59 await B1; B4 #60 awaits B3/B2 | M1/M2 and accepted ADR 0005, then milestone gates below |
+| B1–B4 — Phase 2, backend and ingestion | B1 #57 / PR #61 QA passed, merge pending; B2 #58 / PR #70 and B3 #59 implementing from verified B1; B4 #60 awaits B3/B2 | M1/M2 and accepted ADR 0005, then milestone gates below |
 | I1 — real frontend integration | Not started | Phase 1 gate, B2 and validated synthetic publication from B4 |
 | R1–R2 — production readiness and release | Not started | Dependencies below |
 
