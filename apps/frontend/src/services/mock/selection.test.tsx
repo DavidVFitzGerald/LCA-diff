@@ -188,32 +188,18 @@ describe("selected process list", () => {
         { id: "r1", name: "Big", version: "v", leaves: many(count, ["t"]) },
       ]),
     });
-    geometry.tree = 32 * (count + 10);
     await focusTree();
     key("ArrowRight");
     await waitFor(() => expect(item(/^t, /)).toBeVisible());
-    key("ArrowDown");
-    key("ArrowRight");
-    for (let loaded = 50; loaded < count; loaded += 50) {
-      const more = await screen.findByRole("treeitem", {
-        name: `Load more in t (${loaded} of ${count} loaded)`,
-      });
-      fireEvent.click(more);
-      await waitFor(() =>
-        expect(
-          screen.queryByRole("treeitem", {
-            name: `Load more in t (${loaded} of ${count} loaded)`,
-          }),
-        ).toBeNull(),
-      );
-    }
+    // The list is under test, not how it was filled: one branch selection
+    // adds every leaf in name order, the order clicking each of the `count`
+    // tree rows produced. Those clicks (each re-rendering every mounted
+    // tree row) took ~10 s of this test's 30 s limit (#76); single-row
+    // toggling is covered above and branch selection in bulk-selection.
+    fireEvent.click(item(/^t, /).querySelector(".tree-check")!);
     await waitFor(() =>
-      expect(screen.getAllByRole("treeitem", { name: /^Leaf / })).toHaveLength(
-        count,
-      ),
+      expect(heading()).toHaveTextContent(`Selected processes (${count})`),
     );
-    for (const row of screen.getAllByRole("treeitem", { name: /^Leaf / }))
-      fireEvent.click(row);
     await settle();
   }
 
