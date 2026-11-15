@@ -127,3 +127,76 @@ describe("signed value cells (#22)", () => {
     expect(container.firstElementChild).toHaveAttribute("tabindex", "-1");
   });
 });
+
+describe("cell warnings (#24)", () => {
+  const warning = (code: string, message: string) => ({ code, message });
+  function warned(value: CellState, warnings = [warning("ANY", "Check me")]) {
+    const { container } = render(
+      <SignedValueCell
+        value={value}
+        row={geometry("20", "80")}
+        warnings={warnings}
+      />,
+    );
+    return container.firstElementChild as HTMLElement;
+  }
+
+  it("marks the cell without colour alone and names every warning", () => {
+    const element = warned(present("20"), [
+      warning("FIRST_CODE", "First synthetic warning"),
+      warning("OTHER_CODE", "Second synthetic warning"),
+    ]);
+    const icon = element.querySelector('[data-testid="cell-warning"]');
+    expect(icon).toHaveTextContent("!");
+    expect(icon).toHaveAttribute("aria-hidden");
+    expect(element).toHaveAccessibleName(
+      "20, positive. Warning: First synthetic warning; Second synthetic warning.",
+    );
+    const tooltip = element.querySelector(".signed-tooltip")!;
+    expect(tooltip).toHaveTextContent(
+      "20 Warning: First synthetic warning Warning: Second synthetic warning",
+    );
+    expect(
+      [...tooltip.querySelectorAll("[data-code]")].map((e) => e.textContent),
+    ).toEqual([
+      "Warning: First synthetic warning",
+      "Warning: Second synthetic warning",
+    ]);
+  });
+
+  it("changes neither bar geometry, row height nor the value label", () => {
+    const plain = cell(present("20"));
+    const element = warned(present("20"));
+    for (const selector of [".signed-bar", ".zero-axis", ".signed-label"])
+      expect(element.querySelector<HTMLElement>(selector)!.style.cssText).toBe(
+        plain.querySelector<HTMLElement>(selector)!.style.cssText,
+      );
+    expect(element.style.height).toBe(plain.style.height);
+    expect(element.querySelector(".signed-label")).toHaveTextContent(/^20$/);
+    expect(plain.querySelector('[data-testid="cell-warning"]')).toBeNull();
+    expect(plain).not.toHaveAttribute("data-warning");
+  });
+
+  it("keeps a warned absent cell blank, with the warning announced", () => {
+    const element = warned({ kind: "absent" });
+    expect(element.querySelector(".signed-bar")).toBeNull();
+    expect(element.querySelector(".signed-label")).toBeNull();
+    expect(element.querySelector(".signed-sr-only")).toHaveTextContent(
+      /^No flow\. Warning: Check me\.$/,
+    );
+    expect(element.textContent).not.toMatch(/\b0\b/);
+    expect(
+      element.querySelector('[data-testid="cell-warning"]'),
+    ).not.toBeNull();
+  });
+
+  it("describes a warned N/A cell through its tooltip", () => {
+    const element = warned({ kind: "unavailable", reason: "missing" });
+    expect(element).toHaveAccessibleName(
+      "N/A, not available. Warning: Check me.",
+    );
+    expect(element).toHaveAccessibleDescription(
+      /^N\/A: missing.*Warning: Check me$/,
+    );
+  });
+});
