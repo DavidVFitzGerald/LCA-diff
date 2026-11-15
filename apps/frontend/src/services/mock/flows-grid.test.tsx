@@ -102,6 +102,26 @@ describe("windowed Flows grid (#23)", { timeout: 20000 }, () => {
   it("sizes mixed-sign rows from summaries and stripes by row index", async () => {
     render();
     await selectAll();
+    // #87: every committed DOM state, not only the final one, gives each
+    // value cell its row's height. A cell once took the summary height in
+    // the commit before the virtualizer applied it to the row (53px in a
+    // 52px row for one frame), so each mutation batch is checked.
+    const mismatched: string[] = [];
+    const observer = new MutationObserver(() => {
+      for (const row of grid().querySelectorAll<HTMLElement>('[role="row"]'))
+        for (const cell of row.querySelectorAll<HTMLElement>(
+          '[role="gridcell"][data-state]',
+        ))
+          if (cell.style.height !== row.style.height)
+            mismatched.push(
+              `row ${row.dataset.index}: ${cell.style.height} in ${row.style.height}`,
+            );
+    });
+    observer.observe(grid(), {
+      subtree: true,
+      childList: true,
+      attributes: true,
+    });
     scrollTo(300 * STANDARD_ROW_HEIGHT);
     // Paging to row 300 takes four row pages and their summaries. Like the
     // file's other deep-scroll waits, allow 10 s: the 1 s default timed out
@@ -115,6 +135,11 @@ describe("windowed Flows grid (#23)", { timeout: 20000 }, () => {
         ).toBe(true),
       { timeout: 10000 },
     );
+    // The checks below run on a settled grid: every mounted row loaded and
+    // summarized, nothing moving any more.
+    await settled();
+    observer.disconnect();
+    expect(mismatched).toEqual([]);
     for (const row of grid().querySelectorAll<HTMLElement>('[role="row"]')) {
       const index = Number(row.getAttribute("aria-rowindex")) - 1;
       expect(row).toHaveClass(index % 2 ? "odd" : "even");

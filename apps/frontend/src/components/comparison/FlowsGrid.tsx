@@ -11,6 +11,7 @@ import {
 import type { IndexRange } from "./grid-model";
 import { SignedValueCell } from "./SignedValueCell";
 import { PENDING_ROW } from "./geometry";
+import type { RowGeometry } from "./geometry";
 import type { CellAttributes } from "./SignedValueCell";
 import { useFlowGrid } from "./useFlowGrid";
 import { selectionKey } from "../../app/selection";
@@ -72,6 +73,21 @@ const template = FLOW_FIELDS.map(
  * fits every inner column minimum plus gaps and padding.
  */
 const FLOWS_LEADING_BOUNDS = { ...LEADING_BOUNDS, min: 410 } as const;
+
+/** Pending geometry at a row's current height, one object per height. */
+const pendingRows = new Map<number, RowGeometry>([
+  [PENDING_ROW.rowHeight, PENDING_ROW],
+]);
+function pendingRow(rowHeight: number): RowGeometry {
+  let row = pendingRows.get(rowHeight);
+  if (!row) {
+    // Heights are layout numbers only; keep the cache small.
+    if (pendingRows.size > 64) pendingRows.clear();
+    row = { ...PENDING_ROW, rowHeight };
+    pendingRows.set(rowHeight, row);
+  }
+  return row;
+}
 
 /** Width of an element's content box, tracked through resizes. */
 function useWidth() {
@@ -194,14 +210,25 @@ function FlowsBody({
       </div>
     );
   };
-  const renderCell = (index: number, column: number, cell: CellAttributes) => {
-    const geometry = data.geometry(index);
+  const renderCell = (
+    index: number,
+    column: number,
+    cell: CellAttributes,
+    rowHeight: number,
+  ) => {
+    // One height per row in every commit (#87, spec §6.6): the grid applies
+    // a summary's height to the row one commit after the summary arrives,
+    // so until the row has that height its cells stay pending at the row's
+    // current height instead of drawing the summary geometry.
+    const summarized = data.geometry(index);
+    const geometry =
+      summarized?.rowHeight === rowHeight ? summarized : undefined;
     const value = data.cell(index, entries[column].id);
     // One component for every state keeps the focused DOM node when a
     // pending cell's data arrives.
     return (
       <SignedValueCell
-        row={geometry ?? PENDING_ROW}
+        row={geometry ?? pendingRow(rowHeight)}
         context={columns[column].label}
         value={
           !geometry || !value
