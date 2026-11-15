@@ -271,6 +271,10 @@ test("Flows shows the ordered union, exact values and per-cell warnings, and fol
 
 /** AC7 (a)–(c): labels and Type values legible; block and columns bounded. */
 async function expectReadable(page: Page) {
+  // Measure with the bundled Inter loaded, not a fallback (#79).
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
   const labels = page.locator(".comparison-corner .identity-fields > span");
   await expect(labels).toHaveText(FIELDS);
   for (const label of await labels.all()) {
