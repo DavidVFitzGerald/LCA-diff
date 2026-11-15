@@ -230,7 +230,19 @@ describe("synthetic scientific fixtures", () => {
     const cells = fixtures.revisions[0].flow_cells.filter((c) =>
       c.row_key.endsWith("|Technosphere"),
     );
-    expect(cells.map((c) => c.warnings.length)).toEqual([1, 0, 0]);
+    // Per process (Alpha, Beta, Gamma): the recovered material, then
+    // Alpha's reference flow consumed as an input. Only Alpha's and Beta's
+    // recovered-material cells carry warnings, each its own (#24).
+    expect(cells.map((c) => c.warnings.map((warning) => warning.code))).toEqual(
+      [
+        ["AGGREGATED_DUPLICATES"],
+        [],
+        ["UNRESOLVED_REFERENCE_FALLBACK"],
+        [],
+        [],
+        [],
+      ],
+    );
   });
 
   it("includes nested process paths and optional indicator categories in source order", () => {
@@ -259,14 +271,18 @@ describe("synthetic scientific fixtures", () => {
 
   it("orders flow rows by type and identifying fields with stable ties", () => {
     const rows = fixtures.revisions[0].flow_rows;
-    expect(rows.map((row) => row.flow_id)).toEqual([
-      FIXTURE_IDS.reference,
-      FIXTURE_IDS.referenceGamma,
-      FIXTURE_IDS.referenceBeta,
-      FIXTURE_IDS.technosphere,
-      FIXTURE_IDS.water,
-      FIXTURE_IDS.airLow,
-      FIXTURE_IDS.airHigh,
+    expect(rows.map((row) => [row.flow_id, row.flow_type])).toEqual([
+      [FIXTURE_IDS.reference, "Reference"],
+      [FIXTURE_IDS.referenceGamma, "Reference"],
+      [FIXTURE_IDS.referenceBeta, "Reference"],
+      [FIXTURE_IDS.technosphere, "Technosphere"],
+      // The same flow ID under a second type is a distinct row (#24).
+      [FIXTURE_IDS.reference, "Technosphere"],
+      [FIXTURE_IDS.water, "Ecosphere Input"],
+      // "lower atmosphere" before "Upper atmosphere": case-insensitive.
+      [FIXTURE_IDS.airLow, "Ecosphere Output"],
+      [FIXTURE_IDS.airHigh, "Ecosphere Output"],
     ]);
+    expect(new Set(rows.map((row) => row.row_key)).size).toBe(rows.length);
   });
 });
