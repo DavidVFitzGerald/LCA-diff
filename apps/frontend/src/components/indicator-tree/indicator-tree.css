@@ -1,0 +1,29 @@
+.indicator-selector {
+  width: 100%;
+}
+.indicator-node {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  font-size: 0.85rem;
+}
+.indicator-node > span:last-child {
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.indicator-node button {
+  flex: 0 0 22px;
+  padding: 0;
+  width: 22px;
+  height: 24px;
+  border-radius: 3px;
+}
+.indicator-spacer {
+  flex: 0 0 22px;
+}
+.indicator-check[aria-checked="true"],
+.indicator-check[aria-checked="mixed"] {
+  background: #203f30;
+  color: white;
+}
