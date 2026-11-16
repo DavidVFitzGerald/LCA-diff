@@ -1,7 +1,9 @@
 # L2 real adapters and local integration (#97)
 
 Engineering branch: `feat/l2-real-adapter`, based on `0fe3ff3`; core increment
-`fec23ae`. Final reviewed SHA and independent QA evidence are recorded on #97.
+`fec23ae`. Final tested application source is `b27cc2b`; subsequent changes
+record documentation evidence only. The final reviewed SHA and independent QA
+verdict are recorded on #97 and PR #105.
 The PR remains open for maintainer review/merge. No PRD/spec semantic change or
 ADR is needed: row-page summaries implement the issue's decided derivation.
 
@@ -47,8 +49,8 @@ only orchestrated Docker/Git/GitHub. Workspace checks used
 | `./dev check` (host) | Rootless identity, frozen tooling and preflight checks pass |
 | `cd apps/frontend && npm run contracts:generate` twice; `npm run contracts:check` | Deterministic output; clean check passes; deliberate generated and OpenAPI drift rejected |
 | `make backend-openapi-check` | Pass |
-| `cd apps/frontend && npm run format:check && npm run lint && npm run typecheck && npm run contracts:check && npm run build && npm run test:unit` | Pass; delivered `37874df` full unit count 462/37 files. Subsequent deterministic-extrema tests: targeted 48-case adapter suite passes |
-| `cd apps/frontend && npm run test:e2e` | Core increment: 72/72 Chromium and Firefox. One integrated run timed out at Firefox far-cell loading under concurrent image builds/unit work (71/72); isolated repeat passed 3/3. Summary amount sorting was replaced with exact single-pass min/max; final full rerun recorded on #97 |
+| `cd apps/frontend && npm run format:check && npm run lint && npm run typecheck && npm run contracts:check && npm run build && npm run test:unit` | Independent final source `b27cc2b`: all pass, 464 tests/37 files, including 48 adapter-contract cases |
+| `cd apps/frontend && npm run test:e2e` | Independent final source `b27cc2b`: 72/72 Chromium and Firefox, 3.7 minutes, including all smoke cases. Two engineering runs overlapping heavy checks hit Firefox timeouts (71/72); the isolated far-cell repeat passed 3/3. No test timeout was relaxed. Mock extrema now use an exact single-pass calculation |
 | `MYPYPATH=data_pipeline/src uv run --frozen mypy ops/local` | Pass, two changed ops sources |
 | `uv run --frozen ruff check ops/local`; `uv run --frozen ruff format --check ops/local` | Pass |
 | `uv run --frozen python ops/local/test_project_guard.py` | Pass: all app commands reject default/environment/quoted and commented dotenv collisions before Docker; environment precedence and distinct names accepted |
@@ -84,9 +86,31 @@ The browser-persistence failure is injected only by Playwright, with no product
 test hook. The emulator/backend remain real.
 
 The emulator journey exposed verification-state/token ordering; a subsequent
-run verified the fix. All five hosted jobs passed at `37874df`, including the
-new `real-stack` job (Frontend run `43872263299`), so it stays in the per-PR tier.
-Independent clean-clone QA and final-SHA reruns are recorded on #97.
+run verified the fix. All five hosted jobs passed at `b27cc2b`, including the
+new `real-stack` job (Frontend run `43873429839`), so it stays in the per-PR tier.
+
+## Independent clean-clone verification
+
+QA used `/tmp/lca-l2-qa-37874df`, advanced to final source
+`b27cc2babe7fe67c4622546a50fda24a66c87271`, with workspace project
+`lca-diff-l2-qa` (5271) and app project `lca-diff-l2-qa-app` (5270/8270/9270).
+The independent rootless environment/frozen install, generation twice and both
+negative drift checks, backend OpenAPI drift, ops Ruff/MyPy and project guard
+regressions pass. Final format/lint/type/contracts/build, unit 464/37, full mock
+72/72 and real browser 5/5 (18.9 seconds) pass. Post-restart API smoke passes 9/9;
+publication ID and activation timestamp are byte-identical across down/up.
+
+QA-directed Chromium actions and screenshot inspection confirm both loopback
+spellings, Flows precision/zero/absence, Scores valid and both N/A states, no
+mock guidance, and the documented frontend-origin emulator verification link.
+These visual checks ran at `37874df`; final source differs only in mock extrema
+and their tests, and the real suite was rerun at `b27cc2b`. Separate stopped-API
+and stopped-Auth checks show explicit unavailable errors and no mock fallback;
+the services were restored and smoke passed afterward. This is directed browser
+automation with visual inspection, not a claim of human interactive testing.
+
+The final issue verdict records all AC1–AC11 evidence and the docs-only final
+commit review. Hosted checks are required on the final PR head as well.
 
 Engineering down/up preserved the publication revision AND activation timestamp
 byte-for-byte, then API smoke passed again. Reset without `--yes` correctly
