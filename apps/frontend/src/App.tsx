@@ -12,6 +12,8 @@ import { ProcessTree } from "./components/process-tree/ProcessTree";
 import { SelectedProcesses } from "./components/selected-processes/SelectedProcesses";
 import { SelectionProvider, useSelection } from "./app/selection";
 import { AnnouncerProvider } from "./app/announcer";
+import { ScoresGrid } from "./components/comparison/ScoresGrid";
+import { useIndicators } from "./app/indicator-context";
 import { FlowsGrid } from "./components/comparison/FlowsGrid";
 import { IndicatorProvider } from "./app/indicators";
 import { IndicatorTree } from "./components/indicator-tree/IndicatorTree";
@@ -47,6 +49,25 @@ const FlowsPanel = memo(function FlowsPanel() {
     <>
       <h2 className="visually-hidden">Compare process flows</h2>
       <FlowsGrid />
+    </>
+  );
+});
+
+const ScoresPanel = memo(function ScoresPanel() {
+  const { entries } = useSelection();
+  const indicators = useIndicators();
+  if (!entries.length) return <EmptyComparison title="Compare impact scores" />;
+  if (!indicators.ids.length)
+    return (
+      <div className="empty-comparison">
+        <h2>Select an indicator</h2>
+        <p>Choose indicators in the right sidebar to compare impact scores.</p>
+      </div>
+    );
+  return (
+    <>
+      <h2 className="visually-hidden">Compare impact scores</h2>
+      <ScoresGrid />
     </>
   );
 });
@@ -155,7 +176,7 @@ function Workspace({ email, signOut }: { email: string; signOut: () => void }) {
                   {value === "flows" ? (
                     <FlowsPanel />
                   ) : (
-                    <EmptyComparison title="Compare impact scores" />
+                    tab === "scores" && <ScoresPanel />
                   )}
                 </section>
               ))}

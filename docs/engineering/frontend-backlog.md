@@ -85,6 +85,12 @@ alongside F4 verification using its existing service/auth/selection prerequisite
 Scores-grid integration #28 still requires both #26 and #27. This changes task
 scheduling only; product/scientific scope and F4/F5 acceptance gates are unchanged.
 
+Current handoff (2026-11-16): #26 and #27 are merged/closed; #27 was delivered
+by PR #88 at `f5769bb`. PM rechecked #28 as READY against those merged interfaces.
+Scores implementation/verification is on `feat/f5-scores`; see
+[Scores evidence](f5-scores-verification.md). Leave #28 open for independent QA,
+required checks and review/merge; later F5 dependencies remain unchanged.
+
 | Key | Issue | Blocking predecessors |
 | --- | --- | --- |
 | F5-01 | [#27 — Add the indicator tree and source-ordered selection state](https://github.com/DavidVFitzGerald/LCA-diff/issues/27) | [#8](https://github.com/DavidVFitzGerald/LCA-diff/issues/8), [#9](https://github.com/DavidVFitzGerald/LCA-diff/issues/9), [#15](https://github.com/DavidVFitzGerald/LCA-diff/issues/15), [#19](https://github.com/DavidVFitzGerald/LCA-diff/issues/19) |

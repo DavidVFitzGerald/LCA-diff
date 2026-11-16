@@ -214,9 +214,58 @@ describe("session restoration and zero protected reads", () => {
       await expect(app.services().data.releases()).resolves.toMatchObject({
         ok: false,
       });
+      await expect(
+        app.services().data.scoreSummaries({
+          revision_snapshot: [],
+          comparison_token: "protected",
+          process_ids: [],
+          indicator_ids: [],
+        }),
+      ).resolves.toMatchObject({ ok: false });
     }
     expectNoProtectedCalls(app.data);
     expect(protectedText()).toBeNull();
+  });
+});
+
+describe("Scores summary authentication boundary (#28)", () => {
+  it.each<[string, AuthState]>([
+    ["logout", { status: "unauthenticated" }],
+    ["account change", user("account-b")],
+  ])("discards a pending summary after %s", async (_, next) => {
+    const app = harness(user("account-a"));
+    await act(async () => {});
+    let answer!: () => void;
+    app.data.scoreSummaries = vi.fn<typeof app.data.scoreSummaries>(
+      () =>
+        new Promise((resolve) => {
+          answer = () =>
+            resolve({
+              ok: true,
+              data: {
+                summaries: [],
+                revision_snapshot: [],
+                comparison_token: "account-a-summary",
+                request_id: "summary",
+              },
+            });
+        }),
+    );
+    const pending = app.services().data.scoreSummaries({
+      revision_snapshot: [],
+      comparison_token: "account-a-summary",
+      process_ids: [],
+      indicator_ids: [],
+    });
+    await waitFor(() =>
+      expect(app.data.scoreSummaries).toHaveBeenCalledTimes(1),
+    );
+    app.emit(next);
+    answer();
+    await expect(pending).resolves.toMatchObject({
+      ok: false,
+      error: { code: "AUTH_REQUIRED" },
+    });
   });
 });
 
