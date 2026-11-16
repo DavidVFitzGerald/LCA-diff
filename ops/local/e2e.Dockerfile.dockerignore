@@ -1,0 +1,9 @@
+**
+!apps/frontend/**
+!packages/contracts/**
+!apps/api/openapi.json
+!.devcontainer/install-browsers.sh
+apps/frontend/node_modules
+apps/frontend/dist
+apps/frontend/test-results
+apps/frontend/playwright-report

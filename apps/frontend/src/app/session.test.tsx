@@ -318,11 +318,19 @@ describe("session loss removes protected content and cancels work", () => {
         error: { code: "AUTH_REQUIRED" },
       });
       expect(app.releases).toHaveBeenCalledTimes(2);
-      // A newer adapter state supersedes the local lock.
+      // Firebase token refresh may re-emit the rejected user. It must not
+      // reopen the shell and start the same rejected read again.
       app.emit(user("account-a"));
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(app.reads).toHaveLength(2);
+      expect(protectedText()).toBeNull();
+      // A different account is an explicit new authentication context.
+      app.emit(user("account-b"));
       await waitFor(() => expect(app.reads).toHaveLength(3));
-      await app.answer("account-a-again");
-      expect(await screen.findByText(/account-a-again/)).toBeVisible();
+      await app.answer("account-b-new");
+      expect(await screen.findByText(/account-b-new/)).toBeVisible();
     },
   );
 

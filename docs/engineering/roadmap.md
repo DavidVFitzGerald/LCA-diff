@@ -103,8 +103,8 @@ workflow is documented in [B4 publication](b4-publication.md).
 | F2 — shell and simulated authentication | Complete: #11–#15 merged after independent QA and hosted CI (final PR #49 at `1f82774`) | F1 complete; each task's issue dependencies |
 | F3–F5 — remaining mock frontend journeys | F3 complete: #16–#19 merged after independent QA and hosted CI (final PR #62 at `d3fddb1`). F4 complete: #20–#25, #64 and #69 merged after independent QA and hosted CI; gate #26 (PR #78, `af5317d`) recorded in [F4 verification](f4-verification.md) after blockers #75, #77 and #79 merged. F5: #27 merged through PR #88 at `f5769bb` and #28 Scores merged through PR #92 at `d4827c5`, each after independent QA and hosted CI. Under ADR 0006 #30 became L3 and #29, #31–#34 are post-MVP | F2 completion and each task's issue dependencies |
 | B1–B4 — Phase 2, backend and ingestion | B1 #57 / PR #61 merged; B2 #58 and B3 #59 delivered to main through recovery PR #82 after QA/CI; B4 #60 / PR #86 merged at `f0e2f9c` after QA/CI | M1/M2 and accepted ADR 0005, then milestone gates below |
-| L1 — single-command local stack (#96) | Implemented on `feat/l1-local-stack` (one PR, `Refs #96`); engineering checks recorded in the development-environment guide; awaiting independent QA, hosted CI and maintainer merge | ADR 0006 merged (PR #98, `cf7f1d5`); B1–B4 delivered |
-| L2 — real adapter and Auth Emulator (#97), replaces I1 locally | Not started | L1 |
+| L1 — single-command local stack (#96) | Delivered in PR #100 at `41c6b14`; #96 closed | ADR 0006 merged (PR #98, `cf7f1d5`); B1–B4 delivered |
+| L2 — real adapter and Auth Emulator (#97), replaces I1 locally | Implementing on `feat/l2-real-adapter`; generated contracts and core adapters committed, real-stack validation in progress | L1 delivered in PR #100 at `41c6b14` |
 | L3 — differences toggles and local MVP acceptance (#30) | Not started | L2 |
 | PM1 — hosted release: infrastructure/deployment (former R1) | Post-MVP | L3; maintainer scheduling |
 | PM2 — full-data validation and hosted release (former R2) | Post-MVP | PM1 |
@@ -430,10 +430,9 @@ a prerequisite. Generate frontend DTOs from FastAPI OpenAPI into
 deliberately and verify mock/real adapter parity. Implement the HTTP and Firebase
 JS SDK (emulator) adapters behind the existing services boundary and select them
 through explicit validated configuration; never fall back silently to mocks. The
-L1 stack runs the frontend in real mode. Reconcile the provisional frontend-only
-`flowSummaries` read summary (#20, `apps/frontend/src/services/README.md`) with
-B2: an equivalent stateless endpoint or derivation, or the spec/ADR workflow
-if §7 semantics change.
+L1 stack runs the frontend in real mode. Derive exact positive/negative extrema
+from B2's whole-selection `NumericSummary` carried on row pages, replacing the
+provisional extra summary methods without changing the stateless §7 API.
 
 Gate: login (demo and newly registered, emulator-verified), search, bulk select,
 reorder and Flows/Scores comparison work against the L1 stack. Exact decimals,
@@ -448,6 +447,11 @@ Carried from F2 (#14/#15), applies in L2:
 - no lock/unlock cycling when the adapter re-emits the same verified state against a persistent server 401/403.
 
 See [F2 verification](f2-verification.md).
+
+L2 delivery evidence: [real integration verification](l2-verification.md).
+Generated types, adapter parity, real-mode proxy wiring and the five-journey
+emulator/PostgreSQL browser suite are implemented. Final clean-clone QA and
+hosted CI status are recorded on #97; maintainer review/merge remains required.
 
 ### L3 — differences toggles and local MVP acceptance (#30)
 

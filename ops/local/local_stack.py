@@ -191,13 +191,14 @@ def smoke(
         "access-control-allow-origin" not in headers,
         "non-allowlisted origin preflight has no CORS allow header",
     )
-    _, headers, _ = request(
-        "OPTIONS", api + "/api/v1/releases", headers=preflight | {"Origin": allowed_origin}
-    )
-    expect(
-        headers.get("access-control-allow-origin") == allowed_origin,
-        "local frontend origin preflight is allowed",
-    )
+    for origin in (allowed_origin, allowed_origin.replace("127.0.0.1", "localhost")):
+        _, headers, _ = request(
+            "OPTIONS", api + "/api/v1/releases", headers=preflight | {"Origin": origin}
+        )
+        expect(
+            headers.get("access-control-allow-origin") == origin,
+            f"local frontend origin {origin} preflight is allowed",
+        )
 
 
 def main() -> None:

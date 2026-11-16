@@ -1,6 +1,8 @@
 # Build context for ops/local/frontend.Dockerfile only: frontend sources and lock.
 **
 !apps/frontend/**
+!packages/contracts/**
+!apps/api/openapi.json
 apps/frontend/node_modules
 apps/frontend/dist
 apps/frontend/test-results

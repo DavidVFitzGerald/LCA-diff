@@ -21,6 +21,33 @@ if [[ ! "$app_project" =~ ^[a-z0-9][a-z0-9_-]*$ ]]; then
     exit 2
 fi
 export LCA_APP_PROJECT="$app_project"
+# Refuse a workspace collision before ANY Compose call (including config/ps).
+# Do not source .env: it is configuration, never executable shell input.
+if [[ "${1:-}" == app-* ]]; then
+    workspace_project="${COMPOSE_PROJECT_NAME:-}"
+    if [[ ! -v COMPOSE_PROJECT_NAME && -f "$repo_dir/.env" ]]; then
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            if [[ "$line" =~ ^[[:space:]]*(export[[:space:]]+)?COMPOSE_PROJECT_NAME[[:space:]]*=[[:space:]]*(.*)$ ]]; then
+                workspace_project="${BASH_REMATCH[2]}"
+                workspace_project="${workspace_project%%[[:space:]]#*}"
+                workspace_project="${workspace_project%$'\r'}"
+                workspace_project="${workspace_project%"${workspace_project##*[![:space:]]}"}"
+                if [[ "$workspace_project" == \"*\" || "$workspace_project" == \'*\' ]]; then
+                    workspace_project="${workspace_project:1:${#workspace_project}-2}"
+                fi
+                if [[ "$workspace_project" == *'$'* || "$workspace_project" == *'`'* ]]; then
+                    echo 'Set COMPOSE_PROJECT_NAME explicitly in the environment for app-*; interpolated .env project names cannot be checked safely.' >&2
+                    exit 2
+                fi
+            fi
+        done < "$repo_dir/.env"
+    fi
+    workspace_project="${workspace_project:-lca-diff-dev}"
+    if [[ "$app_project" == "$workspace_project" ]]; then
+        echo "LCA_APP_PROJECT '$app_project' must differ from workspace project '$workspace_project'; no containers were changed." >&2
+        exit 2
+    fi
+fi
 app_compose=(docker compose --project-name "$app_project" --project-directory "$repo_dir" --file "$repo_dir/compose.app.yaml")
 app_port() { local value="${!1:-$2}"; [[ "$value" =~ ^[0-9]+$ ]] || { echo "$1 must be a port number." >&2; exit 2; }; echo "$value"; }
 app_frontend_port="$(app_port LCA_APP_FRONTEND_PORT 5180)"
@@ -40,14 +67,14 @@ app_ports_free() {
 app_summary() {
     cat <<SUMMARY
 Local app stack '$app_project' is healthy (local-only development credentials):
-  Frontend   http://127.0.0.1:$app_frontend_port  (L1: explicit mock mode; real adapter arrives in L2 #97)
+  Frontend   http://127.0.0.1:$app_frontend_port  (real API and Firebase Auth Emulator)
   API        http://127.0.0.1:$app_api_port/api/v1/health  and  /api/v1/ready
   Auth       127.0.0.1:$app_auth_port  (Firebase Auth Emulator, project demo-lca)
   Demo login demo@example.com / local-demo-password-not-secret  (emulator only)
 SUMMARY
 }
 case "${1:-help}" in
-    build|up|down|shell|check|logs|backend-up|backend-down|etl-up|etl-shell|etl-run|airflow-up|api-up|api-down|auth-up|publication-up|publication-run|app-up|app-down|app-reset|app-status|app-logs|app-smoke|app-import)
+    build|up|down|shell|check|logs|backend-up|backend-down|etl-up|etl-shell|etl-run|airflow-up|api-up|api-down|auth-up|publication-up|publication-run|app-up|app-down|app-reset|app-status|app-logs|app-smoke|app-import|app-e2e)
         bash "$repo_dir/.devcontainer/check-docker.sh" ;;
     config|help) ;;
     *) echo "Unknown command: $1" >&2; exit 2 ;;
@@ -82,9 +109,10 @@ case "${1:-help}" in
     app-status) shift; "${app_compose[@]}" ps --all "$@" ;;
     app-logs) shift; "${app_compose[@]}" logs --tail=200 "$@" ;;
     app-smoke) "${app_compose[@]}" --profile smoke run --rm --no-deps smoke ;;
+    app-e2e) "${app_compose[@]}" --profile e2e build e2e; shift; "${app_compose[@]}" --profile e2e run --rm --no-deps e2e "$@" ;;
     app-import) shift; "${app_compose[@]}" --profile import run --rm --no-deps import "$@" ;;
     help)
         echo 'Usage: ./dev {build|up|shell|check|down|logs|config|backend-up|backend-down|api-up|api-down|auth-up|etl-up|etl-shell|etl-run|airflow-up|publication-up|publication-run}'
-        echo '       ./dev {app-up|app-down|app-reset [--yes]|app-status|app-logs [service]|app-smoke|app-import <lca-import args>}'
+        echo '       ./dev {app-up|app-down|app-reset [--yes]|app-status|app-logs [service]|app-smoke|app-e2e|app-import <lca-import args>}'
         echo 'Requires a rootless Docker daemon; run development tools inside its workspace.' ;;
 esac
