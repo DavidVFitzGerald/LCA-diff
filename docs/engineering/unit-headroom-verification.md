@@ -611,6 +611,17 @@ In the container at `decb56a`:
 | `npm run test:e2e -- --grep @smoke`               | 14 passed (25.5 s)                                                         |
 | `npm run test:e2e`, both projects                 | 68 passed in 3.0 min (also 66/66 at `6c0b839`, before the merge of `main`) |
 
+**#76 AC3 again at `9374bde`.** Three consecutive quiet full runs (same
+gate: load ≤ 2.0, no container above 50 % CPU):
+
+| Run | Start load | End load | Tests      | Wall | ≥ 20 s test (QA D4) | ≥ 5 s budget (`settled`) | Anchoring `:183` |
+| --- | ---------- | -------- | ---------- | ---- | ------------------- | ------------------------ | ---------------- |
+| 1   | 1.56       | 4.13     | 412 passed | 47 s | 28.7 %              | 31.2 %                   | 28.7 %           |
+| 2   | 1.95       | 3.42     | 412 passed | 41 s | 28.8 %              | 31.3 %                   | 25.6 %           |
+| 3   | 1.92       | 3.38     | 412 passed | 42 s | 29.3 %              | 31.9 %                   | 31.2 %           |
+
+All are within the AC3 targets (65 %, 65 %, 75 %); no wait was rejected.
+
 In the container at `9374bde` (the #93 fix changes a product file, so full
 e2e ran again):
 
