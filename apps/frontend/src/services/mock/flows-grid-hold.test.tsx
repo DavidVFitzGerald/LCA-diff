@@ -58,11 +58,13 @@ describe("Flows grid hold measurement (#26 O11)", { timeout: 20000 }, () => {
         }
         expect(grid()).not.toHaveAttribute("aria-busy");
       },
-      // The hold's cost is 23 × (100 ms latency + ~125 ms of mock row-union
-      // work per page for 208 processes) plus rendering: 6.3–6.8 s alone,
-      // 8.9–15.1 s in full parallel runs, where a 15 s budget timed out in
-      // 4 of 6 QA runs (#26). 25 s keeps setup (≤ 8 s) + hold + settle
-      // inside the 40 s test limit. The elapsed time is logged below.
+      // The hold's cost is 23 × 100 ms latency plus rendering; the mock
+      // builds the 208-process row union once, not per page (#76; it was
+      // ~125 ms per page). Before that: 6.3–6.8 s alone, 8.9–15.1 s in full
+      // parallel runs, where a 15 s budget timed out in 4 of 6 QA runs
+      // (#26). The budget is unchanged; measured headroom is in
+      // docs/engineering/unit-headroom-verification.md. The elapsed time
+      // is logged below.
       { timeout: 25000 },
     );
     const elapsed = performance.now() - start;

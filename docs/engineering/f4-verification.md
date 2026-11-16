@@ -29,6 +29,8 @@ instrumented run. Without the hold file it reached 73–77 %. It passed in
 every run at `1b4fd1b`, but QA saw it time out in 3 of 6 runs at `ba912b4`.
 Its budget is not changed here. PM or the coordinator decides whether #76
 must land before this gate.
+Follow-up: the #76/#87 headroom work and its measurements are recorded in
+[`unit-headroom-verification.md`](unit-headroom-verification.md).
 
 The first round's blockers are resolved on `main`:
 
