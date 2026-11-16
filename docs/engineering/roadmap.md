@@ -105,7 +105,7 @@ workflow is documented in [B4 publication](b4-publication.md).
 | B1–B4 — Phase 2, backend and ingestion | B1 #57 / PR #61 merged; B2 #58 and B3 #59 delivered to main through recovery PR #82 after QA/CI; B4 #60 / PR #86 merged at `f0e2f9c` after QA/CI | M1/M2 and accepted ADR 0005, then milestone gates below |
 | L1 — single-command local stack (#96) | Delivered in PR #100 at `41c6b14`; #96 closed | ADR 0006 merged (PR #98, `cf7f1d5`); B1–B4 delivered |
 | L2 — real adapter and Auth Emulator (#97), replaces I1 locally | Delivered in PR #105, merged at `cd6d8a6`; #97 closed after independent QA and all five hosted jobs passed | L1 delivered in PR #100 at `41c6b14` |
-| L3 — differences toggles and local MVP acceptance (#30) | Not started | L2 |
+| L3 — differences toggles and local MVP acceptance (#30) | Implemented on `feat/l3-differences`; awaiting independent QA and maintainer merge ([local MVP verification](local-mvp-verification.md)) | L2 delivered in PR #105 at `cd6d8a6` |
 | PM1 — hosted release: infrastructure/deployment (former R1) | Post-MVP | L3; maintainer scheduling |
 | PM2 — full-data validation and hosted release (former R2) | Post-MVP | PM1 |
 | PM3 — deferred frontend completion (#29, #31–#34) | Post-MVP | L3 |
@@ -470,6 +470,9 @@ Gate (**local MVP definition of done**, specification §12): from a clean clone,
 log in, search, bulk-select, compare Flows and Scores from PostgreSQL, toggle
 differences, reorder/remove columns, and find data persisted after restart. All
 applicable per-PR checks pass. Remaining post-MVP gaps are listed explicitly.
+
+L3 delivery evidence: [local MVP verification](local-mvp-verification.md).
+Final clean-clone QA and hosted CI status are recorded on #30.
 
 ## Post-MVP — hosted release and deferred completion
 
