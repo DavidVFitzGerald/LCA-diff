@@ -88,7 +88,7 @@ scheduling only; product/scientific scope and F4/F5 acceptance gates are unchang
 Current handoff (2026-11-16): #26, #27 (PR #88, `f5769bb`) and #28 (PR #92,
 `d4827c5`) are merged/closed; see [Scores evidence](f5-scores-verification.md).
 
-**Local-only MVP re-scope (proposed ADR 0006, #95):** #30 is now L3 (differences
+**Local-only MVP re-scope (accepted ADR 0006, #95):** #30 is now L3 (differences
 toggles on the real API plus local MVP acceptance) and depends on L2 #97, which
 depends on L1 #96. #29, #31, #32, #33 and #34 carry the `post-MVP` label and the
 Post-MVP milestone, with their bodies kept for later re-grooming. The table keeps

@@ -1,6 +1,6 @@
 # LCA diff — Detailed Product and Engineering Specification
 
-**Status:** Revised implementation blueprint, 16 November 2026 (v3; local-only MVP per proposed ADR 0006, see §0.3)  
+**Status:** Revised implementation blueprint, 16 November 2026 (v3; local-only MVP per accepted ADR 0006, see §0.3)  
 **Audience:** AI software engineering agents, human engineers, QA, and maintainers  
 **Companion:** `LCA_diff_PRD.md` (under 1,000 words; canonical repository copy in `docs/product/`)
 
@@ -48,7 +48,7 @@ merged; revisit it when another regular maintainer joins.
 
 **Precedence for product/architecture instructions:** latest applicable **accepted ADR on `main`** → current implementation specification on `main` → current PRD → incidental issue text. Historical/archive/reference documents are excluded from agent implementation context, not fallback authority. GitHub Issues are execution plans, **not** authority for changing product/architecture contracts without an approved ADR/spec change. User-provided raw files remain the factual source of truth about their **own data format/content**; documentation cannot make a malformed source value correct. External library documentation guides implementation but does not override agreed product semantics.
 
-### 0.3 Local-only MVP scope revision (proposed ADR 0006, issue #95)
+### 0.3 Local-only MVP scope revision (accepted ADR 0006, issue #95)
 
 The MVP runs **locally only**. Wherever this document labels Google Cloud hosting, Terraform, Cloud Run, Cloud SQL, Cloud Storage, Artifact Registry, Secret Manager, production deployment/publish tiers or production benchmarks as **[MVP]**, read them as **[POST-MVP]**. Their contracts remain the target design for the later hosted release. The MVP instead requires:
 
@@ -804,7 +804,7 @@ The workbook's `Info` sheet reports **BAFU:2026 v1** and a July 2026 correction 
 
 **Revised delivery sequence (accepted ADR 0005, issue #55 / PR #56):** workflow/roadmap → verified container environment and issue setup → parallel mock frontend (F3–F5) and backend/ETL (B1–B4) → real frontend integration → production readiness. PR #56 was explicitly authorized and merged at `125b090` on 2026-11-14; ADR 0005 partially supersedes ADR 0002's scheduling gate while retaining its service boundary. Use one issue and one PR per backend milestone, permitting multiple sessions and incremental commits. B1 precedes B2/B3; B3 precedes B4; B4's API visibility gate requires B2. I1 requires the Phase 1 gate, B2 and B4. Separate worktrees and container projects/ports/volumes; coordinate root tooling, locks, Compose, CI and shared documents. Backend changes must preserve the frontend agent's components, mock fixtures and provisional contracts. Phase 1 centralizes calls and authentication behind typed services and deterministic asynchronous mocks, independently of API/database/Firebase/cloud/private inputs. Provisional DTOs follow §7; reconcile differences and generate DTOs from FastAPI OpenAPI in I1, with drift/parity checks and one explicit real-adapter composition boundary. Never silently fall back to mocks in production. Use the smallest meaningful behavior suite satisfying §9.2's applicable tiered gates; avoid duplicate tests and arbitrary coverage targets. Scientific correctness, verified authorization, revision integrity, ingestion audits, atomic publication/rollback and full release validation remain required. Mock checks do not satisfy real integration gates. The [roadmap](roadmap.md) defines evidence. The list below is a scope inventory, not an execution order.
 
-**Local-only MVP revision (proposed ADR 0006, #95):** after B1–B4 and the merged F1–F5 Scores work, the remaining MVP is three sequential issues/PRs:
+**Local-only MVP revision (accepted ADR 0006, #95):** after B1–B4 and the merged F1–F5 Scores work, the remaining MVP is three sequential issues/PRs:
 - L1 #96: single-command local stack and synthetic seed.
 - L2 #97: real adapter, generated DTOs and Auth Emulator. It replaces I1 locally and no longer waits for the mock-only Phase 1 gate.
 - L3 #30: differences toggles and local acceptance.

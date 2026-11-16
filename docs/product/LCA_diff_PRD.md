@@ -1,6 +1,6 @@
 # LCA diff — Product Requirements Document
 
-**Status:** Revised MVP scope, 16 November 2026 (v3: local-only MVP, proposed ADR 0006)  
+**Status:** Revised MVP scope, 16 November 2026 (v3: local-only MVP, accepted ADR 0006)  
 **Audience:** Product owner, human developers, and AI coding agents  
 **Companion:** `LCA_diff_Implementation_Specification.md` (canonical copy under `docs/engineering/`)
 
@@ -64,7 +64,7 @@ The old documents in `docs/product/archive/` and `docs/engineering/archive/`, an
 
 **Delivery sequence (accepted ADR 0005, issue #55 / PR #56):** after verified container tooling and initial issue setup, backend milestones B1–B4 may run alongside F3–F5 in isolated worktrees. Phase 1 retains a complete independently runnable mock frontend with simulated authentication and a centralized typed services boundary. Each backend milestone uses one issue and one PR, with incremental commits and uninterrupted implementation across sessions as needed. B1 precedes B2/B3; B3 precedes B4, whose API visibility checks also require B2. I1 waits for the Phase 1 gate, B2 and B4 before connecting the real adapter and generating frontend OpenAPI DTOs. Coordinate shared tooling changes and preserve frontend ownership. Use focused MVP behavior tests and applicable tiered CI; scientific, authorization, ingestion and atomic-publication checks and full release gates remain required. Mock mode must be explicit and cannot silently substitute for production failures. PR #56 was explicitly authorized and merged at `125b090` on 2026-11-14; ADR 0005 partially supersedes ADR 0002's scheduling gate while preserving its service boundary. See `docs/engineering/roadmap.md` for gates.
 
-**Local-only MVP (proposed ADR 0006, issue #95):** the remaining MVP is three sequential implementation issues/PRs:
+**Local-only MVP (accepted ADR 0006, issue #95):** the remaining MVP is three sequential implementation issues/PRs:
 - L1 #96: single-command local stack with a seeded synthetic release.
 - L2 #97: real HTTP/Firebase-emulator adapter with OpenAPI-generated DTOs; replaces I1 locally.
 - L3 #30: differences toggles and local end-to-end acceptance.

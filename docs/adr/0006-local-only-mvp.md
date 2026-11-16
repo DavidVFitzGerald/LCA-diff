@@ -1,7 +1,11 @@
 # 0006 — Local-only MVP with a single-command end-to-end stack
 
-Status: **Proposed**. Prepared on 2026-11-16 at the maintainer's request; it becomes
-authoritative only after its PR is approved and merged into `main`.
+Status: **Accepted** through the maintainer's merge of
+[PR #98](https://github.com/DavidVFitzGerald/LCA-diff/pull/98) into `main` at
+`cf7f1d561dae2a8af79d7344c56bf03e28481157` on 2026-11-16, after hosted CI passed.
+GitHub records no separate APPROVED review, and independent QA ran after the merge
+rather than before it (recorded on #95). This records observed merge evidence, not
+self-approval.
 Date: 2026-11-16.
 Issue: [#95](https://github.com/DavidVFitzGerald/LCA-diff/issues/95).
 Scope: MVP product scope, delivery sequence and completion gates.

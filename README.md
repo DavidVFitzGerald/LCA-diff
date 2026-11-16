@@ -1,7 +1,7 @@
 # LCA diff
 
 Read-only comparison of harmonized unit-process inventories and provider-supplied
-LCIA scores. The MVP is local-only (proposed ADR 0006). The one-command
+LCIA scores. The MVP is local-only (accepted ADR 0006). The one-command
 `./dev app-up` stack arrives with L1 (#96), and the real frontend/API connection
 with L2 (#97). Until then the frontend runs in explicit mock mode as described below.
 
