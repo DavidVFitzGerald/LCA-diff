@@ -137,4 +137,4 @@ and link follow-ups instead of silently changing criteria.
 
 No Bug issue was invented for unimplemented behavior. Use the Bug form when an
 actual existing-behavior defect is found. Backend, real Firebase/API integration,
-ETL/publication and deployment remain roadmap B1–B4/I1/R1–R2, not new issues here.
+ETL/publication and deployment remain roadmap B1–B4, L1–L3 and post-MVP PM1–PM2, not new issues here.

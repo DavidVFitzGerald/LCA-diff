@@ -44,7 +44,7 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 
 ## Current position
 
-**Local-only MVP revision (proposed [ADR 0006](../adr/0006-local-only-mvp.md),
+**Local-only MVP revision (accepted [ADR 0006](../adr/0006-local-only-mvp.md),
 [#95](https://github.com/DavidVFitzGerald/LCA-diff/issues/95); accepted through the
 maintainer's merge of PR #98 at `cf7f1d5` on 2026-11-16).** The maintainer removed deployment from the MVP
 on 2026-11-16. The MVP is reached when the app runs locally end to end from one
@@ -284,7 +284,7 @@ Vitest, typecheck/build and Playwright pass in containers. Check Chromium and
 Firefox, Safari as practicable, large grids and account isolation. Record a
 UI/spec coverage checklist and remaining real-integration checks. A mock demo is
 not a published BAFU release or a completed MVP. Under accepted ADR 0005 B1–B4
-may overlap this work; I1 still waits for this gate. Performance and integration
+may overlap this work; I1 waited for this gate until ADR 0006 removed that prerequisite. Performance and integration
 are rechecked later.
 
 ## Phase 2 — backend, ingestion and connection
@@ -511,8 +511,6 @@ Missing data/license/evidence blocks release, not unrelated synthetic developmen
 The issue bodies will carry detailed checks. This table prevents milestone-level
 scope loss; test numbers refer to the 19 mandatory behaviors in §9.2.
 
-| Contract                                                                  | Milestones owning delivery and evidence             | §9.2 behaviors                  |
-| ------------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------- |
 | Contract | Local MVP owners | Post-MVP owners | §9.2 behaviors |
 | --- | --- | --- | --- |
 | Governance, stack, environment, tiered CI (§§0, 3, 9) | M0–M2; F1/B1 checks; L1 single-command stack; L2 drift/real smoke | PM1–PM2 release gates | All applicable checks |
