@@ -36,7 +36,9 @@ The following self-evaluation uses the course's 24-point rubric. Scores describe
 
 ### Run with demo data
 
-Prerequisites: Git and a running Docker Engine with Docker Compose and **Linux containers**. Standard Docker Desktop on Windows 11 works; **a rootless Docker context is not required to run the application**. In Docker Desktop, switch to Linux containers if Windows-container mode is selected. Use PowerShell for the Compose commands below, or Bash (Linux, WSL or Git Bash) for the optional `./dev` wrapper. Internet access is needed for the first image/dependency build. No host Python, Node.js, package manager, database, Firebase project, `.env` file or private dataset is required.
+Prerequisites: Git and a running Docker Engine with Docker Compose and **Linux containers**. The application supports standard Docker Desktop on Windows 11; **a rootless Docker context is not required to run the application**. In Docker Desktop, switch to Linux containers if Windows-container mode is selected. Use PowerShell for the Compose commands below, or Bash (Linux, WSL or Git Bash) for the optional `./dev` wrapper. Internet access is needed for the first image/dependency build. No host Python, Node.js, package manager, database, Firebase project, `.env` file or private dataset is required.
+
+The maintainer confirmed Windows startup and login after the original workarounds; automated checks of the final fixes run on Linux. See [portability verification](docs/engineering/app-portability-verification.md) for the exact evidence and platform boundaries.
 
 ```sh
 git clone https://github.com/DavidVFitzGerald/LCA-diff.git
