@@ -204,6 +204,14 @@ Require rootless preflight, all capabilities dropped and no-new-privileges. Do n
 substitute a rootful daemon or copy the workspace identity policy into production.
 See ADR 0003 and the development-environment guide for validation and boundaries.
 
+Application runtime is separate: under the maintainer-requested portability amendment
+(proposed ADR 0007, #111 / PR #112), `./dev app-*` accepts reachable Linux Docker
+engines with Compose, including conventional Docker Desktop and rootless engines.
+PowerShell may use the equivalent direct app Compose commands. Do not remove the
+rootless guard from writable development/ETL workspaces or Dev Containers. Preserve
+app capability restrictions, loopback ports, read-only input mounts and named-volume
+isolation. Protect checksum-bound seed bytes from Git line-ending conversion.
+
 Follow specification §3's stack and layout: React/TypeScript/Vite, TanStack Query;
 Python FastAPI, Pydantic v2/Settings; SQLAlchemy 2.x, Alembic, PostgreSQL; Airflow,
 PySpark; Ruff, MyPy, Loguru, python-dotenv; pytest/pytest-cov, Vitest/React Testing

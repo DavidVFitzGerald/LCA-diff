@@ -21,6 +21,10 @@ jobs:
         working-directory: apps/frontend
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Checkout bytes and Docker runtime/workspace boundary
+        run: |
+          python3 ../../ops/local/test_checkout.py
+          LCA_DEV_CONTAINER=1 bash ../../.devcontainer/test-preflight.sh
       - run: npm ci
       - run: npm run contracts:check
       - run: npm run format:check
@@ -58,11 +62,11 @@ jobs:
       LCA_APP_PROJECT: lca-l2-ci
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      # Hosted runners are rootful: use Compose directly, as in etl.yml.
+      # Exercise the public app wrapper on the hosted runner's rootful Linux engine.
       - name: Start the isolated local application
-        run: docker compose -p lca-l2-ci -f compose.app.yaml up --detach --build --wait
+        run: ./dev app-up
       - name: Verify API precision, authentication and both CORS origins
-        run: docker compose -p lca-l2-ci -f compose.app.yaml --profile smoke run --rm --no-deps smoke
+        run: ./dev app-smoke
       - name: Build matching pinned browsers
         run: docker compose -p lca-l2-ci -f compose.app.yaml --profile e2e build e2e
       - name: Real Firebase, API and PostgreSQL browser smoke

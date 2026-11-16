@@ -46,6 +46,7 @@ The maintainer confirmed the merge; GitHub records no separate APPROVED review.
 | [0004](0004-solo-maintainer-review.md) | Solo-maintainer review with enforced CI | Proposed |
 | [0005](0005-parallel-backend-delivery.md) | Parallel backend delivery in four work units; partially supersedes 0002 | Accepted in PR #56, `125b090` |
 | [0006](0006-local-only-mvp.md) | Local-only MVP with a single-command end-to-end stack; partially supersedes 0002/0005 gating | Accepted in PR #98, `cf7f1d5` |
+| [0007](0007-portable-local-app-runtime.md) | Conventional/rootless app runtime; preserves 0003 workspace identity and proposes runtime-only partial supersession of 0006 | Proposed, #111 / PR #112 |
 
 ## PR consistency checklist
 

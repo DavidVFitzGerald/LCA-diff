@@ -1,6 +1,6 @@
-# Single-command local application stack (ADR 0006, #96). Started only through
-# `./dev app-up`, which pins its own project name (default lca-diff-app), so its
-# named volumes and network are separate from the `./dev up` workspace and from
+# Single-command local application stack (ADR 0006, runtime amendment ADR 0007).
+# Use ./dev app-up (Bash) or direct Compose (PowerShell). Pin a separate project
+# (default lca-diff-app), so named volumes/network stay apart from the workspace and
 # the disposable `postgres`/`postgres-target` databases that tests reset.
 # Every credential below is a local-only development value; never reuse it.
 name: lca-diff-app
@@ -11,9 +11,8 @@ x-hardened: &hardened
 
 x-tools: &tools
   <<: *hardened
-  build:
-    context: .
-    dockerfile: ops/local/tools.Dockerfile
+  # migrate owns the only build of this shared image. Other tasks reuse it.
+  pull_policy: never
   image: ${LCA_APP_PROJECT:-lca-diff-app}-tools:local
   restart: "no"
 
@@ -47,6 +46,9 @@ services:
 
   migrate:
     <<: *tools
+    build:
+      context: .
+      dockerfile: ops/local/tools.Dockerfile
     command: [alembic, upgrade, head]
     environment:
       LCA_DATABASE_URL: postgresql+psycopg://lca_migrator:local-migration-only@db/lca
@@ -56,9 +58,9 @@ services:
 
   seed:
     <<: *tools
-    # Namespace UID 0 is the unprivileged rootless daemon owner (ADR 0003). The
-    # opt-in `import` service shares this archive identity and must read
-    # owner-only private B3 artifacts; all capabilities remain dropped.
+    # seed and opt-in import share archive ownership. On Docker Desktop this
+    # is container root inside its Linux VM; on rootless Docker it maps to the
+    # daemon owner. All capabilities remain dropped; no host workspace is writable.
     user: "0:0"
     command: [python, -m, lca_etl.seed, load, --artifact, /app/seed/artifact/manifest.json, --target, /app/ops/target.json]
     environment: *target-urls
