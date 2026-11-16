@@ -177,6 +177,21 @@ function setup(
 }
 for (const mode of ["mock", "http"] as const)
   describe(`${mode} adapter contract`, () => {
+    it("keeps equal-value extrema stable when process order changes", async () => {
+      const app = setup(mode, ["20", "20.0", null]);
+      const first = data(await app.service.flowRows(app.input));
+      const reordered = data(
+        await app.service.flowRows({
+          ...app.input,
+          process_ids: [...app.input.process_ids].reverse(),
+        }),
+      );
+      expect(
+        reordered.items.find((row) => row.row_key === app.row.row_key)?.summary,
+      ).toEqual(
+        first.items.find((row) => row.row_key === app.row.row_key)?.summary,
+      );
+    });
     it.each([
       [["5", "20", null], "20", "0", 1],
       [["-80", "-20", null], "0", "80", 1],

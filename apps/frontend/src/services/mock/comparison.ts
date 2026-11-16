@@ -2,6 +2,7 @@ import type {
   ComparisonPage,
   ComparisonRowsRequest,
   DataService,
+  DecimalString,
   FlowCellsRequest,
   FlowRow,
   Indicator,
@@ -238,28 +239,37 @@ export function createMockComparison(
       if (index < 0) invalid();
       start = index + 1;
     }
+    const orderedProcesses = [...context.processes.entries()]
+      .sort(([a], [b]) => compare(a, b))
+      .map(([, entry]) => entry);
     const items = rows.slice(start, start + input.limit).map((row) => {
-      const amounts = [...context.processes.entries()]
-        .sort(([a], [b]) => compare(a, b))
-        .flatMap(([, { process, revision }]) => {
-          const value =
-            "row_key" in row
-              ? (process.flows[row.row_key] ??
-                revision.shared_flows[row.row_key])
-              : process.scores[row.id];
-          return value &&
-            (("present" in value && value.present) ||
-              ("status" in value && value.status === "valid"))
-            ? [value.amount!]
-            : [];
-        })
-        .sort(compareDecimal);
+      let minimum: DecimalString | null = null;
+      let maximum: DecimalString | null = null;
+      let present = 0;
+      for (const { process, revision } of orderedProcesses) {
+        const value =
+          "row_key" in row
+            ? (process.flows[row.row_key] ?? revision.shared_flows[row.row_key])
+            : process.scores[row.id];
+        if (
+          value &&
+          (("present" in value && value.present) ||
+            ("status" in value && value.status === "valid"))
+        ) {
+          const amount = value.amount!;
+          present++;
+          if (minimum === null || compareDecimal(amount, minimum) < 0)
+            minimum = amount;
+          if (maximum === null || compareDecimal(amount, maximum) > 0)
+            maximum = amount;
+        }
+      }
       return {
         ...row,
         summary: deriveSummary({
-          minimum: amounts[0] ?? null,
-          maximum: amounts.at(-1) ?? null,
-          present_count: amounts.length,
+          minimum,
+          maximum,
+          present_count: present,
           selected_count: context.processes.size,
         }),
       };

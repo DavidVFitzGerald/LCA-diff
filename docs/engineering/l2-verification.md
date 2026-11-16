@@ -47,8 +47,8 @@ only orchestrated Docker/Git/GitHub. Workspace checks used
 | `./dev check` (host) | Rootless identity, frozen tooling and preflight checks pass |
 | `cd apps/frontend && npm run contracts:generate` twice; `npm run contracts:check` | Deterministic output; clean check passes; deliberate generated and OpenAPI drift rejected |
 | `make backend-openapi-check` | Pass |
-| `cd apps/frontend && npm run format:check && npm run lint && npm run typecheck && npm run contracts:check && npm run build && npm run test:unit` | Pass, 460 tests/37 files; later strict-envelope regression adds two cases, targeted 46-case adapter suite passes |
-| `cd apps/frontend && npm run test:e2e` | Core increment: 72/72 Chromium and Firefox; final integrated rerun recorded on #97 |
+| `cd apps/frontend && npm run format:check && npm run lint && npm run typecheck && npm run contracts:check && npm run build && npm run test:unit` | Pass; delivered `37874df` full unit count 462/37 files. Subsequent deterministic-extrema tests: targeted 48-case adapter suite passes |
+| `cd apps/frontend && npm run test:e2e` | Core increment: 72/72 Chromium and Firefox. One integrated run timed out at Firefox far-cell loading under concurrent image builds/unit work (71/72); isolated repeat passed 3/3. Summary amount sorting was replaced with exact single-pass min/max; final full rerun recorded on #97 |
 | `MYPYPATH=data_pipeline/src uv run --frozen mypy ops/local` | Pass, two changed ops sources |
 | `uv run --frozen ruff check ops/local`; `uv run --frozen ruff format --check ops/local` | Pass |
 | `uv run --frozen python ops/local/test_project_guard.py` | Pass: all app commands reject default/environment/quoted and commented dotenv collisions before Docker; environment precedence and distinct names accepted |
@@ -83,10 +83,17 @@ failure for an unverified real emulator user retains the F2 error UX; logout.
 The browser-persistence failure is injected only by Playwright, with no product
 test hook. The emulator/backend remain real.
 
-The first emulator run exposed verification-state/token ordering and the second
-verified the fix. Hosted `real-stack` CI is being trialled in this PR; its final
-result, clean-clone independent QA, both-origin visual checks and restart/outage
-evidence must be recorded on #97 before claiming readiness.
+The emulator journey exposed verification-state/token ordering; a subsequent
+run verified the fix. All five hosted jobs passed at `37874df`, including the
+new `real-stack` job (Frontend run `43872263299`), so it stays in the per-PR tier.
+Independent clean-clone QA and final-SHA reruns are recorded on #97.
+
+Engineering down/up preserved the publication revision AND activation timestamp
+byte-for-byte, then API smoke passed again. Reset without `--yes` correctly
+refused. Automatic approval review rejected the proposed destructive reset of
+the engineering test volumes; they were preserved. The destructive reset branch
+is unchanged from merged L1 and is verified by source comparison, without
+claiming a new volume-deletion test.
 
 L3 #30 retains differences toggles and opt-in private BAFU acceptance. Emulator
 accounts are disposable and per-origin session persistence is documented. No
