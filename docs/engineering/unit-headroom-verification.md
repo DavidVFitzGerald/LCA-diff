@@ -1,14 +1,17 @@
-# Unit-suite headroom (#76) and the mixed-sign row height race (#87)
+# Unit-suite headroom (#76), the mixed-sign row height race (#87) and the deep-focus window race (#93)
 
 Status: engineering evidence on branch `fix/76-87-unit-headroom`, one PR for
-both issues (maintainer decision 2026-11-15).
+the three issues (maintainer decision 2026-11-15 for #76/#87; #93 added by
+the coordinator on 2026-11-16 after QA's AC4 FAIL).
 
 - **Baseline SHA.** `af5317d` (`main` at the start).
-- **Checks SHA.** `decb56a`, the last code commit. It includes the merge of
-  `main` after #88 (F5 #27), so #88's tests are in the measurements. Every
-  gate check in the "after" results ran there.
-- **Docs-only commit.** The commit that adds this document changes
-  documentation only.
+- **Checks SHA.** `decb56a` for the #76/#87 results below. It includes the
+  merge of `main` after #88 (F5 #27), so #88's tests are in the
+  measurements.
+- **Final code SHA.** `9374bde`, the #93 fix on top of `decb56a`. The #93
+  section, the two-suite pairs at `9374bde` and the final gates ran there.
+- **Docs-only commits.** The commits that add or update this document
+  change documentation only.
 
 Mock evidence only: none of this proves real API, authentication or
 authorization behaviour.
@@ -35,9 +38,15 @@ authorization behaviour.
   - The deep-scroll internal wait went from 107–114 % (it timed out in all
     three baseline runs) to 15–17 %.
   - The 300-selection test went from 92–95 % of its limit to 1 %.
-- **AC4 and #93.** The first two-suite attempt at the final SHA failed one
-  test, an existing race that a probe also shows at the baseline. It is now
-  Bug #93. The second attempt passed cleanly.
+- **AC4 and #93.** At `decb56a`, 2 of 5 two-suite pairs (mine and QA's)
+  failed the D1/D2 test, a race that also exists at the baseline: Bug #93.
+- **#93 is a product defect (class B), now fixed.** After `pin()` scrolled
+  to keep the anchor flow in place, the grid committed its row window at
+  the old scroll offset, above the view, until the scroll event arrived.
+  Both browsers committed that state too. The grid now gives the
+  virtualizer the new offset at once and renders there before paint. At
+  `9374bde`, 100 of 100 loaded D1/D2 runs and 4 of 4 two-suite pairs
+  passed.
 
 ## Method
 
@@ -312,13 +321,22 @@ Two instrumented full runs started together in the container:
 `(full.sh A & full.sh B; wait)`. Every attempt is listed, failed ones
 included.
 
-| #   | SHA, workers                          | Start load (1 min) | Peak | Other containers > 50 % CPU at start | Result A     | Result B          | Wall A / B  |
-| --- | ------------------------------------- | ------------------ | ---- | ------------------------------------ | ------------ | ----------------- | ----------- |
-| 1   | `0fb6ff8`, default                    | 3.38               | 14.2 | not recorded                         | **2 failed** | **3 failed**      | 111 / 113 s |
-| 2   | `0fb6ff8`, default (control)          | 2.25               | 13.2 | F5 scores workspace 224 %            | **4 failed** | **3 failed**      | 105 / 106 s |
-| 3   | `0fb6ff8`, `--maxWorkers=50%` (trial) | 1.73               | 9.8  | none                                 | 0 failed     | 0 failed          | 76 / 76 s   |
-| 4   | `decb56a` (50 %)                      | 1.79               | 9.6  | none                                 | 0 failed     | **1 failed: #93** | 77 / 76 s   |
-| 5   | `decb56a` (50 %)                      | 2.26               | 9.3  | none                                 | 0 failed     | 0 failed          | 75 / 75 s   |
+| #      | SHA, workers                          | Start load (1 min) | Peak          | Other containers > 50 % CPU at start | Result A       | Result B                | Wall A / B  |
+| ------ | ------------------------------------- | ------------------ | ------------- | ------------------------------------ | -------------- | ----------------------- | ----------- |
+| 1      | `0fb6ff8`, default                    | 3.38               | 14.2          | not recorded                         | **2 failed**   | **3 failed**            | 111 / 113 s |
+| 2      | `0fb6ff8`, default (control)          | 2.25               | 13.2          | F5 scores workspace 224 %            | **4 failed**   | **3 failed**            | 105 / 106 s |
+| 3      | `0fb6ff8`, `--maxWorkers=50%` (trial) | 1.73               | 9.8           | none                                 | 0 failed       | 0 failed                | 76 / 76 s   |
+| 4      | `decb56a` (50 %)                      | 1.79               | 9.6           | none                                 | 0 failed       | **1 failed: #93**       | 77 / 76 s   |
+| 5      | `decb56a` (50 %)                      | 2.26               | 9.3           | none                                 | 0 failed       | 0 failed                | 75 / 75 s   |
+| QA 1–3 | `decb56a` (50 %), QA's run            | 1.77, 1.83, 1.69   | 9.4, 9.7, 8.6 | none                                 | 0, 0, 0 failed | 0, 0, **1 failed: #93** | 75–78 s     |
+| 6      | `9374bde` (#93 fix)                   | 0.49               | 7.4           | none (27 containers)                 | 0 failed       | 0 failed                | 67 / 67 s   |
+| 7      | `9374bde`                             | 1.87               | 8.4           | none                                 | 0 failed       | 0 failed                | 70 / 70 s   |
+| 8      | `9374bde`                             | 1.77               | 8.8           | none                                 | 0 failed       | 0 failed                | 70 / 70 s   |
+| 9      | `9374bde`                             | 1.73               | 8.5           | none                                 | 0 failed       | 0 failed                | 69 / 69 s   |
+
+Attempts 6–9 ran 412 tests each (the #93 regression test is the new one).
+Each started only after a gate had seen the 1-min load ≤ 2.0 and no
+container above 50 % CPU in `docker stats`; no attempt was aborted.
 
 - **Default-worker failures (attempts 1–2).** Deep scroll (10 s wait, up to
   13.5 s), the anchoring Retry test's 1 s default wait, the process tree's
@@ -328,9 +346,9 @@ included.
 - **Attempt 4.** It failed `flows-grid.test.tsx` "keeps the same flows in
   view and focused… (QA D1, D2)" at line 253. `at(1310, -1)` was null just
   after its `waitFor` had seen that row loaded. A probe shows the race also
-  exists at the baseline (next section), so it is tracked in #93 and not
-  fixed here.
-- **Attempt 5** is the clean pass at the final SHA. Its highest figures:
+  exists at the baseline (next section). QA's pair 3 B failed the same way;
+  #93 fixes it (see the #93 section).
+- **Attempt 5** passed at `decb56a`. Its highest figures:
   - anchoring `:183` default wait, 61 %;
   - deep-scroll wait, 43 % (4.35 s);
   - harness `settledAt`, 38 %;
@@ -341,8 +359,23 @@ included.
   Attempt 4, apart from its failure, peaked at 63 % (anchoring `:183`), with
   the deep-scroll wait at 28 %.
 
-- **Over 90 %.** No budget was above 90 % in attempts 3–5. Residual risk is
-  listed below.
+- **QA's pairs at `decb56a`.** QA measured `flows-grid-anchoring.test.tsx:183`
+  (1 s default wait) at **92.3 %** (0.923 s) in pair 3 B, and 75–79 % in two
+  other runs; my attempts 4–5 saw 61–63 %. My earlier "nothing above 90 %"
+  was wrong for `decb56a` as a whole.
+- **Attempts 6–9 at `9374bde`.** Highest share in each run (A / B):
+
+  | #   | Test with limit ≥ 20 s (QA D4) | Budget ≥ 5 s (harness `settled`/`settledAt`) | Anchoring `:183` (1 s) | Next flows-grid 1 s wait |
+  | --- | ------------------------------ | -------------------------------------------- | ---------------------- | ------------------------ |
+  | 6   | not recorded¹                  | 33.7 / 35.2 %                                | 48.2 / 47.6 %          | 1.2 / 2.2 %              |
+  | 7   | 34.4 / 34.5 %                  | 35.3 / 34.3 %                                | 45.2 / 41.4 %          | 1.6 / 2.9 %              |
+  | 8   | 33.4 / 34.9 %                  | 34.7 / 35.1 %                                | 51.4 / 52.2 %          | 4.0 / 1.9 %              |
+  | 9   | 34.5 / 34.2 %                  | 36.2 / 35.3 %                                | 50.6 / **66.4 %**      | 2.3 / 1.9 %              |
+
+  ¹ The timing setup read per-test durations too early in attempt 6 (all
+  0 ms); it was fixed before attempt 7. Waits were recorded in every
+  attempt: 623 per run, none rejected. Nothing was above 90 % in attempts
+  6–9.
 
 ### #93 probe: the D1/D2 failure predates this PR
 
@@ -374,6 +407,151 @@ A temporary probe ran the D1/D2 setup: `render(30)`, `selectAll`,
 
 Result posted on #93:
 https://github.com/DavidVFitzGerald/LCA-diff/issues/93#issuecomment-6904095131
+
+QA's AC4 run then failed on this race (pair 3 B), and #93 was made ready
+and fixed in this PR: see the next section.
+
+## #93: the window commits above the view after an anchoring scroll
+
+### Cause (AC1)
+
+A temporary trace in `ComparisonGrid.tsx` logged, in order, the resize
+microtask, every render's virtualizer offset (`scrollOffset`), mounted range
+and `scrollTop`, `pin`'s `scrollTo`, and every scroll event. The D1/D2
+setup at `7e4e1c2` (code `decb56a`) gave this sequence, the same in every
+run:
+
+```text
+resize            (summaries for the 100 rows above arrive)
+pin               scrollTop 67,620 → +695 (the anchor flow moved down)
+render            range 1282–1305, virtualizer offset 67,620, scrollTop 68,315
+  → row 1310 unmounted (MutationObserver)
+render            range 1282–1305, offset 67,620, scrollTop 68,315
+scroll event      offset → 68,315; the next render mounts the view again
+```
+
+1. The resize microtask applies the summary heights with `resizeItem`,
+   which schedules a grid render.
+2. `pin()` then scrolls by how far the anchor flow moved (+695 px), with
+   `element.scrollTo`.
+3. The virtualizer learns the new offset only from the scroll event.
+   Browsers dispatch that event asynchronously, at the next rendering
+   step, and the jsdom stub mirrors that with a `setTimeout`.
+4. The render scheduled in step 1 runs first, computing the window from the
+   new heights and the old offset: rows 1282–1305, about 700 px above the
+   view at 68,315. Row 1310, loaded and in view, is unmounted until the
+   scroll event re-renders.
+
+The PM's lead was right. In the test, `waitFor` can see row 1310 loaded
+just before step 4, and then the focus call finds no row.
+
+### Probes (AC1, AC5)
+
+- **jsdom.** The D1/D2 setup, a `MutationObserver` counting batches in
+  which row 1310 is unmounted after it was seen loaded, 300 ms past the
+  `waitFor`. 10 runs per code.
+- **Browser.** A temporary spec on the large scenario
+  (`?mock-scenario=large`, 1440 × 900, 220 processes) jumped 12 times
+  (`scrollTop` 15,000–101,000) and sampled 40 rAF frames after each,
+  480 frames per run, while rows loaded, summaries arrived and the rows
+  above resized (every jump caused an anchoring scroll). Each frame and
+  each mutation batch was checked for (a) the mounted rows covering
+  `[scrollTop, scrollTop + clientHeight]` in the layout the grid gave them
+  and (b), from the fourth frame after a jump with the grid not busy, every
+  loaded row in view in the previous frame still mounted.
+
+| Code                | jsdom: runs with row 1310 unmounted (batches) | Browser runs | Frames failing (a) / (b) | Mutation batches failing (a) |
+| ------------------- | --------------------------------------------- | ------------ | ------------------------ | ---------------------------- |
+| `decb56a` (pre-fix) | **10 of 10** (1–2 each)                       | 3 Chromium   | 0 / 0 of 1,440           | **2** (1, 0, 1)              |
+|                     |                                               | 3 Firefox    | 0 / 0 of 1,440           | **1** (0, 1, 0)              |
+| final (the fix)     | 0 of 10                                       | 3 Chromium   | 0 / 0 of 1,440           | 0                            |
+|                     |                                               | 3 Firefox    | 0 / 0 of 1,440           | 0                            |
+
+Every failing browser batch followed `resize > pin > render`, the jsdom
+sequence: for example Chromium at `scrollTop` 15,460 with the mounted rows
+ending at 15,840 (the view ends at 16,360), and Firefox at 88,492.
+
+### Classification (AC2): B, product defect
+
+No painted frame failed, but both browsers committed the same window that
+misses the viewport, through the same sequence: `scrollTo`, then a render
+before the asynchronous scroll event. The issue's rule makes that a product
+defect, not only a jsdom artifact. It was not painted because, in these
+runs, the browser's scroll event and its synchronous re-render came before
+the next frame; nothing in the grid guaranteed that order.
+
+### Fix
+
+In `ComparisonGrid.tsx` `pin()`, after its `scrollTo`:
+
+- the virtualizer is given the read-back offset at once
+  (`rowWindow.scrollOffset = element.scrollTop`), so the next render
+  computes the window at the view the grid just moved to;
+- the grid re-renders before the next paint. From the resize microtask it
+  does so with `flushSync`; that is the same place `resizeItem` already
+  notifies synchronously, outside any lifecycle method. From the layout
+  effect it schedules a normal update, which React renders before paint.
+  Without the synchronous render the browser probe painted 7–8 frames with
+  rows missing: the scroll event, now a no-op for the virtualizer, no
+  longer triggered the render;
+- pins are updated before that render, so it does not scroll again. An
+  earlier draft rendered first and moved the view twice (6 frames failing
+  (b)).
+
+What stays the same:
+
+- #23 D2–D4 anchoring: `record`, the pins and `pin`'s delta are unchanged.
+- #87: rows and cells still take one height per row per commit.
+- No `flushSync` is added inside a lifecycle method. The full suite logs
+  the same 125 "flushSync was called from inside a lifecycle method"
+  warnings as before the fix, from the same five non-grid files.
+- No ADR is needed: the change keeps §6.4/§9.1 virtualization and anchoring
+  semantics and removes a transient wrong window.
+
+### Regression (AC3)
+
+`flows-grid.test.tsx` › "keeps the rows in view mounted in every commit while
+rows above resize after a deep jump (#93)" observes every mutation batch
+from the D1/D2 deep jump until the grid is settled. It fails on any batch
+whose mounted rows do not cover the viewport, or that drops a loaded row
+which was in view, and requires row 1310 mounted at the end.
+
+| Code                                                   | Runs | Result                                                    |
+| ------------------------------------------------------ | ---- | --------------------------------------------------------- |
+| scratch copy, only `ComparisonGrid.tsx` from `decb56a` | 3    | **3 failed**: `top 68315: covered to 68607` (1–2 batches) |
+| the fix                                                | 3    | 3 passed                                                  |
+
+### D1/D2 test meaning (AC4)
+
+The D1/D2 test is unchanged: same assertions, waits `10000`, limit `20000`.
+The harness `scrollTo` stub still dispatches its scroll event in a
+`setTimeout`. The anchoring, columns, hold and mixed-sign tests are
+unchanged and pass.
+
+### Stability (AC5)
+
+At `9374bde`, two concurrent loops of 50 runs of `-t 'QA D1, D2'` in the
+container (02:08:39–02:14:54, 100 runs, each run's log checked for
+`1 passed`):
+
+| Runs | Failures | 1-min load: start | Peak (20 s samples) | End  |
+| ---- | -------- | ----------------- | ------------------- | ---- |
+| 100  | 0        | 3.02              | 4.08                | 3.42 |
+
+The AC1 probes at the final code: jsdom 0 of 10 runs with row 1310
+unmounted; browser 0 failing frames and 0 failing batches in both projects
+(table above).
+
+### Commands (#93)
+
+```sh
+# AC3 regression, final and with only ComparisonGrid.tsx from decb56a (scratch copy), 3x each
+docker compose -p lca-diff-headroom exec -T workspace bash -lc 'cd apps/frontend && npx vitest run src/services/mock/flows-grid.test.tsx -t "#93"'
+# AC5: two of these loops at once, load sampled every 20 s
+docker compose -p lca-diff-headroom exec -T workspace bash -lc 'cd apps/frontend && for i in $(seq 50); do npx vitest run src/services/mock/flows-grid.test.tsx -t "QA D1, D2" || echo FAIL $i; done'
+# probes (temporary files, removed): jsdom probe test, and the browser spec per project
+docker compose -p lca-diff-headroom exec -T workspace bash -lc 'cd apps/frontend && npx playwright test e2e/probe-93.spec.ts --project=chromium && npx playwright test e2e/probe-93.spec.ts --project=firefox'
+```
 
 ## Modified tests (AC5)
 
@@ -433,18 +611,32 @@ In the container at `decb56a`:
 | `npm run test:e2e -- --grep @smoke`               | 14 passed (25.5 s)                                                         |
 | `npm run test:e2e`, both projects                 | 68 passed in 3.0 min (also 66/66 at `6c0b839`, before the merge of `main`) |
 
+In the container at `9374bde` (the #93 fix changes a product file, so full
+e2e ran again):
+
+| Check                                             | Result                |
+| ------------------------------------------------- | --------------------- |
+| `npm ci --no-audit --no-fund`, lockfile unchanged | pass (236 packages)   |
+| `npm run format:check`, `lint`, `typecheck`       | pass                  |
+| `npm run build`                                   | pass                  |
+| `npm run test:e2e -- --grep @smoke`               | 14 passed (25.6 s)    |
+| `npm run test:e2e`, both projects                 | 68 passed (2.9 min)   |
+| Full unit suite                                   | 412 passed (33 files) |
+
 The hosted `quality` run on the PR and a hosted `workflow_dispatch` full
 run are recorded in the issue handoff.
 
 ## Residual risk
 
-- **#93: the D1/D2 deep-focus race.** Bug #93 tracks it (Refs #93). It
-  failed once in the two-suite attempts (attempt 4). The probe shows it
-  exists at the baseline, and at `decb56a` the transient state may last one
-  more commit.
-- **Two-suite margin.** With two suites at once the anchoring Retry test's
-  1 s default wait reached 61–68 %. That is under the 90 % residual-risk line
-  and the AC3 target of 75 %, but it is the closest budget.
+- **#93.** Fixed at `9374bde`. The browser probe saw the wrong window only
+  in commits, never in a painted frame, so users were unlikely to see it;
+  the fix removes the commit as well.
+- **Two-suite margin: `flows-grid-anchoring.test.tsx:183`.** Its 1 s
+  default wait is the closest budget under two suites. It reached
+  **92.3 %** in QA's pair 3 B at `decb56a` (75–79 % in two other QA runs,
+  61–63 % in mine), and 41–66 % in attempts 6–9 at `9374bde`. Above 90 %
+  once, so listed here. Raising it is out of scope (#93); a further QA
+  observation above 90 % would need its own issue.
 - **Shared host.** The workspace counts as a quiet host only when other
   agents keep to the two-suite rule. Attempts 1–2 show that default workers
   plus extra load fail broadly.
