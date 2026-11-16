@@ -119,10 +119,11 @@ The application also supports an opt-in import of **BAFU:2026** [1]. Download th
    ./dev etl-run uv sync --frozen --all-packages
    ./dev etl-run env LCA_DATABASE_URL=postgresql+psycopg://lca_migrator:local-migration-only@postgres/lca uv run --frozen alembic upgrade head
    ./dev airflow-up
-   ./dev etl-run make import MANIFEST=private/bafu-full.json
+   ./dev etl-run uv run --frozen --package lca-etl python scripts/wait_etl_services.py
+   ./dev etl-run uv run --frozen --package lca-etl lca-import run --manifest private/bafu-full.json --wait --timeout 3600
    ```
 
-   This triggers and waits for the Airflow DAG, which runs the Spark-backed pipeline. The alternative focused execution is `./dev etl-run uv run --frozen --package lca-etl lca-import run-local --manifest private/bafu-full.json`. Reports and a ready candidate's portable artifact appear under `private/imports/<frozen-hash>/`. Review reconciliation, exclusions, missing scores and unit-basis issues before continuing. A failed or unready candidate is not publishable. See [ingestion and audit details](docs/engineering/b3-ingestion.md).
+   The readiness check waits for DAG registration before import. The import command then triggers and waits for the Airflow DAG, which runs the Spark-backed pipeline. The one-hour CLI wait can be increased for a large import; a timeout leaves the DAG active, and repeating the same command checks the same deterministic run. The alternative focused execution is `./dev etl-run uv run --frozen --package lca-etl lca-import run-local --manifest private/bafu-full.json`. Reports and a ready candidate's portable artifact appear under `private/imports/<frozen-hash>/`. Review reconciliation, exclusions, missing scores and unit-basis issues before continuing. A failed or unready candidate is not publishable. See [ingestion and audit details](docs/engineering/b3-ingestion.md).
 
 4. With the local application running (`./dev app-up`), promote and explicitly publish the ready artifact into its separate database. Replace angle-bracket placeholders with the artifact's actual hash, release/revision UUIDs and a newly chosen UUID for each operation. Keep each operation UUID stable when retrying that same operation.
 
