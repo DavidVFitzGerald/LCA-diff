@@ -8,12 +8,12 @@ services:
     # Rootless Docker maps namespace UID/GID 0 to the unprivileged daemon owner.
     # Supported startup paths verify the daemon before any mounted code executes.
     user: "0:0"
-    working_dir: /workspaces/lca-diff
+    working_dir: /workspaces/LCA-diff-AI-dev-project
     command: ["sleep", "infinity"]
     volumes:
       - type: bind
         source: .
-        target: /workspaces/lca-diff
+        target: /workspaces/LCA-diff-AI-dev-project
     ports:
       - "127.0.0.1:${FRONTEND_PORT:-5173}:5173"
     cap_drop:

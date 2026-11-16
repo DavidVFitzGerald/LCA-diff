@@ -1,7 +1,7 @@
 # F1 verification and handoff
 
 Status: 14 November 2026. Issues #5–#9 are merged. This
-[#10](https://github.com/DavidVFitzGerald/LCA-diff/issues/10) change supplies the
+[#10](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/10) change supplies the
 browser/CI gate; F1 completion requires independent QA, actual hosted CI and
 approved merge. The final branch/SHA, QA verdict and hosted run URL belong in its delivery
 handoff; local checks are not evidence of a hosted run or merge.
@@ -104,7 +104,7 @@ available foundation smoke plus unit/contract tests. Future suites extend this
 path rather than implying absent journeys have already passed.
 
 The first hosted run at `78645cf`
-([43590019891](https://github.com/DavidVFitzGerald/LCA-diff/actions/runs/43590019891))
+([43590019891](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/actions/runs/43590019891))
 passed Chromium but failed Firefox startup: GitHub injected `/github/home`, owned
 by UID 1001, while the pinned job container runs as UID 0. Both browser steps now
 set `HOME=/root`, the container user's owned system home. This configures Firefox's

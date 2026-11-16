@@ -18,7 +18,7 @@ Historical archive/reference folders are excluded from agent context and searche
 under root `AGENTS.md`. The initial ADRs record this governance and the previously
 requested frontend-first order; ADR 0003 records the rootless workspace identity.
 All three were accepted through the maintainer's merge of
-[PR #35](https://github.com/DavidVFitzGerald/LCA-diff/pull/35), commit
+[PR #35](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/pull/35), commit
 `f809b179c5c54f47be32ec7b24a9abce36b64982`; see the ADR index for attribution.
 
 This roadmap follows the maintainer's requested order instead of §12's suggested
@@ -54,7 +54,7 @@ new delivered SHA. #103 remains open for synthetic report labeling/regeneration
 and the dedicated uncached-build gate. This note does not mark the PR merged.
 
 **Local-only MVP revision (accepted [ADR 0006](../adr/0006-local-only-mvp.md),
-[#95](https://github.com/DavidVFitzGerald/LCA-diff/issues/95); accepted through the
+[#95](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/95); accepted through the
 maintainer's merge of PR #98 at `cf7f1d5` on 2026-11-16).** The maintainer removed deployment from the MVP
 on 2026-11-16. The MVP is reached when the app runs locally end to end from one
 command: the frontend calls the real API, data persists in PostgreSQL, and login
@@ -63,9 +63,9 @@ The remaining work is three sequential implementation issues, one PR each:
 
 | Step | Issue | Outcome | Depends on |
 | --- | --- | --- | --- |
-| L1 | [#96](https://github.com/DavidVFitzGerald/LCA-diff/issues/96) | `./dev app-up` / `make up` starts Postgres, migrations, synthetic seeded/published release, Auth Emulator with demo user, API and frontend; data persists | ADR 0006 merged (#95, PR #98 `cf7f1d5`) |
-| L2 | [#97](https://github.com/DavidVFitzGerald/LCA-diff/issues/97) | Real HTTP + Firebase-emulator adapters, OpenAPI-generated DTOs with drift check, real-stack Playwright smoke | L1 |
-| L3 | [#30](https://github.com/DavidVFitzGerald/LCA-diff/issues/30) (re-scoped) | Differences toggles on the real API; local MVP acceptance including one opt-in representative BAFU import | L2 |
+| L1 | [#96](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/96) | `./dev app-up` / `make up` starts Postgres, migrations, synthetic seeded/published release, Auth Emulator with demo user, API and frontend; data persists | ADR 0006 merged (#95, PR #98 `cf7f1d5`) |
+| L2 | [#97](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/97) | Real HTTP + Firebase-emulator adapters, OpenAPI-generated DTOs with drift check, real-stack Playwright smoke | L1 |
+| L3 | [#30](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/30) (re-scoped) | Differences toggles on the real API; local MVP acceptance including one opt-in representative BAFU import | L2 |
 
 Deferred to post-MVP (label `post-MVP`, milestone Post-MVP):
 - #29 exhaustive mock difference predicates.
@@ -79,7 +79,7 @@ move post-MVP. Open frontend Bugs #51, #91 and #85 are unchanged. Fix flaky
 required tests when they block L1–L3 merges.
 
 **Accepted sequencing revision:** [ADR 0005](../adr/0005-parallel-backend-delivery.md)
-([#55](https://github.com/DavidVFitzGerald/LCA-diff/issues/55)) records the
+([#55](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/55)) records the
 maintainer's request to overlap B1–B4 with F3–F5, using exactly one issue and one
 PR per backend milestone. PR #56 merged at `125b090` with explicit maintainer
 authorization; this replaces the Phase 1 start
@@ -89,17 +89,17 @@ frontend backlog is unchanged. Keep tests focused on meaningful MVP behavior
 under §9.2; no scientific, security, publication or release gate is waived.
 Use isolated worktrees and container projects/ports/volumes, preserve frontend
 files/contracts and coordinate shared root tooling/locks/CI/documentation.
-Backend issues are published: B1 [#57](https://github.com/DavidVFitzGerald/LCA-diff/issues/57),
-B2 [#58](https://github.com/DavidVFitzGerald/LCA-diff/issues/58),
-B3 [#59](https://github.com/DavidVFitzGerald/LCA-diff/issues/59),
-B4 [#60](https://github.com/DavidVFitzGerald/LCA-diff/issues/60).
+Backend issues are published: B1 [#57](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/57),
+B2 [#58](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/58),
+B3 [#59](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/59),
+B4 [#60](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/60).
 B1 PR #61 is merged into `main` at `f790803`. B2 PR #70 and B3 PR #72 passed
 independent QA and hosted CI. Their initial merges targeted predecessor feature
-branches; recovery [PR #82](https://github.com/DavidVFitzGerald/LCA-diff/pull/82)
+branches; recovery [PR #82](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/pull/82)
 delivered the unchanged reviewed B2/B3 code to `main` at `9b0ebba` after independent
 QA and hosted CI. The maintainer confirmed merge; #58, #59 and recovery #81 are
 closed. See [delivery recovery](backend-delivery-recovery.md).
-B4 #60 was delivered through [PR #86](https://github.com/DavidVFitzGerald/LCA-diff/pull/86),
+B4 #60 was delivered through [PR #86](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/pull/86),
 merged to `main` at `f0e2f9c` after independent QA and hosted checks; its operator
 workflow is documented in [B4 publication](b4-publication.md).
 
@@ -212,7 +212,7 @@ and typecheck/unit/build/browser smoke checks run in CI. Later generated DTO
 migration is explicitly reserved for I1.
 
 Current delivery evidence: #5–#10 are merged. The maintainer merged final
-[PR #44](https://github.com/DavidVFitzGerald/LCA-diff/pull/44) at `9612943`
+[PR #44](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/pull/44) at `9612943`
 after independent QA PASS and hosted quality/full-suite CI PASS recorded in #10.
 The [F1 verification record](f1-verification.md) describes commands and coverage.
 This completes the F1 foundation gate; product authentication remains F2 work.
@@ -313,8 +313,8 @@ Gate: clean-DB migrations and targeted Postgres tests prove constraints,
 precision, revision isolation and provenance; frozen locks and applicable Python
 quality checks pass. Data model readiness does not assert actual import success.
 
-Implementation in [#57](https://github.com/DavidVFitzGerald/LCA-diff/issues/57) /
-[PR #61](https://github.com/DavidVFitzGerald/LCA-diff/pull/61) adds the shared
+Implementation in [#57](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/57) /
+[PR #61](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/pull/61) adds the shared
 member, single constrained uv lock, full schema and immutable publication guards,
 safe API views/roles, isolated Postgres and backend CI. Local container checks
 pass (9 unit cases, 5 database scenarios, Ruff/MyPy and compatible API/ETL
@@ -347,8 +347,8 @@ Firebase email-enumeration protection, and map real 401/403 to the frontend
 ### B3 — miniature golden ingestion and LCIA reconciliation
 
 Implementation was delivered in
-[#59](https://github.com/DavidVFitzGerald/LCA-diff/issues/59) /
-[PR #72](https://github.com/DavidVFitzGerald/LCA-diff/pull/72), originally stacked on B2.
+[#59](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/59) /
+[PR #72](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/pull/72), originally stacked on B2.
 The actual bounded Spark/Airflow pipeline, private source staging and full-row
 audits, conservative score reconciliation and portable candidate artifact are
 implemented. Focused golden/failure and actual Airflow integration pass; the

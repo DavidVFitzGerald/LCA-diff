@@ -5,11 +5,11 @@ x-etl: &etl
     dockerfile: data_pipeline/Dockerfile
   init: true
   user: "${LCA_ETL_UID:-0}:${LCA_ETL_GID:-0}"
-  working_dir: /workspaces/lca-diff
+  working_dir: /workspaces/LCA-diff-AI-dev-project
   cap_drop: [ALL]
   security_opt: [no-new-privileges:true]
   volumes:
-    - .:/workspaces/lca-diff
+    - .:/workspaces/LCA-diff-AI-dev-project
     - type: bind
       source: ${LCA_PRIVATE_INPUT_DIR:-./data/private/bafu-2026-v1/incoming}
       target: /inputs
@@ -22,7 +22,7 @@ x-etl: &etl
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg://airflow:local-airflow-only@airflow-postgres/airflow
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-    AIRFLOW__CORE__DAGS_FOLDER: /workspaces/lca-diff/data_pipeline/dags
+    AIRFLOW__CORE__DAGS_FOLDER: /workspaces/LCA-diff-AI-dev-project/data_pipeline/dags
     AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-api:8080/execution/
     AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: maintainer:admin
     AIRFLOW__API_AUTH__JWT_SECRET: local-only-etl-jwt-secret-do-not-deploy

@@ -1,7 +1,7 @@
 # 0002 — Frontend-first delivery through a services boundary
 
 Status: **Accepted** through the maintainer's merge of
-[PR #35](https://github.com/DavidVFitzGerald/LCA-diff/pull/35) into `main`,
+[PR #35](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/pull/35) into `main`,
 commit `f809b179c5c54f47be32ec7b24a9abce36b64982` (2026-11-13).
 Date: 2026-11-13.
 Scope: MVP delivery order; product scope and technology choices unchanged.

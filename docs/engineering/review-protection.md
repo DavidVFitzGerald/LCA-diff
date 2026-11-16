@@ -42,7 +42,7 @@ the repository already public; it changed neither visibility nor billing.
 Protection requests are now supported. The exact payload was applied to isolated
 `verify/issue-4-target`, based on main `04779ea`, leaving main unchanged.
 
-[Probe PR #38](https://github.com/DavidVFitzGerald/LCA-diff/pull/38) intentionally
+[Probe PR #38](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/pull/38) intentionally
 failed a Vitest assertion at `617b70e`. The failure was reproduced through
 `docker compose exec -T workspace bash -lc 'npm --prefix apps/frontend run test:unit'`
 (exit 1, existing mount test passed). Hosted `quality` failed and GitHub reported

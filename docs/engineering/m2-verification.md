@@ -10,7 +10,7 @@ it adds no product behavior or new architecture decision.
   `4237636a79e2becbe330880b506187ead2aa1302` (Task) and
   `64ad49482d4db33da11bc79eaaea7763d4e12562` (Bug), matching Git.
   Task/bug labels exist. The maintainer confirmed both forms visible at
-  https://github.com/DavidVFitzGerald/LCA-diff/issues/new/choose in this session.
+  https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/new/choose in this session.
   This is attributed user evidence: the agent's HTTP request reached sign-in,
   and GraphQL `issueTemplates: []` did not establish YAML form visibility.
 - AC2: GitHub milestones contain F1–F5 counts 6/5/4/7/8 (30 tasks).

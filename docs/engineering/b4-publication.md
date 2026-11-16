@@ -32,7 +32,7 @@ Create ignored `private/target.json` inside the worktree:
 {
   "name": "local-b4",
   "environment": "local",
-  "archive_uri": "file:///workspaces/lca-diff/private/promoted"
+  "archive_uri": "file:///workspaces/LCA-diff-AI-dev-project/private/promoted"
 }
 ```
 

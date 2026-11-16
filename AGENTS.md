@@ -71,9 +71,9 @@ DESIGN-NOW interfaces without implementing POST-MVP features.
 **Local-only MVP (2026-11-16; accepted ADR 0006, #95; PR #98 merged at
 `cf7f1d5` by the maintainer):** the MVP runs locally only. Remaining MVP work is three sequential
 issues/PRs:
-- L1 [#96](https://github.com/DavidVFitzGerald/LCA-diff/issues/96): `./dev app-up` single-command stack with a seeded synthetic release.
-- L2 [#97](https://github.com/DavidVFitzGerald/LCA-diff/issues/97): real HTTP/Firebase-emulator adapter with generated DTOs; replaces I1 locally.
-- L3 [#30](https://github.com/DavidVFitzGerald/LCA-diff/issues/30): differences toggles and local acceptance.
+- L1 [#96](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/96): `./dev app-up` single-command stack with a seeded synthetic release.
+- L2 [#97](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/97): real HTTP/Firebase-emulator adapter with generated DTOs; replaces I1 locally.
+- L3 [#30](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/30): differences toggles and local acceptance.
 
 L2 no longer waits for the mock-only Phase 1 gate. Cloud
 infrastructure/deployment (former R1), full-data release validation (former R2),

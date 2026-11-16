@@ -10,7 +10,7 @@ Read [the roadmap](roadmap.md) and [AGENTS.md](../../AGENTS.md) for requirements
 precedence, containers, role handoffs and completion gates. GitHub issue bodies
 are the actionable plans; this index does not replace their criteria.
 
-Review/publish baseline: [PR #35](https://github.com/DavidVFitzGerald/LCA-diff/pull/35).
+Review/publish baseline: [PR #35](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/pull/35).
 Merged into `main` at `f809b179c5c54f47be32ec7b24a9abce36b64982`.
 The maintainer confirmed both Task and Bug visible in GitHub's rendered chooser
 on 2026-11-13. See [M2 verification](m2-verification.md) for the handoff.
@@ -19,13 +19,13 @@ on 2026-11-13. See [M2 verification](m2-verification.md) for the handoff.
 
 | Tracking issue | Current action |
 | --- | --- |
-| [#1](https://github.com/DavidVFitzGerald/LCA-diff/issues/1) — M0 baseline | Baseline and ADRs merged in PR #35; merge evidence is recorded in the ADR index. |
-| [#2](https://github.com/DavidVFitzGerald/LCA-diff/issues/2) — M1 runtime gate | QA passed: independent rootless/lock/restart/ownership checks plus maintainer-reported editor check; merged in PR #35. |
-| [#3](https://github.com/DavidVFitzGerald/LCA-diff/issues/3) — GitHub execution setup | Labels/milestones/issues published; forms and PR guidance merged; maintainer confirmed Task and Bug in chooser. |
-| [#4](https://github.com/DavidVFitzGerald/LCA-diff/issues/4) — Review protection | Public repository supports protection. Solo-maintainer ADR 0004 and versioned policy are proposed; isolated candidate validation is separate from main activation after policy merge. See review-protection.md. |
+| [#1](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/1) — M0 baseline | Baseline and ADRs merged in PR #35; merge evidence is recorded in the ADR index. |
+| [#2](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/2) — M1 runtime gate | QA passed: independent rootless/lock/restart/ownership checks plus maintainer-reported editor check; merged in PR #35. |
+| [#3](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/3) — GitHub execution setup | Labels/milestones/issues published; forms and PR guidance merged; maintainer confirmed Task and Bug in chooser. |
+| [#4](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/4) — Review protection | Public repository supports protection. Solo-maintainer ADR 0004 and versioned policy are proposed; isolated candidate validation is separate from main activation after policy merge. See review-protection.md. |
 
 Planning/publication was authorized despite the pending M1 verification. Frontend
-implementation starts at [#5](https://github.com/DavidVFitzGerald/LCA-diff/issues/5) only after [#2](https://github.com/DavidVFitzGerald/LCA-diff/issues/2) and [#3](https://github.com/DavidVFitzGerald/LCA-diff/issues/3)
+implementation starts at [#5](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/5) only after [#2](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/2) and [#3](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/3)
 are resolved. Native protection availability is tracked separately; it was not
 silently enabled, waived, or represented as enforced.
 
@@ -36,49 +36,49 @@ below are implementation predecessors, not every related scope/follow-up link.
 Each issue also requires the verified environment and merged bootstrap baseline.
 Re-groom before starting; do not treat a later slice's drafted interfaces as frozen.
 
-### [F1 — Frontend foundation and service contracts](https://github.com/DavidVFitzGerald/LCA-diff/milestone/2) — 6 tasks
+### [F1 — Frontend foundation and service contracts](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/milestone/2) — 6 tasks
 
 | Key | Issue | Blocking predecessors |
 | --- | --- | --- |
-| F1-01 | [#5 — scaffold the container-run React frontend and quality commands](https://github.com/DavidVFitzGerald/LCA-diff/issues/5) | [#3](https://github.com/DavidVFitzGerald/LCA-diff/issues/3), [#2](https://github.com/DavidVFitzGerald/LCA-diff/issues/2) |
-| F1-02 | [#6 — define provisional service contracts and synthetic precision fixtures](https://github.com/DavidVFitzGerald/LCA-diff/issues/6) | [#5](https://github.com/DavidVFitzGerald/LCA-diff/issues/5) |
-| F1-03 | [#7 — implement asynchronous mock discovery and selection services](https://github.com/DavidVFitzGerald/LCA-diff/issues/7) | [#6](https://github.com/DavidVFitzGerald/LCA-diff/issues/6) |
-| F1-04 | [#8 — implement revision-consistent mock comparison and indicator services](https://github.com/DavidVFitzGerald/LCA-diff/issues/8) | [#6](https://github.com/DavidVFitzGerald/LCA-diff/issues/6) |
-| F1-05 | [#9 — compose mock services with TanStack Query and an enforced UI boundary](https://github.com/DavidVFitzGerald/LCA-diff/issues/9) | [#7](https://github.com/DavidVFitzGerald/LCA-diff/issues/7), [#8](https://github.com/DavidVFitzGerald/LCA-diff/issues/8) |
-| F1-06 | [#10 — add containerized Playwright smoke and required frontend CI checks](https://github.com/DavidVFitzGerald/LCA-diff/issues/10) | [#9](https://github.com/DavidVFitzGerald/LCA-diff/issues/9) |
+| F1-01 | [#5 — scaffold the container-run React frontend and quality commands](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/5) | [#3](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/3), [#2](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/2) |
+| F1-02 | [#6 — define provisional service contracts and synthetic precision fixtures](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/6) | [#5](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/5) |
+| F1-03 | [#7 — implement asynchronous mock discovery and selection services](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/7) | [#6](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/6) |
+| F1-04 | [#8 — implement revision-consistent mock comparison and indicator services](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/8) | [#6](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/6) |
+| F1-05 | [#9 — compose mock services with TanStack Query and an enforced UI boundary](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/9) | [#7](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/7), [#8](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/8) |
+| F1-06 | [#10 — add containerized Playwright smoke and required frontend CI checks](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/10) | [#9](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/9) |
 
-### [F2 — Application shell and simulated authentication](https://github.com/DavidVFitzGerald/LCA-diff/milestone/3) — 5 tasks
-
-| Key | Issue | Blocking predecessors |
-| --- | --- | --- |
-| F2-01 | [#11 — build the direct application shell and accessible locked login dialog](https://github.com/DavidVFitzGerald/LCA-diff/issues/11) | [#10](https://github.com/DavidVFitzGerald/LCA-diff/issues/10) |
-| F2-02 | [#12 — implement deterministic mock authentication account and session scenarios](https://github.com/DavidVFitzGerald/LCA-diff/issues/12) | [#10](https://github.com/DavidVFitzGerald/LCA-diff/issues/10) |
-| F2-03 | [#13 — connect mock login, registration, verification and password-reset flows](https://github.com/DavidVFitzGerald/LCA-diff/issues/13) | [#11](https://github.com/DavidVFitzGerald/LCA-diff/issues/11), [#12](https://github.com/DavidVFitzGerald/LCA-diff/issues/12) |
-| F2-04 | [#14 — guard protected queries through session restoration and account changes](https://github.com/DavidVFitzGerald/LCA-diff/issues/14) | [#11](https://github.com/DavidVFitzGerald/LCA-diff/issues/11), [#12](https://github.com/DavidVFitzGerald/LCA-diff/issues/12) |
-| F2-05 | [#15 — verify complete mock authentication and accessible shell journeys](https://github.com/DavidVFitzGerald/LCA-diff/issues/15) | [#13](https://github.com/DavidVFitzGerald/LCA-diff/issues/13), [#14](https://github.com/DavidVFitzGerald/LCA-diff/issues/14) |
-
-### [F3 — Discovery and process selection](https://github.com/DavidVFitzGerald/LCA-diff/milestone/4) — 4 tasks
+### [F2 — Application shell and simulated authentication](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/milestone/3) — 5 tasks
 
 | Key | Issue | Blocking predecessors |
 | --- | --- | --- |
-| F3-01 | [#16 — render the paginated release and nested process tree](https://github.com/DavidVFitzGerald/LCA-diff/issues/16) | [#15](https://github.com/DavidVFitzGerald/LCA-diff/issues/15), [#7](https://github.com/DavidVFitzGerald/LCA-diff/issues/7) |
-| F3-02 | [#17 — add reactive AND-tokenized process search with cancellation](https://github.com/DavidVFitzGerald/LCA-diff/issues/17) | [#16](https://github.com/DavidVFitzGerald/LCA-diff/issues/16), [#18](https://github.com/DavidVFitzGerald/LCA-diff/issues/18) |
-| F3-03 | [#18 — manage individual selection order and a virtualized selected-process list](https://github.com/DavidVFitzGerald/LCA-diff/issues/18) | [#16](https://github.com/DavidVFitzGerald/LCA-diff/issues/16) |
-| F3-04 | [#19 — implement filter-scoped bulk selection and tri-state parent checkboxes](https://github.com/DavidVFitzGerald/LCA-diff/issues/19) | [#17](https://github.com/DavidVFitzGerald/LCA-diff/issues/17), [#18](https://github.com/DavidVFitzGerald/LCA-diff/issues/18) |
+| F2-01 | [#11 — build the direct application shell and accessible locked login dialog](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/11) | [#10](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/10) |
+| F2-02 | [#12 — implement deterministic mock authentication account and session scenarios](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/12) | [#10](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/10) |
+| F2-03 | [#13 — connect mock login, registration, verification and password-reset flows](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/13) | [#11](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/11), [#12](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/12) |
+| F2-04 | [#14 — guard protected queries through session restoration and account changes](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/14) | [#11](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/11), [#12](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/12) |
+| F2-05 | [#15 — verify complete mock authentication and accessible shell journeys](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/15) | [#13](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/13), [#14](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/14) |
 
-### [F4 — Shared comparison grid and Flows](https://github.com/DavidVFitzGerald/LCA-diff/milestone/5) — 7 tasks
+### [F3 — Discovery and process selection](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/milestone/4) — 4 tasks
 
 | Key | Issue | Blocking predecessors |
 | --- | --- | --- |
-| F4-01 | [#20 — Add snapshot-consistent flow windows and whole-row chart summaries](https://github.com/DavidVFitzGerald/LCA-diff/issues/20) | [#19](https://github.com/DavidVFitzGerald/LCA-diff/issues/19) |
-| F4-02 | [#21 — Build shared process headers and comparability warnings](https://github.com/DavidVFitzGerald/LCA-diff/issues/21) | [#20](https://github.com/DavidVFitzGerald/LCA-diff/issues/20) |
-| F4-03 | [#22 — Implement exact signed-bar geometry and full-precision value tooltips](https://github.com/DavidVFitzGerald/LCA-diff/issues/22) | [#20](https://github.com/DavidVFitzGerald/LCA-diff/issues/20) |
-| F4-04 | [#23 — Virtualize comparison rows and columns with sticky alignment](https://github.com/DavidVFitzGerald/LCA-diff/issues/23) | [#20](https://github.com/DavidVFitzGerald/LCA-diff/issues/20), [#21](https://github.com/DavidVFitzGerald/LCA-diff/issues/21), [#22](https://github.com/DavidVFitzGerald/LCA-diff/issues/22) |
-| F4-05 | [#24 — Assemble the Flows comparison with exact missingness and cell warnings](https://github.com/DavidVFitzGerald/LCA-diff/issues/24) | [#23](https://github.com/DavidVFitzGerald/LCA-diff/issues/23) |
-| F4-06 | [#25 — Add shared column drag, keyboard reorder and global removal](https://github.com/DavidVFitzGerald/LCA-diff/issues/25) | [#24](https://github.com/DavidVFitzGerald/LCA-diff/issues/24) |
-| F4-07 | [#26 — Verify large Flows comparisons and record the milestone gate](https://github.com/DavidVFitzGerald/LCA-diff/issues/26) | [#25](https://github.com/DavidVFitzGerald/LCA-diff/issues/25) |
+| F3-01 | [#16 — render the paginated release and nested process tree](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/16) | [#15](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/15), [#7](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/7) |
+| F3-02 | [#17 — add reactive AND-tokenized process search with cancellation](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/17) | [#16](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/16), [#18](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/18) |
+| F3-03 | [#18 — manage individual selection order and a virtualized selected-process list](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/18) | [#16](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/16) |
+| F3-04 | [#19 — implement filter-scoped bulk selection and tri-state parent checkboxes](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/19) | [#17](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/17), [#18](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/18) |
 
-### [F5 — Scores, differences and workspace completion](https://github.com/DavidVFitzGerald/LCA-diff/milestone/6) — 8 tasks
+### [F4 — Shared comparison grid and Flows](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/milestone/5) — 7 tasks
+
+| Key | Issue | Blocking predecessors |
+| --- | --- | --- |
+| F4-01 | [#20 — Add snapshot-consistent flow windows and whole-row chart summaries](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/20) | [#19](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/19) |
+| F4-02 | [#21 — Build shared process headers and comparability warnings](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/21) | [#20](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/20) |
+| F4-03 | [#22 — Implement exact signed-bar geometry and full-precision value tooltips](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/22) | [#20](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/20) |
+| F4-04 | [#23 — Virtualize comparison rows and columns with sticky alignment](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/23) | [#20](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/20), [#21](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/21), [#22](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/22) |
+| F4-05 | [#24 — Assemble the Flows comparison with exact missingness and cell warnings](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/24) | [#23](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/23) |
+| F4-06 | [#25 — Add shared column drag, keyboard reorder and global removal](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/25) | [#24](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/24) |
+| F4-07 | [#26 — Verify large Flows comparisons and record the milestone gate](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/26) | [#25](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/25) |
+
+### [F5 — Scores, differences and workspace completion](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/milestone/6) — 8 tasks
 
 Maintainer-authorized scheduling adjustment (2026-11-15): selector #27 may run
 alongside F4 verification using its existing service/auth/selection prerequisites.
@@ -96,29 +96,29 @@ their original keys and dependencies for history.
 
 | Key | Issue | Blocking predecessors |
 | --- | --- | --- |
-| F5-01 | [#27 — Add the indicator tree and source-ordered selection state](https://github.com/DavidVFitzGerald/LCA-diff/issues/27) | [#8](https://github.com/DavidVFitzGerald/LCA-diff/issues/8), [#9](https://github.com/DavidVFitzGerald/LCA-diff/issues/9), [#15](https://github.com/DavidVFitzGerald/LCA-diff/issues/15), [#19](https://github.com/DavidVFitzGerald/LCA-diff/issues/19) |
-| F5-02 | [#28 — Assemble windowed Scores with valid and unavailable cell states](https://github.com/DavidVFitzGerald/LCA-diff/issues/28) | [#26](https://github.com/DavidVFitzGerald/LCA-diff/issues/26), [#27](https://github.com/DavidVFitzGerald/LCA-diff/issues/27) |
-| F5-03 (post-MVP) | [#29 — Implement exact on-demand difference queries in mock services](https://github.com/DavidVFitzGerald/LCA-diff/issues/29) | [#28](https://github.com/DavidVFitzGerald/LCA-diff/issues/28) |
-| F5-04 → L3 | [#30 — Differences toggles on the real API and local MVP acceptance](https://github.com/DavidVFitzGerald/LCA-diff/issues/30) | [#97](https://github.com/DavidVFitzGerald/LCA-diff/issues/97) (formerly #29) |
-| F5-05 (post-MVP) | [#31 — Persist the versioned account-scoped workspace](https://github.com/DavidVFitzGerald/LCA-diff/issues/31) | [#30](https://github.com/DavidVFitzGerald/LCA-diff/issues/30) |
-| F5-06 (post-MVP) | [#32 — Reconcile restored IDs and publication changes atomically](https://github.com/DavidVFitzGerald/LCA-diff/issues/32) | [#31](https://github.com/DavidVFitzGerald/LCA-diff/issues/31) |
-| F5-07 (post-MVP) | [#33 — Complete comparison loading, recovery and accessibility states](https://github.com/DavidVFitzGerald/LCA-diff/issues/33) | [#32](https://github.com/DavidVFitzGerald/LCA-diff/issues/32) |
-| F5-08 (post-MVP) | [#34 — Record full mock-frontend acceptance and the Phase 1 gate](https://github.com/DavidVFitzGerald/LCA-diff/issues/34) | [#33](https://github.com/DavidVFitzGerald/LCA-diff/issues/33) |
+| F5-01 | [#27 — Add the indicator tree and source-ordered selection state](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/27) | [#8](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/8), [#9](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/9), [#15](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/15), [#19](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/19) |
+| F5-02 | [#28 — Assemble windowed Scores with valid and unavailable cell states](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/28) | [#26](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/26), [#27](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/27) |
+| F5-03 (post-MVP) | [#29 — Implement exact on-demand difference queries in mock services](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/29) | [#28](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/28) |
+| F5-04 → L3 | [#30 — Differences toggles on the real API and local MVP acceptance](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/30) | [#97](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/97) (formerly #29) |
+| F5-05 (post-MVP) | [#31 — Persist the versioned account-scoped workspace](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/31) | [#30](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/30) |
+| F5-06 (post-MVP) | [#32 — Reconcile restored IDs and publication changes atomically](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/32) | [#31](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/31) |
+| F5-07 (post-MVP) | [#33 — Complete comparison loading, recovery and accessibility states](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/33) | [#32](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/32) |
+| F5-08 (post-MVP) | [#34 — Record full mock-frontend acceptance and the Phase 1 gate](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/34) | [#33](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/33) |
 
 ## Coverage and evidence ownership
 
 | Required behavior | Owning issues |
 | --- | --- |
-| Toolchain, quality scripts/CI and container Playwright Chromium/Firefox | [#5](https://github.com/DavidVFitzGerald/LCA-diff/issues/5), [#10](https://github.com/DavidVFitzGerald/LCA-diff/issues/10) |
-| Typed contracts, precision fixtures, asynchronous mock discovery/comparison, query boundary | [#6](https://github.com/DavidVFitzGerald/LCA-diff/issues/6), [#7](https://github.com/DavidVFitzGerald/LCA-diff/issues/7), [#8](https://github.com/DavidVFitzGerald/LCA-diff/issues/8), [#9](https://github.com/DavidVFitzGerald/LCA-diff/issues/9) |
-| Shell/modal, simulated registration/reset/verification and guarded session/account lifecycle | [#11](https://github.com/DavidVFitzGerald/LCA-diff/issues/11), [#12](https://github.com/DavidVFitzGerald/LCA-diff/issues/12), [#13](https://github.com/DavidVFitzGerald/LCA-diff/issues/13), [#14](https://github.com/DavidVFitzGerald/LCA-diff/issues/14), [#15](https://github.com/DavidVFitzGerald/LCA-diff/issues/15) |
-| Hierarchical discovery, ordered/retained selection, AND search and paged filtered bulk actions | [#16](https://github.com/DavidVFitzGerald/LCA-diff/issues/16), [#18](https://github.com/DavidVFitzGerald/LCA-diff/issues/18), [#17](https://github.com/DavidVFitzGerald/LCA-diff/issues/17), [#19](https://github.com/DavidVFitzGerald/LCA-diff/issues/19) |
-| Snapshot windows, all-selection extrema, signed geometry, exact labels and two-axis virtualization | [#20](https://github.com/DavidVFitzGerald/LCA-diff/issues/20), [#22](https://github.com/DavidVFitzGerald/LCA-diff/issues/22), [#23](https://github.com/DavidVFitzGerald/LCA-diff/issues/23) |
-| Shared headers, amount-or-unit warnings, Flows states and column actions | [#21](https://github.com/DavidVFitzGerald/LCA-diff/issues/21), [#24](https://github.com/DavidVFitzGerald/LCA-diff/issues/24), [#25](https://github.com/DavidVFitzGerald/LCA-diff/issues/25), [#26](https://github.com/DavidVFitzGerald/LCA-diff/issues/26) |
-| Indicator hierarchy/default/source order and unavailable Scores | [#27](https://github.com/DavidVFitzGerald/LCA-diff/issues/27), [#28](https://github.com/DavidVFitzGerald/LCA-diff/issues/28) |
-| Lazy exact difference services, independent toggles and revision-aware caching | [#29](https://github.com/DavidVFitzGerald/LCA-diff/issues/29), [#30](https://github.com/DavidVFitzGerald/LCA-diff/issues/30) |
-| UID-scoped browser fields, stale IDs/publication recovery, loading/errors/accessibility | [#31](https://github.com/DavidVFitzGerald/LCA-diff/issues/31), [#32](https://github.com/DavidVFitzGerald/LCA-diff/issues/32), [#33](https://github.com/DavidVFitzGerald/LCA-diff/issues/33) |
-| Full Phase 1 evidence gate, browser/workload limitations and Phase 2 handoff | [#34](https://github.com/DavidVFitzGerald/LCA-diff/issues/34) |
+| Toolchain, quality scripts/CI and container Playwright Chromium/Firefox | [#5](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/5), [#10](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/10) |
+| Typed contracts, precision fixtures, asynchronous mock discovery/comparison, query boundary | [#6](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/6), [#7](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/7), [#8](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/8), [#9](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/9) |
+| Shell/modal, simulated registration/reset/verification and guarded session/account lifecycle | [#11](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/11), [#12](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/12), [#13](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/13), [#14](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/14), [#15](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/15) |
+| Hierarchical discovery, ordered/retained selection, AND search and paged filtered bulk actions | [#16](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/16), [#18](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/18), [#17](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/17), [#19](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/19) |
+| Snapshot windows, all-selection extrema, signed geometry, exact labels and two-axis virtualization | [#20](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/20), [#22](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/22), [#23](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/23) |
+| Shared headers, amount-or-unit warnings, Flows states and column actions | [#21](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/21), [#24](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/24), [#25](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/25), [#26](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/26) |
+| Indicator hierarchy/default/source order and unavailable Scores | [#27](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/27), [#28](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/28) |
+| Lazy exact difference services, independent toggles and revision-aware caching | [#29](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/29), [#30](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/30) |
+| UID-scoped browser fields, stale IDs/publication recovery, loading/errors/accessibility | [#31](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/31), [#32](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/32), [#33](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/33) |
+| Full Phase 1 evidence gate, browser/workload limitations and Phase 2 handoff | [#34](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/34) |
 
 Two PM role agents prepared the task bodies; independent QA reviewed scope, all
 required Task sections, specification coverage and the acyclic dependency graph.

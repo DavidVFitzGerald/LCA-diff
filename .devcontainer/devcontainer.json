@@ -3,7 +3,7 @@
   "dockerComposeFile": "../compose.yaml",
   "service": "workspace",
   "runServices": ["workspace"],
-  "workspaceFolder": "/workspaces/lca-diff",
+  "workspaceFolder": "/workspaces/LCA-diff-AI-dev-project",
   "remoteUser": "root",
   "updateRemoteUserUID": false,
   "initializeCommand": ["bash", "${localWorkspaceFolder}/.devcontainer/check-docker.sh"],

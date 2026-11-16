@@ -1,7 +1,7 @@
 # B4 verification and handoff
 
-Issue [#60](https://github.com/DavidVFitzGerald/LCA-diff/issues/60), branch
-`feat/b4-publication`, [PR #86](https://github.com/DavidVFitzGerald/LCA-diff/pull/86),
+Issue [#60](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/60), branch
+`feat/b4-publication`, [PR #86](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/pull/86),
 based on main recovery merge `9b0ebba`, reconciled with main `f1fd944`.
 Initial application delivery: `1b9ee46`; target-content fix: `7dc0802`.
 Implementation uses one issue and one PR. Independent final-SHA QA, hosted CI

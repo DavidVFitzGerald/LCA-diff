@@ -48,13 +48,13 @@ and `./dev check` passed rootless namespace UID/GID 0 → parent 1000, dropped
 capabilities, no-new-privileges, eight preflight regressions and frozen tooling.
 
 Initial worktree `/tmp/lca-diff-f5-scores` was relocated, preserving Git state and
-all edits, to `/home/david/projects/LCA-diff/.task-worktrees/f5-scores` after tmpfs
+all edits, to `/home/david/projects/LCA-diff-AI-dev-project/.task-worktrees/f5-scores` after tmpfs
 storage quotas caused EDQUOT writes. Only the task-owned container was recreated;
 its guards were rechecked. Independent QA uses a separate sibling worktree,
 project `lca-diff-f5-scores-qa`, port 5200. No unrelated worktree/container cleanup.
 
 Run lifecycle commands in that host worktree; all development commands below run
-inside its workspace container at `/workspaces/lca-diff`:
+inside its workspace container at `/workspaces/LCA-diff-AI-dev-project`:
 
 ```sh
 COMPOSE_PROJECT_NAME=lca-diff-f5-scores FRONTEND_PORT=5199 ./dev up

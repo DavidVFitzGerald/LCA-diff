@@ -26,7 +26,7 @@ RUN npm --prefix /tmp/lca-frontend-tools ci --ignore-scripts --no-audit --no-fun
     && LCA_BROWSER_IMAGE_BUILD=1 DEBIAN_SNAPSHOT="$DEBIAN_SNAPSHOT" bash /usr/local/bin/lca-install-browsers /tmp/lca-frontend-tools/node_modules/.bin/playwright \
     && rm -rf /tmp/lca-frontend-tools /root/.npm
 
-RUN mkdir -p /workspaces/lca-diff \
+RUN mkdir -p /workspaces/LCA-diff-AI-dev-project \
     && printf 'umask 022\n' > /etc/lca-dev-shell.sh \
     && printf '\n. /etc/lca-dev-shell.sh\n' >> /root/.bashrc
 
@@ -37,7 +37,7 @@ ENV LCA_DEV_CONTAINER=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     NPM_CONFIG_UPDATE_NOTIFIER=false
-WORKDIR /workspaces/lca-diff
+WORKDIR /workspaces/LCA-diff-AI-dev-project
 USER root
-RUN git config --global --add safe.directory /workspaces/lca-diff
+RUN git config --global --add safe.directory /workspaces/LCA-diff-AI-dev-project
 CMD ["sleep", "infinity"]

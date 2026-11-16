@@ -1,8 +1,8 @@
 # B3 verification and handoff — issue #59
 
 Scope: one complete ingestion milestone, one implementation PR
-[#72](https://github.com/DavidVFitzGerald/LCA-diff/pull/72), stacked on B2
-[#70](https://github.com/DavidVFitzGerald/LCA-diff/pull/70). Branch
+[#72](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/pull/72), stacked on B2
+[#70](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/pull/70). Branch
 `feat/b3-ingestion`, worktree `/tmp/lca-diff-b3`. B1/B2 code and the latest
 frontend progress are inherited from the verified stack; B3 authors no frontend
 changes. No production action or publication occurred.
@@ -38,7 +38,7 @@ Local ETL commands use:
 ```sh
 export COMPOSE_PROJECT_NAME=lca-diff-b3
 export FRONTEND_PORT=5191
-export LCA_PRIVATE_INPUT_DIR=/home/david/projects/LCA-diff/data/private/bafu-2026-v1/incoming
+export LCA_PRIVATE_INPUT_DIR=/home/david/projects/LCA-diff-AI-dev-project/data/private/bafu-2026-v1/incoming
 ./dev etl-up
 ./dev etl-run uv sync --frozen --all-packages
 ./dev etl-run env LCA_DATABASE_URL=postgresql+psycopg://lca_migrator:local-migration-only@postgres/lca uv run --frozen alembic upgrade head

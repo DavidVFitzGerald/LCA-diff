@@ -149,7 +149,7 @@ export LCA_PRIVATE_INPUT_DIR="$PWD/private/empty-input"
 ```
 
 Spark workers use the active uv interpreter (`sys.executable`). The default is
-`/workspaces/lca-diff/.venv/bin/python`. To put the environment on the ETL
+`/workspaces/LCA-diff-AI-dev-project/.venv/bin/python`. To put the environment on the ETL
 container's own filesystem instead, pass the override **inside** that container:
 
 ```sh
@@ -166,7 +166,7 @@ and choose **Dev Containers: Reopen in Container**. Required editor extensions a
 maintainer-managed; do not auto-install host extensions. The initialization guard
 runs on the Docker host, and the post-create command runs the same smoke check in
 the container. The `root` prompt is expected for the remapped namespace identity.
-Successful attach requires seeing `/workspaces/lca-diff` and running `make dev-check`
+Successful attach requires seeing `/workspaces/LCA-diff-AI-dev-project` and running `make dev-check`
 in the editor's container terminal, not merely running CLI Compose checks.
 
 The smoke check includes thirteen preflight regression scenarios: eight retained
@@ -272,7 +272,7 @@ checks that exactly one revision is published. No table is written directly.
 
 ## Sources, credentials and cleanup
 
-The checkout is mounted at `/workspaces/lca-diff`. Container-created `.venv` and
+The checkout is mounted at `/workspaces/LCA-diff-AI-dev-project`. Container-created `.venv` and
 future dependency outputs in that bind mount are ignored artifacts, not host
 installations. Tools must still run inside containers. Home caches are disposable
 when the workspace is recreated.
@@ -321,7 +321,7 @@ Place the three unchanged ZIP files in the **primary checkout** (not a temporary
 backend worktree), preserving original filenames:
 
 ```text
-/home/david/projects/LCA-diff/data/private/bafu-2026-v1/incoming/
+/home/david/projects/LCA-diff-AI-dev-project/data/private/bafu-2026-v1/incoming/
   xml/       # ZIP containing the XML folder
   scores/    # ZIP containing the impact-score Excel workbook
   schema/    # ZIP containing the XML schema description
@@ -330,7 +330,7 @@ backend worktree), preserving original filenames:
 These paths are already excluded by `/data/` in `.gitignore`; archives/workbooks
 also have format-level ignore rules. Do not commit or extract them for intake.
 They are accessible in the current workspace container under
-`/workspaces/lca-diff/data/private/bafu-2026-v1/incoming/`. Other worktrees will
+`/workspaces/LCA-diff-AI-dev-project/data/private/bafu-2026-v1/incoming/`. Other worktrees will
 need an explicitly configured read-only source mount, not a Git copy. During B3,
 inventory/hash the archives and inspect actual formats/schema before extraction,
 preserving original bytes and full provenance. Do not infer successful full-data

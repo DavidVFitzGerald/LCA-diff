@@ -183,7 +183,7 @@ Deploy Cloud Run services and Cloud SQL in a common selected region. Use the **C
 ### 3.3 Repository contract [MVP]
 
 ```text
-lca-diff/
+LCA-diff-AI-dev-project/
   .devcontainer/                        # Remote-SSH-compatible dev container
   .github/workflows/                    # PR CI, on-demand full tests, release checks
   apps/frontend/                        # React/TypeScript SPA + Vitest
