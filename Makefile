@@ -2,11 +2,11 @@
 .PHONY: format lint typecheck test test-unit test-e2e frontend-build
 .PHONY: backend-format backend-format-check backend-lint backend-typecheck backend-test-unit backend-test-integration backend-migrate backend-compat test-integration
 .PHONY: backend-test-etl backend-test-airflow import
-.PHONY: backend-test-publication
+.PHONY: backend-test-publication backend-test-seed
 
-backend-test-publication:
+backend-test-publication backend-test-seed:
 	@test "$${LCA_DEV_CONTAINER:-}" = 1 || { echo 'Run inside ./dev publication-run.' >&2; exit 1; }
-	uv run --frozen --package lca-etl pytest data_pipeline/tests/test_publication.py -v
+	uv run --frozen --package lca-etl pytest data_pipeline/tests/$(if $(filter backend-test-seed,$@),test_seed.py,test_publication.py) -v
 
 backend-test-etl backend-test-airflow import:
 	@test "$${LCA_DEV_CONTAINER:-}" = 1 || { echo 'Run this target inside ./dev etl-shell.' >&2; exit 1; }
@@ -19,9 +19,9 @@ backend-test-etl backend-test-airflow import:
 backend-format backend-format-check backend-lint backend-typecheck backend-test-unit backend-test-integration backend-migrate backend-compat:
 	@test "$${LCA_DEV_CONTAINER:-}" = 1 || { echo 'Run this target inside ./dev shell.' >&2; exit 1; }
 	@case "$@" in \
-  backend-format) uv run --frozen ruff format packages/python apps/api db/migrations scripts data_pipeline ;; \
-  backend-format-check) uv run --frozen ruff format --check packages/python apps/api db/migrations scripts data_pipeline ;; \
-  backend-lint) uv run --frozen ruff check packages/python apps/api db/migrations scripts data_pipeline ;; \
+  backend-format) uv run --frozen ruff format packages/python apps/api db/migrations scripts data_pipeline ops ;; \
+  backend-format-check) uv run --frozen ruff format --check packages/python apps/api db/migrations scripts data_pipeline ops ;; \
+  backend-lint) uv run --frozen ruff check packages/python apps/api db/migrations scripts data_pipeline ops ;; \
 	  backend-typecheck) uv run --frozen mypy ;; \
 	  backend-test-unit) uv run --frozen pytest -m unit ;; \
   backend-test-integration) uv run --frozen pytest -m 'integration and not etl and not airflow' ;; \
@@ -53,6 +53,7 @@ format lint typecheck test test-unit test-e2e frontend-build:
 	esac
 
 help:
+	@echo 'Local application stack (on the Docker host): make up / make down (./dev app-up / app-down)'
 	@echo 'Container lifecycle (on the Docker host):'
 	@echo '  make dev-build / dev-up / dev-shell / dev-down / dev-logs'
 	@echo 'Environment verification (host or container): make dev-check'
@@ -77,3 +78,11 @@ dev-logs:
 
 dev-check:
 	@if [ "$${LCA_DEV_CONTAINER:-}" = 1 ]; then bash .devcontainer/check-env.sh; else ./dev check; fi
+
+# Single-command local application stack (host only; ADR 0006).
+.PHONY: up down
+up:
+	@./dev app-up
+
+down:
+	@./dev app-down

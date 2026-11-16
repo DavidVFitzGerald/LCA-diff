@@ -1,0 +1,169 @@
+# Single-command local application stack (ADR 0006, #96). Started only through
+# `./dev app-up`, which pins its own project name (default lca-diff-app), so its
+# named volumes and network are separate from the `./dev up` workspace and from
+# the disposable `postgres`/`postgres-target` databases that tests reset.
+# Every credential below is a local-only development value; never reuse it.
+name: lca-diff-app
+
+x-hardened: &hardened
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+
+x-tools: &tools
+  <<: *hardened
+  build:
+    context: .
+    dockerfile: ops/local/tools.Dockerfile
+  image: ${LCA_APP_PROJECT:-lca-diff-app}-tools:local
+  restart: "no"
+
+x-demo-account: &demo-account
+  LCA_AUTH_EMULATOR_HOST: auth:9099
+  LCA_DEMO_EMAIL: demo@example.com
+  LCA_DEMO_PASSWORD: local-demo-password-not-secret
+
+x-target-urls: &target-urls
+  LCA_TARGET_IMPORT_DATABASE_URL: postgresql+psycopg://lca_import:local-import-only@db/lca
+  LCA_TARGET_PUBLISH_DATABASE_URL: postgresql+psycopg://lca_publisher:local-publisher-only@db/lca
+
+services:
+  db:
+    <<: *hardened
+    image: postgres:17-bookworm@sha256:40865bc877a289da75963d97d72b59633f639fc5af7a4e856bfa3714cae5b536
+    user: "999:999"
+    environment:
+      POSTGRES_USER: lca_bootstrap
+      POSTGRES_PASSWORD: local-bootstrap-only
+      POSTGRES_DB: lca
+    volumes:
+      - app-db:/var/lib/postgresql/data
+      - ./db/bootstrap.sql:/docker-entrypoint-initdb.d/001-roles.sql:ro
+    # No host port: only the stack's own services reach the application database.
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U lca_bootstrap -d lca"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    <<: *tools
+    command: [alembic, upgrade, head]
+    environment:
+      LCA_DATABASE_URL: postgresql+psycopg://lca_migrator:local-migration-only@db/lca
+    depends_on:
+      db:
+        condition: service_healthy
+
+  seed:
+    <<: *tools
+    # Namespace UID 0 is the unprivileged rootless daemon owner (ADR 0003). The
+    # opt-in `import` service shares this archive identity and must read
+    # owner-only private B3 artifacts; all capabilities remain dropped.
+    user: "0:0"
+    command: [python, -m, lca_etl.seed, load, --artifact, /app/seed/artifact/manifest.json, --target, /app/ops/target.json]
+    environment: *target-urls
+    volumes:
+      - app-archive:/var/lib/lca-archive
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  auth:
+    <<: *hardened
+    build:
+      context: .
+      dockerfile: apps/api/emulator/Dockerfile
+    image: ${LCA_APP_PROJECT:-lca-diff-app}-auth:local
+    ports:
+      - "127.0.0.1:${LCA_APP_AUTH_PORT:-9110}:9099"
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:9099/').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
+  auth-seed:
+    <<: *tools
+    # The emulator keeps no state, so the demo account is recreated on every start.
+    command: [python, /app/ops/local_stack.py, demo-user]
+    environment: *demo-account
+    depends_on:
+      auth:
+        condition: service_healthy
+
+  api:
+    <<: *hardened
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: ${LCA_APP_PROJECT:-lca-diff-app}-api:local
+    environment:
+      LCA_ENVIRONMENT: local
+      LCA_DATABASE_URL: postgresql+psycopg://lca_api:local-read-only@db/lca
+      LCA_FIREBASE_PROJECT_ID: demo-lca
+      LCA_AUTH_EMULATOR_HOST: auth:9099
+      LCA_TOKEN_SECRET: local-app-comparison-token-secret-not-for-production
+      LCA_CORS_ORIGINS: '["http://127.0.0.1:${LCA_APP_FRONTEND_PORT:-5180}"]'
+    ports:
+      - "127.0.0.1:${LCA_APP_API_PORT:-8010}:8000"
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/ready', timeout=3)"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+      auth-seed:
+        condition: service_completed_successfully
+
+  frontend:
+    <<: *hardened
+    build:
+      context: .
+      dockerfile: ops/local/frontend.Dockerfile
+      args:
+        # L1 keeps the explicit mock adapter; L2 (#97) switches to the real one.
+        VITE_SERVICE_MODE: mock
+    image: ${LCA_APP_PROJECT:-lca-diff-app}-frontend:local
+    ports:
+      - "127.0.0.1:${LCA_APP_FRONTEND_PORT:-5180}:4173"
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:4173/').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+    depends_on:
+      api:
+        condition: service_healthy
+
+  smoke:
+    <<: *tools
+    profiles: [smoke]
+    command: [python, /app/ops/local_stack.py, smoke]
+    environment:
+      <<: *demo-account
+      LCA_SMOKE_API_URL: http://api:8000
+      LCA_SMOKE_ALLOWED_ORIGIN: http://127.0.0.1:${LCA_APP_FRONTEND_PORT:-5180}
+      LCA_SEED_ARTIFACT: /app/seed/artifact/manifest.json
+
+  import:
+    <<: *tools
+    profiles: [import]
+    # Opt-in B4 promotion/publication of a ready private B3 artifact into this
+    # stack (see README). The private directory is mounted read-only.
+    user: "0:0"
+    entrypoint: [lca-import]
+    environment: *target-urls
+    volumes:
+      - app-archive:/var/lib/lca-archive
+      - type: bind
+        source: ${LCA_APP_PRIVATE_DIR:-./private}
+        target: /private
+        read_only: true
+        bind:
+          create_host_path: false
+
+volumes:
+  app-db:
+  app-archive:

@@ -744,7 +744,7 @@ select = ["E4", "E7", "E9", "F", "I", "UP", "B", "SIM"]
 [tool.mypy]
 python_version = "3.14"
 strict = true
-files = ["packages/python/lca_shared/src", "db/migrations", "apps/api/src", "data_pipeline/src", "data_pipeline/jobs", "data_pipeline/dags"]
+files = ["packages/python/lca_shared/src", "db/migrations", "apps/api/src", "data_pipeline/src", "data_pipeline/jobs", "data_pipeline/dags", "ops/local"]
 
 [[tool.mypy.overrides]]
 module = ["defusedxml.*", "pyspark.*", "airflow.*", "firebase_admin", "firebase_admin.*", "google.auth.*"]

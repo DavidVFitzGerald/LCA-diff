@@ -1,0 +1,5 @@
+{
+  "name": "local-app",
+  "environment": "local",
+  "archive_uri": "file:///var/lib/lca-archive"
+}

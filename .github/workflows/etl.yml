@@ -33,6 +33,8 @@ jobs:
         run: docker compose -f compose.yaml -f compose.etl.yaml -f compose.publication.yaml exec -T etl bash -c 'uv run --frozen --package lca-etl pytest data_pipeline/tests -m "unit or etl"'
       - name: Promotion, atomic publication and rollback through read API
         run: docker compose -f compose.yaml -f compose.etl.yaml -f compose.publication.yaml exec -T etl make backend-test-publication
+      - name: Committed synthetic local seed through B4 and the read API
+        run: docker compose -f compose.yaml -f compose.etl.yaml -f compose.publication.yaml exec -T etl make backend-test-seed
       - name: Start private Airflow orchestration
         run: docker compose -f compose.yaml -f compose.etl.yaml -f compose.publication.yaml --profile backend --profile etl --profile airflow up --detach airflow-init airflow-api airflow-scheduler airflow-dag-processor
       - name: Real manual DAG through maintainer CLI

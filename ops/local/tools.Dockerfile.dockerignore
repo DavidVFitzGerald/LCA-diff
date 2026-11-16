@@ -1,0 +1,16 @@
+# Build context for ops/local/tools.Dockerfile only: workspace manifests, Python
+# sources, migrations and the committed synthetic seed artifact. No secrets/data.
+**
+!pyproject.toml
+!uv.lock
+!alembic.ini
+!packages/python/lca_shared/pyproject.toml
+!packages/python/lca_shared/src/**
+!apps/api/pyproject.toml
+!data_pipeline/pyproject.toml
+!data_pipeline/src/**
+!data_pipeline/seed/artifact/**
+!db/migrations/**
+!ops/local/target.json
+!ops/local/local_stack.py
+**/__pycache__
