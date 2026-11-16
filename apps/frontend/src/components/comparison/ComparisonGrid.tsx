@@ -1,6 +1,14 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 import type { FocusEvent, KeyboardEvent, ReactNode, RefObject } from "react";
 import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
+import { flushSync } from "react-dom";
 import { STANDARD_ROW_HEIGHT as DEFAULT_ROW_HEIGHT } from "./geometry";
 import { moveTarget, withIndex } from "./grid-model";
 import type { IndexRange } from "./grid-model";
@@ -196,7 +204,7 @@ export function ComparisonGrid({
       if (cancelled) return;
       for (const [index, height] of heights)
         if (index < rowCount) rowWindow.resizeItem(index, height);
-      pinView.current();
+      pinView.current(true);
     });
     return () => {
       cancelled = true;
@@ -215,6 +223,7 @@ export function ComparisonGrid({
   // (`onAnchor`), so on a selection change it can keep the previous rows
   // shown until one of them is loaded in the new ones.
   const pins = useRef<{ key: string; start: number }[]>([]);
+  const [, refreshWindow] = useReducer((count: number) => count + 1, 0);
   const layout = () => {
     rowWindow.getVirtualItems();
     return rowWindow.measurementsCache;
@@ -248,7 +257,8 @@ export function ComparisonGrid({
       onAnchor?.(found.map((pinned) => pinned.key));
     }
   };
-  const pin = () => {
+  // `outsideCommit`: called from the resize microtask, not a lifecycle method.
+  const pin = (outsideCommit = false) => {
     const element = scroller.current;
     if (!element || !locate) return;
     if (pins.current.length === 0) return record();
@@ -259,15 +269,28 @@ export function ComparisonGrid({
       if (index === undefined) pending = true;
       if (typeof index !== "number" || !items[index]) continue;
       const delta = items[index].start - candidate.start;
-      if (Math.abs(delta) >= 0.5)
-        element.scrollTo({ top: element.scrollTop + delta });
+      const moved = Math.abs(delta) >= 0.5;
+      if (moved) element.scrollTo({ top: element.scrollTop + delta });
       pins.current = pins.current.map((pinned) => {
         const at = locate(pinned.key);
         return typeof at === "number" && items[at]
           ? { ...pinned, start: items[at].start }
           : pinned;
       });
-      return record();
+      record();
+      if (moved) {
+        // The scroll event that tells the virtualizer arrives later, so
+        // until then it would place the window at the old offset, above the
+        // view it just moved to (#93). Hand it the read-back offset now and
+        // render the window there before the next paint: synchronously from
+        // the microtask (the event, now a no-op for the virtualizer, no
+        // longer renders it), while a layout effect's update already is.
+        // Pins are updated first, so that render does not move again.
+        rowWindow.scrollOffset = element.scrollTop;
+        if (outsideCommit) flushSync(refreshWindow);
+        else refreshWindow();
+      }
+      return;
     }
     // Every anchor flow is gone: anchor on what is in view now.
     if (!pending) record();
