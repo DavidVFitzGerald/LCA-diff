@@ -63,9 +63,7 @@ The following self-evaluation uses the course's 24-point rubric. Scores describe
 
 ### Run with demo data
 
-Prerequisites: Git and a running Docker Engine with Docker Compose and **Linux containers**. The application supports standard Docker Desktop on Windows 11; **a rootless Docker context is not required to run the application**. In Docker Desktop, switch to Linux containers if Windows-container mode is selected. Use PowerShell for the Compose commands below, or Bash (Linux, WSL or Git Bash) for the optional `./dev` wrapper. Internet access is needed for the first image/dependency build. No host Python, Node.js, package manager, database, Firebase project, `.env` file or private dataset is required.
-
-The maintainer confirmed Windows startup and login after the original workarounds; automated checks of the final fixes run on Linux. See [portability verification](docs/engineering/app-portability-verification.md) for the exact evidence and platform boundaries.
+Prerequisites: Git and a running Docker Engine with Docker Compose and **Linux containers**. The application supports standard Docker Desktop on Windows 11. In Docker Desktop, switch to Linux containers if Windows-container mode is selected. Use PowerShell for the Compose commands below, or Bash (Linux, WSL or Git Bash) for the optional `./dev` wrapper. Internet access is needed for the first image/dependency build. No host Python, Node.js, package manager, database, Firebase project, `.env` file or private dataset is required.
 
 ```sh
 git clone https://github.com/DavidVFitzGerald/LCA-diff.git
@@ -73,7 +71,7 @@ cd LCA-diff
 docker compose -p lca-diff-app -f compose.app.yaml up --detach --build --wait
 ```
 
-**The Compose command above builds and starts the complete local application in one command.** In Bash, `./dev app-up` does the same with project/port checks; `make up` is an alias if Make is already available. Neither app startup path requires rootless Docker. Dependencies install inside pinned container images. The migration service builds the shared tools image once; the other initialization tasks reuse it. Startup waits for PostgreSQL, migrations, synthetic data publication, emulator account creation, API and frontend health. Airflow and Spark do not run during demo startup. The first build can take several minutes.
+**The Compose command above builds and starts the complete local application in one command.** In Bash, `./dev app-up` does the same with project/port checks; `make up` is an alias if Make is already available. Dependencies install inside pinned container images. The migration service builds the shared tools image once; the other initialization tasks reuse it. Startup waits for PostgreSQL, migrations, synthetic data publication, emulator account creation, API and frontend health. Airflow and Spark do not run during demo startup. The first build can take several minutes.
 
 Open **http://127.0.0.1:5180** and sign in:
 
@@ -117,7 +115,7 @@ The application also supports an opt-in import of **BAFU:2026** [1](#references)
 
 **Verification boundary:** the MVP was exercised with a representative private import, not a validated import of the complete database. The following uses the implemented full-input path; it is not evidence of full-corpus completeness, audit sign-off or redistribution permission. Only publish a candidate after reviewing its reports. Unverified score conversions remain `N/A`, and multi-output processes are excluded.
 
-**The source-import workflow below uses the rootless development/ETL workspace**, which has different writable-source permissions from the portable app runtime. It is verified on the Linux development laptop, not as a native Windows ETL setup. Docker Desktop is sufficient for the demo and for serving an already-published database.
+The source-import workflow below uses the development/ETL workspace described under [Local development](#local-development). It is verified on the Linux development laptop, not as a native Windows ETL setup. Docker Desktop is sufficient for the demo and for serving an already-published database.
 
 1. Extract the downloaded XMLs and corrected workbook into the following ignored layout. XML files may be in subdirectories. Keep provider inputs and generated audit rows private.
 
@@ -197,7 +195,7 @@ Use separate terminals for demo, import, tests and development so exported proje
 
 Database URLs, emulator settings and local service credentials are supplied by Compose. Standalone API settings and environment boundaries are defined in [ApiSettings](apps/api/src/lca_api/config.py); full topology and tooling details are in the [development guide](docs/engineering/development-environment.md).
 
-- **Docker unavailable or wrong container mode:** check `docker context show` and `docker info`; start Docker Desktop/Engine and use Linux containers. App commands accept conventional and rootless engines. Only source-development/ETL commands require a rootless daemon; do not comment out the workspace guard.
+- **Docker unavailable or wrong container mode:** check `docker context show` and `docker info`; start Docker Desktop/Engine and use Linux containers.
 - **Port occupied:** choose an unused port, for example `LCA_APP_FRONTEND_PORT=5181 ./dev app-up`. Keep the same overrides for subsequent commands. Ports must be literal integers from 1 to 65535.
 - **Startup task failed:** inspect `docker compose -p lca-diff-app -f compose.app.yaml logs --tail 100 migrate seed auth-seed` (or the Bash status/log wrappers). Re-running startup rebuilds images and reuses the seed without adding a new revision.
 - **Seed checksum failure in an older Windows checkout:** Git CRLF conversion changes the exact bytes of the immutable seed. New checkouts are protected by `.gitattributes`. For an existing converted checkout, preserve local work and make a fresh clone with `git -c core.autocrlf=false clone https://github.com/DavidVFitzGerald/LCA-diff.git LCA-diff-lf`, then start from that directory. Rebuild images; do not regenerate checksums or delete database volumes. `git ls-files --eol data_pipeline/seed/artifact/manifest.json` should show `w/lf`, not `w/crlf`.
