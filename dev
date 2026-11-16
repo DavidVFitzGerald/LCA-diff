@@ -110,7 +110,9 @@ Local app stack '$app_project' is healthy (local-only development credentials):
 SUMMARY
 }
 case "${1:-help}" in
-    build|up|down|shell|check|logs|backend-up|backend-down|etl-up|etl-shell|etl-run|airflow-up|api-up|api-down|auth-up|publication-up|publication-run|app-up|app-down|app-reset|app-status|app-logs|app-smoke|app-import|app-e2e)
+    app-up|app-down|app-reset|app-status|app-logs|app-smoke|app-import|app-e2e)
+        bash "$repo_dir/.devcontainer/check-docker.sh" --app ;;
+    build|up|down|shell|check|logs|backend-up|backend-down|etl-up|etl-shell|etl-run|airflow-up|api-up|api-down|auth-up|publication-up|publication-run)
         bash "$repo_dir/.devcontainer/check-docker.sh" ;;
     config|app-config|help) ;;
     *) echo "Unknown command: $1" >&2; exit 2 ;;

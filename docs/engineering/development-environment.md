@@ -11,8 +11,13 @@ L2 (#97, PR #105) connects the real adapters; its final evidence is recorded in
 
 ## Topology and identity
 
-`compose.yaml` defines one workspace shared by the `./dev` wrapper and VS Code Dev
-Containers. It requires a **rootless** Docker daemon. The maintainer has configured
+`compose.yaml` defines one workspace shared by the workspace/ETL `./dev` commands
+and VS Code Dev Containers. It requires a **rootless** Docker daemon. The separate
+`compose.app.yaml` application runtime also accepts conventional Linux Docker engines,
+including Docker Desktop (proposed ADR 0007, #111 / PR #112). It does not attach the
+writable source workspace. PowerShell can start it with
+`docker compose -f compose.app.yaml up --detach --build --wait`; Bash users use
+`./dev app-up`. No rootless context is required just to run the application. The maintainer has configured
 that daemon without adding `david` to the host Docker group. Supported launch paths
 check the effective daemon's security options, not merely the context name.
 
@@ -28,10 +33,14 @@ application images must still use unprivileged runtime users; the namespace-root
 workspace setting is development-only. See [ADR 0003](../adr/0003-rootless-development-workspace.md)
 and current PRD §5/specification §3.1 for the same boundary.
 
-`./dev` checks the rootless daemon before runtime commands; Dev Containers runs the
-same host guard through `initializeCommand`. An unavailable or rootful daemon is
-rejected before supported launch paths execute bind-mounted development code.
-Direct ad hoc Compose/Docker commands bypass project guards and are unsupported.
+`./dev` checks the rootless daemon before workspace/ETL commands; Dev Containers
+runs the same strict host guard through `initializeCommand`. Application commands
+use `check-docker.sh --app`, checking engine reachability, Linux container mode and
+Compose availability instead of requiring a rootless daemon. Workspace/ETL paths
+reject unavailable or rootful daemons before executing writable bind-mounted code.
+Direct workspace/ETL Compose commands bypass those guards and are unsupported.
+The documented direct application Compose commands are supported; keep the app
+project separate from workspace and disposable-test projects.
 The in-container smoke check also verifies user mappings, effective capabilities,
 no-new-privileges and writable sources. Mapping files may describe an intermediate
 namespace; verify them together with daemon status and host ownership of a created
@@ -160,9 +169,10 @@ the container. The `root` prompt is expected for the remapped namespace identity
 Successful attach requires seeing `/workspaces/lca-diff` and running `make dev-check`
 in the editor's container terminal, not merely running CLI Compose checks.
 
-The smoke check includes eight retained preflight regression scenarios covering
-CLI/editor initialization against rootful, unreachable and rootless responses,
-plus refusal of host-root invocations. Mocks run only inside the container; they
+The smoke check includes thirteen preflight regression scenarios: eight retained
+workspace/editor checks (rootful/unreachable refusal, rootless acceptance and
+host-root refusal), plus five app-runtime cases (conventional/rootless acceptance;
+unavailable engine, Windows-container mode and missing Compose refusal). Mocks run only inside the container; they
 do not switch the maintainer's Docker contexts. Run them separately with
 `bash .devcontainer/test-preflight.sh` inside the workspace if diagnosing a guard.
 
@@ -241,9 +251,13 @@ port that already accepts connections on 127.0.0.1.
   - `auth-seed` and `smoke` (`ops/local/local_stack.py`);
   - opt-in `import` (`lca-import`).
 
-  `seed` and `import` run as namespace UID 0, the unprivileged rootless daemon
-  owner (ADR 0003), so they share one archive owner and can read owner-only
-  private B3 artifacts. The other tools run as `65532`.
+  Only `migrate` builds the shared tools image; other tasks reuse that local image
+  without registry pulls, avoiding concurrent exports to one tag. `seed` and
+  `import` share container UID 0 for archive ownership (remapped to the daemon
+  owner under rootless Docker; inside the Linux VM with Docker Desktop). Input
+  mounts are read-only and all capabilities remain dropped. The other tools run
+  as `65532`. Git preserves seed bytes through `.gitattributes`; it does not
+  normalize or regenerate checksums during startup.
 
 Per-Dockerfile `*.Dockerfile.dockerignore` files keep the build contexts to what
 each image copies. The root `.dockerignore` still denies application source to

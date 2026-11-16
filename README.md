@@ -36,15 +36,15 @@ The following self-evaluation uses the course's 24-point rubric. Scores describe
 
 ### Run with demo data
 
-Prerequisites: Git, Bash, a running **rootless Docker Engine** and Docker Compose on the machine running the containers. Internet access is needed to fetch images and dependencies on the first build. The supported environment is Linux with rootless Docker; the guarded commands reject a rootful daemon. VS Code Remote SSH/Dev Containers is optional. No host Python, Node.js, package manager, database, Firebase project, `.env` file or private dataset is required.
+Prerequisites: Git and a running Docker Engine with Docker Compose and **Linux containers**. Standard Docker Desktop on Windows 11 works; **a rootless Docker context is not required to run the application**. In Docker Desktop, switch to Linux containers if Windows-container mode is selected. Use PowerShell for the Compose commands below, or Bash (Linux, WSL or Git Bash) for the optional `./dev` wrapper. Internet access is needed for the first image/dependency build. No host Python, Node.js, package manager, database, Firebase project, `.env` file or private dataset is required.
 
 ```sh
 git clone https://github.com/DavidVFitzGerald/LCA-diff.git
 cd LCA-diff
-./dev app-up
+docker compose -p lca-diff-app -f compose.app.yaml up --detach --build --wait
 ```
 
-**`./dev app-up` is the single command that builds and starts the complete local application** (`make up` is an alias if Make is already available). Dependencies install inside pinned container images. Startup waits for PostgreSQL, migrations, synthetic data publication, emulator account creation, API and frontend health. Airflow and Spark do not run during demo startup. The first build can take several minutes.
+**The Compose command above builds and starts the complete local application in one command.** In Bash, `./dev app-up` does the same with project/port checks; `make up` is an alias if Make is already available. Neither app startup path requires rootless Docker. Dependencies install inside pinned container images. The migration service builds the shared tools image once; the other initialization tasks reuse it. Startup waits for PostgreSQL, migrations, synthetic data publication, emulator account creation, API and frontend health. Airflow and Spark do not run during demo startup. The first build can take several minutes.
 
 Open **http://127.0.0.1:5180** and sign in:
 
@@ -57,6 +57,17 @@ Open **http://127.0.0.1:5180** and sign in:
 
 Search for `steel` and choose **Select all matches**. Add `photovoltaic, rooftop` to compare its flows with the two steel processes. Switch to **Scores**, select indicators and try **Show differences only**. Selected columns can be reordered with pointer or keyboard controls. Warnings explain different reference quantities; values are not normalized between columns.
 
+For PowerShell (and any terminal with Docker Compose), use:
+
+```sh
+docker compose -p lca-diff-app -f compose.app.yaml --profile smoke run --rm --no-deps smoke
+docker compose -p lca-diff-app -f compose.app.yaml ps --all
+docker compose -p lca-diff-app -f compose.app.yaml down
+docker compose -p lca-diff-app -f compose.app.yaml up --detach --build --wait
+```
+
+`down` keeps the published database and archive volumes. In Bash, the equivalent convenience commands are:
+
 ```sh
 ./dev app-smoke   # live API/auth/precision checks
 ./dev app-e2e     # real-stack Chromium browser acceptance
@@ -67,6 +78,8 @@ Search for `steel` and choose **Select all matches**. Add `photovoltaic, rooftop
 
 All published ports bind to host loopback; PostgreSQL has no host port. For a remote Docker host, forward port 5180 through SSH or VS Code. The frontend proxies API and emulator requests, so forwarding that port is sufficient for normal browser use.
 
+To view logs in PowerShell, run `docker compose -p lca-diff-app -f compose.app.yaml logs --tail 200 api` (replace `api` with another service name as needed).
+
 The verified demo account is recreated on every start. To test registration, create an account in the app, request a verification email and obtain its link with `./dev app-logs auth` or from `http://127.0.0.1:5180/emulator/v1/projects/demo-lca/oobCodes`. Use the frontend origin for the verification link, then choose **I've verified my email**. Emulator accounts are temporary; published PostgreSQL data persists. All committed passwords are local-only emulator/database values.
 
 ### Use the whole BAFU database [1](#references)
@@ -74,6 +87,8 @@ The verified demo account is recreated on every start. To test registration, cre
 The application also supports an opt-in import of **BAFU:2026** [1]. Download the process XMLs and corrected Excel LCIA scores from [openLCA Nexus](https://nexus.openlca.org/database/BAFU). They are external inputs and are not distributed in this repository. The [ecoSpold1 schema description files can be downloaded from ecoinvent](https://support.ecoinvent.org/data-formats-overview-2); these are useful for interpreting the source format and are required by the alternative three-archive intake example.
 
 **Verification boundary:** the MVP was exercised with a representative private import, not a validated import of the complete database. The following uses the implemented full-input path; it is not evidence of full-corpus completeness, audit sign-off or redistribution permission. Only publish a candidate after reviewing its reports. Unverified score conversions remain `N/A`, and multi-output processes are excluded.
+
+**The source-import workflow below uses the rootless development/ETL workspace**, which has different writable-source permissions from the portable app runtime. It is verified on the Linux development laptop, not as a native Windows ETL setup. Docker Desktop is sufficient for the demo and for serving an already-published database.
 
 1. Extract the downloaded XMLs and corrected workbook into the following ignored layout. XML files may be in subdirectories. Keep provider inputs and generated audit rows private.
 
@@ -137,7 +152,7 @@ The application also supports an opt-in import of **BAFU:2026** [1]. Download th
 
 ### Configuration and troubleshooting
 
-Use separate terminals for demo, import, tests and development so exported project names do not carry between workflows. No environment variables are required for the demo. Optional overrides are illustrated in [.env.example](.env.example); process environment values take precedence over literal `.env` values.
+Use separate terminals for demo, import, tests and development so exported project names do not carry between workflows. No environment variables are required for the demo. Direct Compose examples pin the project with `-p lca-diff-app`; when choosing another project, use the same `-p` value in every command and set `LCA_APP_PROJECT` to that value for consistent image tags. Optional overrides are illustrated in [.env.example](.env.example); process environment values take precedence over literal `.env` values.
 
 | Variable                        | Default / purpose                                                                     |
 | ------------------------------- | ------------------------------------------------------------------------------------- |
@@ -153,9 +168,11 @@ Use separate terminals for demo, import, tests and development so exported proje
 
 Database URLs, emulator settings and local service credentials are supplied by Compose. Standalone API settings and environment boundaries are defined in [ApiSettings](apps/api/src/lca_api/config.py); full topology and tooling details are in the [development guide](docs/engineering/development-environment.md).
 
-- **Docker refused:** check `docker context show` and `docker info`; select an accessible rootless daemon. Do not substitute a rootful daemon or change socket permissions.
+- **Docker unavailable or wrong container mode:** check `docker context show` and `docker info`; start Docker Desktop/Engine and use Linux containers. App commands accept conventional and rootless engines. Only source-development/ETL commands require a rootless daemon; do not comment out the workspace guard.
 - **Port occupied:** choose an unused port, for example `LCA_APP_FRONTEND_PORT=5181 ./dev app-up`. Keep the same overrides for subsequent commands. Ports must be literal integers from 1 to 65535.
-- **Startup task failed:** inspect `./dev app-status` and `./dev app-logs migrate`, `seed` or `auth-seed`. Re-running `app-up` rebuilds images and reuses the seed without adding a new revision.
+- **Startup task failed:** inspect `docker compose -p lca-diff-app -f compose.app.yaml logs --tail 100 migrate seed auth-seed` (or the Bash status/log wrappers). Re-running startup rebuilds images and reuses the seed without adding a new revision.
+- **Seed checksum failure in an older Windows checkout:** Git CRLF conversion changes the exact bytes of the immutable seed. New checkouts are protected by `.gitattributes`. For an existing converted checkout, preserve local work and make a fresh clone with `git -c core.autocrlf=false clone https://github.com/DavidVFitzGerald/LCA-diff.git LCA-diff-lf`, then start from that directory. Rebuild images; do not regenerate checksums or delete database volumes. `git ls-files --eol data_pipeline/seed/artifact/manifest.json` should show `w/lf`, not `w/crlf`.
+- **Older checkout reports tools image already exists during build:** update to the fixed Compose file. Only `migrate` now builds the shared tools image. Do not delete database volumes to fix an image-export collision.
 - **Import mount missing:** create the input and `private/` directories before using ETL/import commands; bind mounts do not create them automatically.
 - **Login changed after switching URLs:** Firebase sessions are scoped to origin. Stay with either `127.0.0.1` or `localhost` and sign in again after switching.
 - **Need an empty demo database:** `./dev app-reset --yes` deletes this app project's database/archive volumes. The next `app-up` seeds them again. `app-down` retains them; reset is never needed for a normal restart.
@@ -239,7 +256,7 @@ The real browser suite expects the seed-only application. After publishing addit
 
 ## Local development
 
-All development, package installation, formatting, builds and tests run inside containers. On the Docker host, explicitly select the development project:
+All development, package installation, formatting, builds and tests run inside containers. **Source development and ETL retain the rootless Docker workspace requirement** ([ADR 0003](docs/adr/0003-rootless-development-workspace.md)); this is separate from simply running the app on Docker Desktop. On the Docker host, explicitly select the development project:
 
 ```sh
 export COMPOSE_PROJECT_NAME=lca-diff-dev

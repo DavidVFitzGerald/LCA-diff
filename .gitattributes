@@ -1,0 +1,7 @@
+# Executable shell entry points must run from Windows checkouts too.
+*.sh text eol=lf
+/dev text eol=lf
+
+# The seed is an immutable, checksum-bound artifact and its reproducible inputs.
+# Preserve exact repository bytes (including intentional CSV CRLF and XLSX).
+/data_pipeline/seed/** -text

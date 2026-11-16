@@ -45,6 +45,14 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 
 ## Current position
 
+**Course-submission portability fixes in review (#111 / PR #112):** proposed ADR
+0007 separates conventional/rootless application runtime from ADR 0003's rootless
+writable workspace. The PR also gives the shared tools image one build owner and
+preserves checksum-bound seed bytes under Git autocrlf. Windows startup after the
+manual workaround is maintainer-observed; automated evidence is recorded with the
+new delivered SHA. #103 remains open for synthetic report labeling/regeneration
+and the dedicated uncached-build gate. This note does not mark the PR merged.
+
 **Local-only MVP revision (accepted [ADR 0006](../adr/0006-local-only-mvp.md),
 [#95](https://github.com/DavidVFitzGerald/LCA-diff/issues/95); accepted through the
 maintainer's merge of PR #98 at `cf7f1d5` on 2026-11-16).** The maintainer removed deployment from the MVP
