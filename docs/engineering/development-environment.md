@@ -5,6 +5,8 @@ merged in PR #36. Frontend scaffold commands now live in the root README.
 No host package installation is part of this change. CLI/runtime checks were
 independent; the maintainer supplied the successful output in response to the
 requested editor-reopen check. This attribution is distinct from agent-observed GUI evidence.
+L1 (#96) adds the single-command local application stack described below;
+it awaits independent QA.
 
 ## Topology and identity
 
@@ -128,6 +130,63 @@ server binds `0.0.0.0:5173` inside the container; use SSH/VS Code forwarding to
 reach the host loopback publication. Later Compose profiles introduce backend
 services without making them prerequisites for the mock frontend.
 
+## Local application stack (L1, #96)
+
+`compose.app.yaml` defines the single-command MVP stack of ADR 0006 and
+specification §0.3/§3.1. The README documents its commands, URLs, demo account,
+troubleshooting and opt-in BAFU path. This section records the engineering
+boundaries.
+
+**Isolation.** `./dev app-*` always passes `--project-name ${LCA_APP_PROJECT:-lca-diff-app}`,
+so `COMPOSE_PROJECT_NAME` (used for workspaces and worktrees) never selects it.
+The stack has its own network and named volumes, `app-db` and `app-archive`. Its
+database service is `db`. The destructive suites refuse any host other than
+`postgres`/`postgres-target`, and they run in other projects whose networks cannot
+resolve `db`. Running `make backend-test-integration` and
+`make backend-test-publication` against a workspace while the stack runs left its
+release, revision, pointer, operations and archive digest unchanged (record below).
+The default host ports 5180/8010/9110 avoid the workspace (5173) and
+`./dev api-up` (8000/9099). Before a fresh start, `app-up` refuses any configured
+port that already accepts connections on 127.0.0.1.
+
+**Images and identities.** All services drop all capabilities and set
+`no-new-privileges`.
+
+- **Database:** `db` uses the pinned PostgreSQL image as `999:999`, with no host
+  port.
+- **API:** the lean API image, unchanged, as `65532:65532`. It has no pyspark,
+  airflow or `lca_etl`. It connects as `lca_api` with `LCA_ENVIRONMENT=local`,
+  emulator host `auth:9099`, project `demo-lca`, and
+  `LCA_CORS_ORIGINS=["http://127.0.0.1:<frontend port>"]`. It never migrates.
+- **Auth Emulator:** the existing emulator image, plus a Node `fetch`
+  healthcheck.
+- **Frontend:** `ops/local/frontend.Dockerfile`. It runs `npm ci --ignore-scripts`
+  from the committed lock, then an explicit `VITE_SERVICE_MODE` production
+  build, served by `vite preview` as `node`. L1 passes `mock`.
+- **Tools:** `ops/local/tools.Dockerfile` is the ETL runtime image for the stack.
+  It holds the `lca-etl` workspace package from the frozen lock, which carries
+  Airflow/PySpark Python dependencies and Alembic. It omits Spark's JVM because
+  promotion, publication and migrations never start Spark. It runs these tasks:
+  - `migrate`, as `lca_migrator`;
+  - `seed` (`python -m lca_etl.seed load`), as `lca_import`/`lca_publisher`;
+  - `auth-seed` and `smoke` (`ops/local/local_stack.py`);
+  - opt-in `import` (`lca-import`).
+
+  `seed` and `import` run as namespace UID 0, the unprivileged rootless daemon
+  owner (ADR 0003), so they share one archive owner and can read owner-only
+  private B3 artifacts. The other tools run as `65532`.
+
+Per-Dockerfile `*.Dockerfile.dockerignore` files keep the build contexts to what
+each image copies. The root `.dockerignore` still denies application source to
+the workspace build.
+
+**Seed semantics.** `lca_etl.seed load` reads the release state as `lca_import`.
+It refuses any other revision of the seed release, and any other active pointer,
+with `SEED_UNEXPECTED_REVISION` or `SEED_UNEXPECTED_ACTIVE_REVISION`. It then runs
+B4 `promote` and `publish` with fixed operation UUIDs, so B4 verifies the archive
+and fingerprint again and returns `reused: true` on every later start. Finally it
+checks that exactly one revision is published. No table is written directly.
+
 ## Sources, credentials and cleanup
 
 The checkout is mounted at `/workspaces/lca-diff`. Container-created `.venv` and
@@ -146,6 +205,32 @@ No application database, volumes, API, Firebase project, Airflow/Spark services,
 cloud resources or licensed inputs are created during M1.
 
 ## Verification record
+
+### L1 local application stack (engineering, before QA)
+
+Engineering ran these on the rootless host (Docker Compose v5.7.0) in an isolated
+worktree, on branch `feat/l1-local-stack`, before independent QA. It used app
+project `lca-diff-l1-app`, ports 5240/8240/9240, and workspace project
+`lca-diff-l1`. Other projects' containers were left running, including the
+default `lca-diff-dev` workspace on 5173. Exact SHAs and the full log are on #96.
+
+| Check | Result |
+| --- | --- |
+| `./dev config` | exit 0, including `compose.app.yaml` |
+| First `./dev app-up` (no volumes, no `.env`) | exit 0 in 2m26s. `db`, `auth`, `api` and `frontend` healthy; `migrate`, `seed` and `auth-seed` exited 0. Frontend 200, `/api/v1/health` and `/api/v1/ready` 200 from 127.0.0.1 |
+| `./dev app-smoke` | all 8 checks pass: health and ready 200; no token 401 `AUTH_REQUIRED`; demo token returns the seeded release and active revision; exact high-precision flow amount; unverified 403 `EMAIL_NOT_VERIFIED`; untrusted origin gets no CORS allow header; local origin allowed |
+| `app-down` then `app-up` | volumes kept. Release, revision, pointer timestamp, the 2 operations and the archive digest are identical; the seed reports `promote_reused`/`publish_reused` true; the smoke passes again |
+| `app-reset` without `--yes` | exit 1, volumes kept |
+| `app-reset --yes` then `app-up` | both volumes removed, then a clean reseed (`seeded: true`) with the same deterministic release and revision IDs |
+| Injected foreign revision, then `app-up` | exit 1; seed `SEED_UNEXPECTED_REVISION`; API and frontend not started |
+| Rendered config and `docker port` | only `127.0.0.1` bindings; `db` has none; every service `cap_drop: [ALL]` and `no-new-privileges:true`. API image: no pyspark, airflow or `lca_etl`; user `65532:65532` |
+| Port conflict (`LCA_APP_FRONTEND_PORT=5173`) | exit 1 with the variable named, before any container starts |
+| Destructive suites while the stack runs | `make backend-test-integration`, `backend-test-api`, `backend-test-auth`, `backend-test-publication` and `backend-test-seed` all pass; app state identical before and after |
+
+The worktree lived on a size-limited tmpfs. Engineering therefore placed the
+container virtual environments in each container's own filesystem
+(`UV_PROJECT_ENVIRONMENT=/var/tmp/lca-venv`) instead of the bind-mounted `.venv`.
+This changes where the packages are stored, not which locked packages are used.
 
 ### Private MVP input intake
 
