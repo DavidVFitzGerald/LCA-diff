@@ -1,0 +1,15 @@
+{
+  "format_version": 1,
+  "release": {
+    "release_version": "synthetic-local-2026.1",
+    "display_name": "Synthetic local demo release (invented data)"
+  },
+  "sources": {
+    "process_xml_directory": "sources/xml",
+    "lcia_workbook": "sources/scores.xlsx",
+    "lcia_sheet": "BAFU_2026 v1"
+  },
+  "work_directory": "../../private/seed-build",
+  "validation_rules": "rules/validation.json",
+  "score_basis_rules": "rules/score_basis.json"
+}
