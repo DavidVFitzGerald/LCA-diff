@@ -62,6 +62,8 @@ type Row =
       readonly key: string;
       readonly branch: string;
       readonly level: number;
+      readonly posinset: number;
+      readonly setsize: number;
       readonly load: BranchLoad | undefined;
     };
 
@@ -212,6 +214,9 @@ function buildRows(
           key: pseudoKey(kind, key),
           branch: key,
           level: level + 1,
+          // Last member of the branch's child set (#52).
+          posinset: children.length + 1,
+          setsize: complete(load) ? children.length + 1 : -1,
           load,
         });
       if (!load || (load.status === "pending" && !load.pages.length))
@@ -842,6 +847,8 @@ function TreeRow({
     ref: register,
     role: "treeitem",
     "aria-level": row.level,
+    "aria-posinset": row.posinset,
+    "aria-setsize": row.setsize,
     tabIndex: active ? 0 : -1,
     "data-row-key": row.key,
     className: `tree-row tree-${row.kind}`,
@@ -859,8 +866,6 @@ function TreeRow({
       <div
         {...common}
         aria-label={nodeName(node)}
-        aria-posinset={row.posinset}
-        aria-setsize={row.setsize}
         aria-expanded={branch ? row.expanded : undefined}
         aria-busy={(branch && row.busy) || checkBusy ? true : undefined}
         aria-checked={checked}

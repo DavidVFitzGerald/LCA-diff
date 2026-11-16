@@ -102,6 +102,26 @@ describe("windowed Flows grid (#23)", { timeout: 20000 }, () => {
   it("sizes mixed-sign rows from summaries and stripes by row index", async () => {
     render();
     await selectAll();
+    // #87: every committed DOM state, not only the final one, gives each
+    // value cell its row's height. A cell once took the summary height in
+    // the commit before the virtualizer applied it to the row (53px in a
+    // 52px row for one frame), so each mutation batch is checked.
+    const mismatched: string[] = [];
+    const observer = new MutationObserver(() => {
+      for (const row of grid().querySelectorAll<HTMLElement>('[role="row"]'))
+        for (const cell of row.querySelectorAll<HTMLElement>(
+          '[role="gridcell"][data-state]',
+        ))
+          if (cell.style.height !== row.style.height)
+            mismatched.push(
+              `row ${row.dataset.index}: ${cell.style.height} in ${row.style.height}`,
+            );
+    });
+    observer.observe(grid(), {
+      subtree: true,
+      childList: true,
+      attributes: true,
+    });
     scrollTo(300 * STANDARD_ROW_HEIGHT);
     // Paging to row 300 takes four row pages and their summaries. Like the
     // file's other deep-scroll waits, allow 10 s: the 1 s default timed out
@@ -115,6 +135,11 @@ describe("windowed Flows grid (#23)", { timeout: 20000 }, () => {
         ).toBe(true),
       { timeout: 10000 },
     );
+    // The checks below run on a settled grid: every mounted row loaded and
+    // summarized, nothing moving any more.
+    await settled();
+    observer.disconnect();
+    expect(mismatched).toEqual([]);
     for (const row of grid().querySelectorAll<HTMLElement>('[role="row"]')) {
       const index = Number(row.getAttribute("aria-rowindex")) - 1;
       expect(row).toHaveClass(index % 2 ? "odd" : "even");
@@ -210,6 +235,67 @@ describe("windowed Flows grid (#23)", { timeout: 20000 }, () => {
     expect(focused).not.toHaveAttribute("aria-busy");
     expect(app.flowRows.mock.calls.length).toBeGreaterThan(1);
   }, 30000);
+
+  it("keeps the rows in view mounted in every commit while rows above resize after a deep jump (#93)", async () => {
+    render(30);
+    await selectAll();
+    // The anchoring scroll (`pin`) moves the view as summaries resize the
+    // rows above it; the scroll event reaches the virtualizer only later
+    // (asynchronously, as in browsers). No commit in between may mount a
+    // window that misses the viewport or drops a loaded row in view.
+    const gaps: string[] = [];
+    const dropped: string[] = [];
+    let loaded = new Set<string>();
+    const observer = new MutationObserver(() => {
+      const top = scroller().scrollTop;
+      const end = top + layout.height;
+      const rows = [...grid().querySelectorAll<HTMLElement>('[role="row"]')]
+        .map((row) => ({
+          start: Number(/translateY\((.+)px\)/.exec(row.style.transform)![1]),
+          height: parseFloat(row.style.height),
+          name: row
+            .querySelector('[role="rowheader"]:not([aria-busy])')
+            ?.getAttribute("aria-label"),
+        }))
+        .sort((a, b) => a.start - b.start);
+      let cover = top + 0.5;
+      for (const row of rows)
+        if (row.start <= cover && row.start + row.height > cover)
+          cover = row.start + row.height;
+      if (cover < end - 0.5) gaps.push(`top ${top}: covered to ${cover}`);
+      const names = new Set(rows.map((row) => row.name));
+      for (const name of loaded)
+        if (!names.has(name)) dropped.push(`top ${top}: ${name}`);
+      loaded = new Set(
+        rows
+          .filter(
+            (row) =>
+              row.name && row.start < end && row.start + row.height > top,
+          )
+          .map((row) => row.name!),
+      );
+    });
+    observer.observe(grid(), {
+      subtree: true,
+      childList: true,
+      attributes: true,
+    });
+    scrollTo(1300 * STANDARD_ROW_HEIGHT + 20);
+    await waitFor(
+      () =>
+        expect(
+          grid().querySelector(
+            '[role="rowheader"][data-row="1310"]:not([aria-busy])',
+          ),
+        ).not.toBeNull(),
+      { timeout: 10000 },
+    );
+    await settled();
+    observer.disconnect();
+    expect(gaps).toEqual([]);
+    expect(dropped).toEqual([]);
+    expect(at(1310, -1)).not.toBeNull();
+  }, 20000);
 
   it("keeps the same flows in view and focused when processes are removed or added while deep (QA D1, D2)", async () => {
     const app = render(30);

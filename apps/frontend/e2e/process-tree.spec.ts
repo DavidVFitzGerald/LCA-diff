@@ -36,6 +36,29 @@ async function signInVerified(page: Page) {
   ).toBeFocused();
 }
 
+/**
+ * Everything the page keeps in browser storage (#52; spec §6.8, §9.2 item 17).
+ * A browser without the IndexedDB enumeration API fails rather than skips.
+ */
+async function storage(page: Page) {
+  return page.evaluate(async () => {
+    if (typeof indexedDB?.databases !== "function")
+      throw new Error("indexedDB.databases() is unavailable in this browser");
+    const databases = await indexedDB.databases();
+    return {
+      local: Object.fromEntries(
+        Object.keys(localStorage)
+          .sort()
+          .map((key) => [key, localStorage.getItem(key) ?? ""]),
+      ),
+      session: Object.keys(sessionStorage).sort(),
+      indexedDB: databases.map((database) => database.name ?? "").sort(),
+    };
+  });
+}
+const stored = (snapshot: Awaited<ReturnType<typeof storage>>) =>
+  Object.entries(snapshot.local).flat().join("\n");
+
 test("the process tree expands lazily from the keyboard and clears on signout", async ({
   page,
   baseURL,
@@ -48,9 +71,6 @@ test("the process tree expands lazily from the keyboard and clears on signout", 
     tree.locator(`[role="treeitem"][aria-level="${n}"]`);
   const root = level(1).first();
   await expect(root).toHaveAttribute("aria-expanded", "false");
-  const storageBefore = await page.evaluate(() =>
-    Object.keys(localStorage).sort(),
-  );
 
   // Tab into the tree's single tab stop.
   await root.focus();
@@ -114,6 +134,20 @@ test("the process tree expands lazily from the keyboard and clears on signout", 
   await expect(infrastructure).toBeFocused();
   await expect(tree.locator('[role="treeitem"][tabindex="0"]')).toHaveCount(1);
 
+  // With branches expanded: no stored value may carry their state (§6.8).
+  const expandedRows = tree.locator('[role="treeitem"][aria-expanded="true"]');
+  await expect(expandedRows).toHaveCount(5);
+  const expandedKeys: string[] = [];
+  for (const row of await expandedRows.all())
+    expandedKeys.push((await row.getAttribute("data-row-key"))!);
+  const expansion = new RegExp(
+    ["transport systems", "operations", "infrastructure", ...expandedKeys]
+      .map((marker) => marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join("|"),
+  );
+  const storageBefore = await storage(page);
+  expect(stored(storageBefore)).not.toMatch(expansion);
+
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(
     page.getByRole("dialog", { name: "Sign in to LCA diff" }),
@@ -129,9 +163,21 @@ test("the process tree expands lazily from the keyboard and clears on signout", 
   await expect(tree.getByRole("treeitem", { name: /^transport/ })).toHaveCount(
     0,
   );
-  const storageAfter = await page.evaluate(() =>
-    Object.keys(localStorage).sort(),
+  const storageAfter = await storage(page);
+  const observed = JSON.stringify({
+    before: storageBefore,
+    after: storageAfter,
+  });
+  test.info().annotations.push({ type: "storage", description: observed });
+  console.log(`#52 storage (${test.info().project.name}): ${observed}`);
+  expect(Object.keys(storageAfter.local)).toEqual(
+    Object.keys(storageBefore.local),
   );
-  expect(storageAfter).toEqual(storageBefore);
+  expect(storageAfter.session).toEqual(storageBefore.session);
+  expect(storageAfter.indexedDB).toEqual(storageBefore.indexedDB);
+  expect(stored(storageAfter)).not.toMatch(expansion);
+  // Observed in the mock build: nothing in sessionStorage or IndexedDB.
+  expect(storageBefore.session).toEqual([]);
+  expect(storageBefore.indexedDB).toEqual([]);
   expect(problems).toEqual([]);
 });

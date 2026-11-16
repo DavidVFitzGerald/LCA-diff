@@ -223,7 +223,12 @@ record environment/workload evidence rather than inventing an SLA.
 
 ### F5 — Scores, differences and workspace completion
 
-Depends on F4. Add method/category/indicator selection, source ordering, IPCC 2021
+Depends on F4 for integrated Scores-grid delivery. Maintainer-authorized exception
+(2026-11-15, #27): the independent indicator selector may overlap ongoing F4
+verification, using merged #8/#9/#15/#19 service/auth/selection foundations. #28
+requires both #26 and #27; no F4/F5 completion or product/scientific scope change
+is implied. Selector work uses its own branch/worktree and container project.
+Add method/category/indicator selection, source ordering, IPCC 2021
 GWP 100 default and valid/missing/unresolved score states. Reuse grid/bar behavior.
 Add independent differences toggles: initially off, disabled/reset below two
 processes, exact comparisons on demand, order-independent cache reuse and revision

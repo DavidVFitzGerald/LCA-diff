@@ -8,5 +8,11 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
     clearMocks: true,
+    // Half the cores per suite, so the two suites this host allows at once
+    // (#76) do not oversubscribe it. On 8 cores two concurrent full runs
+    // failed 4 + 3 tests (default workers, 104–106 s each) and passed with
+    // this setting (76 s each); a single run stays within 125 % of the #76
+    // baseline. Evidence: docs/engineering/unit-headroom-verification.md.
+    maxWorkers: "50%",
   },
 });
