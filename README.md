@@ -137,7 +137,7 @@ The application also supports an opt-in import of **BAFU:2026** [1]. Download th
 
 ### Configuration and troubleshooting
 
-No environment variables are required for the demo. Optional overrides are illustrated in [.env.example](.env.example); process environment values take precedence over literal `.env` values.
+Use separate terminals for demo, import, tests and development so exported project names do not carry between workflows. No environment variables are required for the demo. Optional overrides are illustrated in [.env.example](.env.example); process environment values take precedence over literal `.env` values.
 
 | Variable                        | Default / purpose                                                                     |
 | ------------------------------- | ------------------------------------------------------------------------------------- |
@@ -239,9 +239,11 @@ The real browser suite expects the seed-only application. After publishing addit
 
 ## Local development
 
-All development, package installation, formatting, builds and tests run inside containers. On the Docker host:
+All development, package installation, formatting, builds and tests run inside containers. On the Docker host, explicitly select the development project:
 
 ```sh
+export COMPOSE_PROJECT_NAME=lca-diff-dev
+export FRONTEND_PORT=5173 AUTH_PORT=9099
 ./dev up
 ./dev check
 ./dev shell
