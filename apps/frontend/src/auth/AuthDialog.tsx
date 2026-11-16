@@ -651,7 +651,7 @@ export function AuthDialog({ auth }: { auth: AuthState }) {
       <h2 id="login-title">{headings[view]}</h2>
       <p id="login-description">{descriptions[view]}</p>
       {body}
-      <DemoDetails demo={demo} />
+      {mode === "mock" && <DemoDetails demo={demo} />}
     </dialog>
   );
 }

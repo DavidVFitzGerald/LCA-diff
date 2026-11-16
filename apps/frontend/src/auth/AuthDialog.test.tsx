@@ -391,7 +391,9 @@ describe("AuthDialog pending, cancellation and failure states", () => {
       "Your session could not be confirmed",
     );
     expect(email()).toHaveAccessibleDescription(/could not be confirmed/);
-    fireEvent.click(screen.getByRole("button", { name: "About this demo" }));
+    expect(
+      screen.queryByRole("button", { name: "About this demo" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("demo-password")).not.toBeInTheDocument();
     expect(screen.queryByText(/Local demo/)).not.toBeInTheDocument();
     const cancel = new Event("cancel", { cancelable: true });

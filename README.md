@@ -2,9 +2,8 @@
 
 Read-only comparison of harmonized unit-process inventories and provider-supplied
 LCIA scores. The MVP is local-only (accepted ADR 0006). `./dev app-up` (L1, #96)
-starts the whole local application with one command. In L1 the frontend in that
-stack still uses its explicit mock adapter. The real frontend/API connection
-arrives with L2 (#97).
+starts the whole local application with one command. The frontend uses the real
+HTTP API, PostgreSQL data and Firebase Auth Emulator (L2, #97).
 
 - [Current product requirements](docs/product/LCA_diff_PRD.md)
 - [Current implementation specification](docs/engineering/LCA_diff_Implementation_Specification.md)
@@ -23,6 +22,7 @@ On the Docker host, in the repository checkout:
 ```sh
 ./dev app-up      # or: make up
 ./dev app-smoke   # optional live check, run in a container
+./dev app-e2e     # real-stack Chromium acceptance in a pinned browser container
 ./dev app-down    # or: make down; keeps the data
 ```
 
@@ -59,10 +59,21 @@ start, because the emulator keeps no state. These values, and every other passwo
 in `compose.app.yaml`, are development-only. Never reuse them in a production
 configuration. The API still refuses emulator settings in production.
 
-**L1 limitation:** the stack's frontend is built with `VITE_SERVICE_MODE=mock`. It
-shows the "Local demo mode" banner and its own mock data, not the seeded release.
-L2 (#97) switches it to the real HTTP and Firebase adapters. Until then, the
-seeded data is reachable through the API, for example via `./dev app-smoke`.
+The stack builds `VITE_SERVICE_MODE=real`. The browser uses the page origin for
+both `/api/` and emulator REST requests, proxied to the private API and emulator.
+The canonical URL is `http://127.0.0.1:5180`; `http://localhost:5180` also works.
+Firebase sessions are stored per origin, so switching between these spellings
+requires a fresh login. Standalone mock mode remains available below.
+
+**Register and verify locally.** Create an account in the login dialog, then
+choose **Resend verification email**. The emulator sends no real email. Run
+`./dev app-logs auth` on the host and open the printed verification link,
+replacing its origin with the frontend URL if needed. Alternatively open
+`http://127.0.0.1:5180/emulator/v1/projects/demo-lca/oobCodes`, locate your email,
+and use its `oobLink` with the frontend origin. Return to the app and choose
+**I've verified my email**. The SDK reloads the account and refreshes its token.
+Emulator accounts other than the recreated demo account are lost on restart;
+published PostgreSQL data persists.
 
 **Data and reset.** The stack is Compose project `lca-diff-app`, with named
 volumes `lca-diff-app_app-db` (database) and `lca-diff-app_app-archive` (B4
@@ -75,7 +86,9 @@ Compose projects and cannot reach this stack's data.
 
 `./dev app-status` lists services and exit codes, and `./dev app-logs [service]`
 shows recent logs. `LCA_APP_PROJECT` selects a different project name, for an
-isolated second copy such as QA.
+isolated second copy such as QA. Every `app-*` command refuses a project name
+equal to the workspace project (`COMPOSE_PROJECT_NAME` from the environment or
+repository `.env`, default `lca-diff-dev`) before invoking Compose.
 
 **Smoke check.** `./dev app-smoke` runs `ops/local/local_stack.py smoke` in the
 stack's tools container on its private network. It checks health and readiness.
@@ -87,7 +100,8 @@ It checks `GET /api/v1/releases` three ways:
   revision.
 
 It also checks one exact high-precision flow amount, and that a preflight from a
-non-allowlisted origin gets no CORS allow header. It prints no tokens.
+non-allowlisted origin gets no CORS allow header, while both loopback spellings
+are allowed. It prints no tokens.
 
 **Troubleshooting**
 
@@ -159,7 +173,10 @@ inputs into the same stack database, with the same B4 semantics:
    `lca-import` in the stack's ETL tools container. It runs on the stack's own
    network and mounts the stack's archive volume. Your `private/` directory is
    mounted read-only at `/private`; set `LCA_APP_PRIVATE_DIR` to use another
-   checkout's directory. Use the committed target
+   checkout's directory. This host directory must already exist
+   (`create_host_path: false`); otherwise Docker reports
+   `invalid mount config for type "bind": bind source path does not exist`.
+   Create it before invoking `app-import`. Use the committed target
    [`ops/local/target.json`](ops/local/target.json):
    `{"name": "local-app", "environment": "local", "archive_uri": "file:///var/lib/lca-archive"}`.
    Its credentials come only from the container variables

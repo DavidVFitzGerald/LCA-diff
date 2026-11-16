@@ -22,6 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: npm ci
+      - run: npm run contracts:check
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
@@ -49,3 +50,23 @@ jobs:
           path: apps/frontend/test-results/
           if-no-files-found: ignore
           retention-days: 7
+
+  real-stack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      LCA_APP_PROJECT: lca-l2-ci
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      # Hosted runners are rootful: use Compose directly, as in etl.yml.
+      - name: Start the isolated local application
+        run: docker compose -p lca-l2-ci -f compose.app.yaml up --detach --build --wait
+      - name: Verify API precision, authentication and both CORS origins
+        run: docker compose -p lca-l2-ci -f compose.app.yaml --profile smoke run --rm --no-deps smoke
+      - name: Build matching pinned browsers
+        run: docker compose -p lca-l2-ci -f compose.app.yaml --profile e2e build e2e
+      - name: Real Firebase, API and PostgreSQL browser smoke
+        run: docker compose -p lca-l2-ci -f compose.app.yaml --profile e2e run --rm --no-deps e2e
+      - name: Stop disposable stack
+        if: always()
+        run: docker compose -p lca-l2-ci -f compose.app.yaml down --volumes

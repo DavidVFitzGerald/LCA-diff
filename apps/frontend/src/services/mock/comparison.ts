@@ -239,8 +239,9 @@ export function createMockComparison(
       start = index + 1;
     }
     const items = rows.slice(start, start + input.limit).map((row) => {
-      const amounts = [...context.processes.values()]
-        .flatMap(({ process, revision }) => {
+      const amounts = [...context.processes.entries()]
+        .sort(([a], [b]) => compare(a, b))
+        .flatMap(([, { process, revision }]) => {
           const value =
             "row_key" in row
               ? (process.flows[row.row_key] ??

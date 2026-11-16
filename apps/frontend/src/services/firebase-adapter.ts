@@ -89,6 +89,8 @@ export function adaptFirebase(sdk: Auth): {
   auth: AuthService;
   tokens: TokenSource;
 } {
+  let refreshing = false;
+  const observers = new Set<(value: AuthState) => void>();
   const run = async (
     action: () => Promise<unknown>,
     options?: RequestOptions,
@@ -114,11 +116,18 @@ export function adaptFirebase(sdk: Auth): {
     },
     auth: {
       observe(listener) {
-        return onIdTokenChanged(
+        observers.add(listener);
+        const unsubscribe = onIdTokenChanged(
           sdk,
-          (user) => listener(state(user)),
+          (user) => {
+            if (!refreshing) listener(state(user));
+          },
           () => listener({ status: "error", error: failureError() }),
         );
+        return () => {
+          observers.delete(listener);
+          unsubscribe();
+        };
       },
       signIn: (input, options) =>
         run(
@@ -139,12 +148,26 @@ export function adaptFirebase(sdk: Auth): {
         }, options),
       resetPassword: (email, options) =>
         run(() => sendPasswordResetEmail(sdk, email), options),
-      refreshSession: (options) =>
-        run(async () => {
-          if (!sdk.currentUser) throw new Error("No session");
-          await reload(sdk.currentUser);
-          await sdk.currentUser.getIdToken(true);
-        }, options),
+      async refreshSession(options) {
+        // reload can publish emailVerified before the cached unverified token
+        // is replaced. Keep the shell locked until BOTH operations complete.
+        refreshing = true;
+        try {
+          const result = await run(async () => {
+            if (!sdk.currentUser) throw new Error("No session");
+            await reload(sdk.currentUser);
+            await sdk.currentUser.getIdToken(true);
+          }, options);
+          refreshing = false;
+          const next: AuthState = result.ok
+            ? state(sdk.currentUser)
+            : { status: "error", error: result.error };
+          observers.forEach((listener) => listener(next));
+          return result;
+        } finally {
+          refreshing = false;
+        }
+      },
     },
   };
 }

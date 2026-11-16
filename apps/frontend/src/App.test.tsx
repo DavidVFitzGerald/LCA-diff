@@ -121,8 +121,9 @@ describe("F2 shell", () => {
     dialog.dispatchEvent(event);
     expect(event.defaultPrevented).toBe(true);
     expect(dialog).toHaveAttribute("open");
-    fireEvent.click(screen.getByRole("button", { name: "About this demo" }));
-    expect(screen.getByText(/No live account or email delivery/)).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "About this demo" }),
+    ).not.toBeInTheDocument();
     expectNoDataCalls(app.data);
   });
   it("keeps the resolving shell free of a login flash and protected data", async () => {

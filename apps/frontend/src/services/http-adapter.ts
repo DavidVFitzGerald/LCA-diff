@@ -69,16 +69,6 @@ const unavailable = (request_id = "client-transport"): ServiceError => ({
   request_id,
   retryable: true,
 });
-const codes = new Set([
-  "AUTH_REQUIRED",
-  "EMAIL_NOT_VERIFIED",
-  "RELEASE_UNAVAILABLE",
-  "UNKNOWN_PROCESS",
-  "INVALID_FILTER",
-  "STALE_SNAPSHOT",
-  "REQUEST_WINDOW_TOO_LARGE",
-  "TEMPORARILY_UNAVAILABLE",
-]);
 export interface TokenSource {
   token(forceRefresh: boolean): Promise<string | null>;
 }
@@ -124,20 +114,15 @@ export function createHttpData(
         const value: unknown = await response.json();
         check();
         if (!response.ok) {
-          const envelope = value as { error?: ServiceError };
-          const error = envelope?.error;
-          if (
-            !error ||
-            !codes.has(error.code) ||
-            typeof error.message !== "string" ||
-            typeof error.request_id !== "string" ||
-            typeof error.retryable !== "boolean"
-          )
+          if (!valid(value, schemas.ErrorResponse))
             return { ok: false, error: unavailable(request_id) };
+          const { error } = value as WireSchemas["ErrorResponse"];
           return {
             ok: false,
             error: {
-              ...error,
+              code: error.code,
+              message: error.message,
+              retryable: error.retryable,
               request_id:
                 response.headers.get("X-Request-ID") ?? error.request_id,
             },

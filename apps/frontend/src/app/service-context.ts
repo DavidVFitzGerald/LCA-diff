@@ -52,12 +52,14 @@ const SESSION_LOSS = new Set<ServiceError["code"]>([
 export function createSessionStore(auth: AuthService, client: QueryClient) {
   let observed: AuthState = { status: "resolving" };
   let override: AuthState | null = null;
+  let rejectedUid: string | null = null;
   let epoch = 0;
   const listeners = new Set<() => void>();
   const snapshot = () => override ?? observed;
   const lock = (state: AuthState) =>
     transition(() => {
       override = state;
+      if (state.status === "error") rejectedUid = verifiedUid(observed);
     });
   function transition(update: () => void) {
     const previousUid = verifiedUid(snapshot());
@@ -80,6 +82,10 @@ export function createSessionStore(auth: AuthService, client: QueryClient) {
     },
     /** Lock locally until the adapter next reports state. */
     lock,
+    /** Only an explicit recovery action may unlock the rejected identity. */
+    recover() {
+      rejectedUid = null;
+    },
     /**
      * A protected read reported session loss. Ignored unless the read began in
      * the current epoch, so a late failure cannot expire a newer account.
@@ -92,7 +98,10 @@ export function createSessionStore(auth: AuthService, client: QueryClient) {
       const unsubscribe = auth.observe((next) =>
         transition(() => {
           observed = next;
-          override = null;
+          if (verifiedUid(next) !== rejectedUid || rejectedUid === null) {
+            override = null;
+            rejectedUid = null;
+          }
         }),
       );
       return () => {
@@ -100,6 +109,7 @@ export function createSessionStore(auth: AuthService, client: QueryClient) {
         epoch += 1;
         observed = { status: "resolving" };
         override = null;
+        rejectedUid = null;
         client.clear();
       };
     },
@@ -117,14 +127,24 @@ export function guardAuthService(
 ): AuthService {
   return {
     observe: (listener) => auth.observe(listener),
-    signIn: (input, options) => auth.signIn(input, options),
+    signIn: (input, options) => {
+      session.recover();
+      return auth.signIn(input, options);
+    },
     register: (input, options) => auth.register(input, options),
     sendVerification: (options) => auth.sendVerification(options),
     resetPassword: (email, options) => auth.resetPassword(email, options),
-    refreshSession: (options) => auth.refreshSession(options),
+    refreshSession: (options) => {
+      session.recover();
+      return auth.refreshSession(options);
+    },
     async signOut(options) {
       const before = session.getSnapshot();
       const uid = verifiedUid(before);
+      // The already-locked verification panel must remain mounted to report a
+      // failed signout when Firebase emits no state change (F2/L2).
+      if (before.status === "authenticated" && !before.user.email_verified)
+        return auth.signOut(options);
       session.lock({ status: "unauthenticated" });
       const captured = session.getEpoch();
       let result: ServiceResult<void>;

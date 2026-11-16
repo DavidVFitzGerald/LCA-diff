@@ -161,8 +161,19 @@ port that already accepts connections on 127.0.0.1.
 - **Auth Emulator:** the existing emulator image, plus a Node `fetch`
   healthcheck.
 - **Frontend:** `ops/local/frontend.Dockerfile`. It runs `npm ci --ignore-scripts`
-  from the committed lock, then an explicit `VITE_SERVICE_MODE` production
-  build, served by `vite preview` as `node`. L1 passes `mock`.
+  from the committed lock, then an explicit `VITE_SERVICE_MODE=real` production
+  build, served by `vite preview` as `node`. The build includes generated
+  `packages/contracts/` types and the committed OpenAPI response schema.
+  Runtime `LCA_API_PROXY` and `LCA_AUTH_PROXY` enable same-origin proxies for
+  `/api/`, `/identitytoolkit.googleapis.com/`, `/securetoken.googleapis.com/`
+  and `/emulator/`. Port overrides require no browser-URL rebuild.
+  Direct-client CORS permits exactly both loopback spellings at the frontend
+  port. The local allowance is 6,000 requests/minute because browser grids share
+  one proxy address; per-request window and byte bounds remain unchanged.
+- **Browser acceptance:** `./dev app-e2e` builds `ops/local/e2e.Dockerfile` from
+  the committed frontend lock, with the shared pinned-snapshot browser installer.
+  The Chromium-only real config has no web server and runs on the app network
+  against `http://frontend:4173`, separately from the mock browser suite.
 - **Tools:** `ops/local/tools.Dockerfile` is the ETL runtime image for the stack.
   It holds the `lca-etl` workspace package from the frozen lock, which carries
   Airflow/PySpark Python dependencies and Alembic. It omits Spark's JVM because

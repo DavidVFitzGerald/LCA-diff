@@ -233,16 +233,18 @@ export function App() {
   }
   return (
     <div className="app">
-      <p role="status" className="demo-marker">
-        {mode === "mock"
-          ? `Local demo mode — synthetic services${
-              demo?.scenario === "large"
-                ? " (large synthetic scenario: 220 processes, 2,000+ flows)"
-                : ""
-            }`
-          : "Injected test services"}
-        . Auth: {auth.status}.
-      </p>
+      {mode !== "real" && (
+        <p role="status" className="demo-marker">
+          {mode === "mock"
+            ? `Local demo mode — synthetic services${
+                demo?.scenario === "large"
+                  ? " (large synthetic scenario: 220 processes, 2,000+ flows)"
+                  : ""
+              }`
+            : "Injected test services"}
+          . Auth: {auth.status}.
+        </p>
+      )}
       {!desktop ? (
         <main className="desktop-required">
           <h1>LCA diff</h1>

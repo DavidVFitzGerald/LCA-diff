@@ -9,12 +9,15 @@ import { compareDecimal } from "./decimal";
 const precise = "1.234567890123456789012345678901234";
 const tiny = "1.2345E-33";
 const preciseScore = "12.3456789012345678901234567890123";
-const tinyScore = "1E-40";
+const tinyScore = "1.000000000000000000000000000000001E-40";
 function data<T>(result: ServiceResult<T>): T {
   if (!result.ok) throw new Error(result.error.code);
   return result.data;
 }
-function fixture() {
+function fixture(
+  values: readonly (string | null)[] = [precise, "0", null],
+  scores: readonly (string | null)[] = [preciseScore, null, null],
+) {
   const catalog = createComparisonCatalog();
   const revision = catalog.revisions[1];
   const row = revision.flow_rows.find(
@@ -27,8 +30,6 @@ function fixture() {
   const tinyRow = revision.flow_rows.find(
     (item) => item.flow_type === "Ecosphere Input",
   )!;
-  const values = [precise, "0", null];
-  const scores = [preciseScore, null, null];
   const modified = {
     ...catalog,
     revisions: catalog.revisions.map((item) =>
@@ -93,8 +94,12 @@ function fixture() {
   };
 }
 /** A typed wire fixture bridge: uses the same catalog but carries API NumericSummary. */
-function setup(mode: "mock" | "http") {
-  const f = fixture();
+function setup(
+  mode: "mock" | "http",
+  values?: readonly (string | null)[],
+  scores?: readonly (string | null)[],
+) {
+  const f = fixture(values, scores);
   const mock = createMockComparison({
     catalog: f.catalog,
     scenario: { latency_ms: 0 },
@@ -172,6 +177,41 @@ function setup(mode: "mock" | "http") {
 }
 for (const mode of ["mock", "http"] as const)
   describe(`${mode} adapter contract`, () => {
+    it.each([
+      [["5", "20", null], "20", "0", 1],
+      [["-80", "-20", null], "0", "80", 1],
+      [["-80", "20", "0"], "20", "80", 0],
+      [["0", "0", null], "0", "0", 1],
+      [[null, null, null], "0", "0", 3],
+    ] as const)(
+      "keeps whole-selection score P/N for %j",
+      async (scores, p, n, absent) => {
+        const app = setup(mode, undefined, scores);
+        const rows = data(
+          await app.service.scoreRows({
+            ...app.input,
+            indicator_ids: [app.indicators[0].id],
+          }),
+        );
+        expect(rows.items[0].summary).toEqual({
+          max_positive: p,
+          max_negative_magnitude: n,
+          absent_count: absent,
+        });
+      },
+    );
+    it.each([
+      [["5", "20", null], "20", "0"],
+      [["-80", "-20", null], "0", "80"],
+      [["-80", "20", "0"], "20", "80"],
+      [["0", "0", null], "0", "0"],
+    ] as const)("keeps whole-selection P/N for %j", async (values, p, n) => {
+      const app = setup(mode, values);
+      const rows = data(await app.service.flowRows(app.input));
+      expect(
+        rows.items.find((row) => row.row_key === app.row.row_key)?.summary,
+      ).toMatchObject({ max_positive: p, max_negative_magnitude: n });
+    });
     it("preserves precision, zero/absent, score missingness, snapshot and opaque token reuse", async () => {
       const app = setup(mode);
       const rows = data(await app.service.flowRows(app.input));
@@ -339,51 +379,70 @@ describe("HTTP failures and refresh", () => {
       status === 401 ? [[false], [true]] : [[false]],
     );
   });
-  it.each(["network", "html", "unknown", "shape", "invariant"])(
-    "safely maps %s",
-    async (kind) => {
-      const transport = vi.fn<typeof fetch>(async () => {
-        if (kind === "network") throw new Error("private");
-        if (kind === "html") return new Response("<html>private</html>");
-        if (kind === "unknown")
-          return Response.json({ error: { code: "PRIVATE" } }, { status: 500 });
-        if (kind === "invariant")
-          return Response.json({
-            cells: [
-              {
-                process_id: "id",
-                row_key: "id|Reference",
-                present: false,
-                amount: "1",
-                warnings: [],
-              },
-            ],
-            revision_snapshot: input.revision_snapshot,
+  it.each([
+    "network",
+    "html",
+    "unknown",
+    "shape",
+    "invariant",
+    "extra-error",
+    "extra-envelope",
+  ])("safely maps %s", async (kind) => {
+    const transport = vi.fn<typeof fetch>(async () => {
+      if (kind === "network") throw new Error("private");
+      if (kind === "html") return new Response("<html>private</html>");
+      if (kind === "unknown")
+        return Response.json({ error: { code: "PRIVATE" } }, { status: 500 });
+      if (kind === "extra-error" || kind === "extra-envelope")
+        return Response.json(
+          {
+            error: {
+              code: "INVALID_FILTER",
+              message: "Safe",
+              request_id: "body",
+              retryable: false,
+              ...(kind === "extra-error" ? { private: "payload" } : {}),
+            },
+            ...(kind === "extra-envelope" ? { private: "payload" } : {}),
+          },
+          { status: 422 },
+        );
+      if (kind === "invariant")
+        return Response.json({
+          cells: [
+            {
+              process_id: "id",
+              row_key: "id|Reference",
+              present: false,
+              amount: "1",
+              warnings: [],
+            },
+          ],
+          revision_snapshot: input.revision_snapshot,
+          comparison_token: "token",
+          request_id: "safe",
+        });
+      return Response.json({ private: "payload" });
+    });
+    const service = createHttpData(
+      "/api/v1",
+      { token: async () => "secret" },
+      transport,
+    );
+    const result =
+      kind === "invariant"
+        ? await service.flowCells({
+            ...input,
+            row_keys: [],
             comparison_token: "token",
-            request_id: "safe",
-          });
-        return Response.json({ private: "payload" });
-      });
-      const service = createHttpData(
-        "/api/v1",
-        { token: async () => "secret" },
-        transport,
-      );
-      const result =
-        kind === "invariant"
-          ? await service.flowCells({
-              ...input,
-              row_keys: [],
-              comparison_token: "token",
-            })
-          : await service.flowRows(input);
-      expect(result).toMatchObject({
-        ok: false,
-        error: { code: "TEMPORARILY_UNAVAILABLE" },
-      });
-      expect(JSON.stringify(result)).not.toContain("private");
-    },
-  );
+          })
+        : await service.flowRows(input);
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "TEMPORARILY_UNAVAILABLE" },
+    });
+    expect(JSON.stringify(result)).not.toContain("private");
+  });
   it("locks after failed forced refresh and rejects a delayed success after abort", async () => {
     const tokens = {
       token: vi.fn(async (force: boolean) => {
