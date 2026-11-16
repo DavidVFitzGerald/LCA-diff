@@ -2,6 +2,7 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { createElement, useEffect } from "react";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { AnnouncerProvider } from "../../app/announcer";
+import { DifferencesProvider } from "../../app/differences";
 import { IndicatorProvider } from "../../app/indicators";
 import { useIndicators } from "../../app/indicator-context";
 import type { IndicatorSelection } from "../../app/indicator-context";
@@ -85,7 +86,11 @@ function render(processes = 220, rowCount = 230, latency = 0) {
       createElement(
         IndicatorProvider,
         null,
-        createElement(AnnouncerProvider, null, createElement(Probe)),
+        createElement(
+          DifferencesProvider,
+          null,
+          createElement(AnnouncerProvider, null, createElement(Probe)),
+        ),
       ),
     ),
   });

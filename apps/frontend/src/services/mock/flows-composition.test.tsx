@@ -16,9 +16,12 @@ import {
 } from "@testing-library/react";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type {
+  ComparisonPage,
   ComparisonRowsRequest,
   FlowRow,
   RequestOptions,
+  ScoreRowsRequest,
+  ServiceResult,
 } from "../contracts";
 import { createMockComparison } from "./comparison";
 import { createDiscoveryCatalog } from "./discovery";
@@ -65,24 +68,38 @@ const GAMMA = "Synthetic road service Gamma";
 const LABEL = { [ALPHA]: "CH", [BETA]: "DE", [GAMMA]: "CH" } as const;
 type Process = keyof typeof LABEL;
 
-function render() {
+function render(
+  /** Optional row-read interceptor (#30): return a result to replace the mock's. */
+  intercept?: (
+    input: ComparisonRowsRequest,
+    signal?: AbortSignal,
+  ) => Promise<ServiceResult<ComparisonPage<FlowRow>>> | undefined,
+) {
   const comparison = createMockComparison();
   const responses: FlowRow[][] = [];
+  const signals: { input: ComparisonRowsRequest; signal?: AbortSignal }[] = [];
   const flowRows = vi.fn(
     async (input: ComparisonRowsRequest, options?: RequestOptions) => {
-      const result = await comparison.flowRows(input, options);
+      signals.push({ input, signal: options?.signal });
+      const result =
+        (await intercept?.(input, options?.signal)) ??
+        (await comparison.flowRows(input, options));
       if (result.ok) responses.push([...result.data.items]);
       return result;
     },
   );
+  const scoreRows = vi.fn(comparison.scoreRows);
   const app = mount({
     catalog: createDiscoveryCatalog(3),
     wrap: () => ({
       flowRows,
       flowCells: comparison.flowCells,
+      indicatorTree: comparison.indicatorTree,
+      scoreRows,
+      scoreCells: comparison.scoreCells,
     }),
   });
-  return { ...app, flowRows, responses };
+  return { ...app, flowRows, scoreRows, responses, signals, comparison };
 }
 
 /** Expands release › transport systems › road › operations › infrastructure. */
@@ -575,5 +592,233 @@ describe("Flows composition (#24)", { timeout: 20000 }, () => {
     expect(cellAt(ROWS.recovered, ALPHA)).toHaveAccessibleName(
       /: -80\.000000000000000000000001, negative/,
     );
+  });
+});
+
+describe("Show differences only (#30)", { timeout: 20000 }, () => {
+  const switchIn = (tab: "Flows" | "Scores") =>
+    within(screen.getByRole("tabpanel", { name: tab })).getByRole("checkbox", {
+      name: "Show differences only",
+    });
+  const openTab = (tab: "Flows" | "Scores") =>
+    act(() => fireEvent.click(screen.getByRole("tab", { name: tab })));
+  const flip = (tab: "Flows" | "Scores") =>
+    act(() => fireEvent.click(switchIn(tab)));
+  const differenceReads = (
+    spy:
+      | ReturnType<typeof render>["flowRows"]
+      | ReturnType<typeof render>["scoreRows"],
+  ) =>
+    spy.mock.calls.filter(
+      ([input]) =>
+        (input as ComparisonRowsRequest | ScoreRowsRequest).differences_only,
+    );
+  const ALL = [
+    ROWS.alphaReference,
+    ROWS.gammaReference,
+    ROWS.betaReference,
+    ROWS.recovered,
+    ROWS.alphaInput,
+    ROWS.water,
+    ROWS.airLow,
+    ROWS.airHigh,
+  ];
+
+  it("start off, stay independent across tabs, and are disabled and reset below two processes (AC1)", async () => {
+    render();
+    await openTree();
+    toggle(ALPHA);
+    await loaded(5);
+    expect(switchIn("Flows")).toBeDisabled();
+    expect(switchIn("Flows")).not.toBeChecked();
+    expect(switchIn("Flows")).toHaveAccessibleDescription(
+      "Select at least two processes to show differences.",
+    );
+    toggle(BETA);
+    await loaded(6);
+    expect(switchIn("Flows")).toBeEnabled();
+    expect(switchIn("Flows")).not.toBeChecked();
+    flip("Flows");
+    expect(switchIn("Flows")).toBeChecked();
+    openTab("Scores");
+    await waitFor(() => expect(switchIn("Scores")).toBeEnabled());
+    expect(switchIn("Scores")).not.toBeChecked();
+    flip("Scores");
+    openTab("Flows");
+    expect(switchIn("Flows")).toBeChecked();
+    flip("Flows");
+    openTab("Scores");
+    expect(switchIn("Scores")).toBeChecked();
+    openTab("Flows");
+    expect(switchIn("Flows")).not.toBeChecked();
+    // Below two processes both reset to off and stay off when re-enabled.
+    flip("Flows");
+    toggle(BETA);
+    await loaded(5);
+    expect(switchIn("Flows")).toBeDisabled();
+    expect(switchIn("Flows")).not.toBeChecked();
+    toggle(BETA);
+    await loaded(6);
+    expect(switchIn("Flows")).not.toBeChecked();
+    openTab("Scores");
+    await waitFor(() => expect(switchIn("Scores")).toBeEnabled());
+    expect(switchIn("Scores")).not.toBeChecked();
+  });
+
+  it("reads only the tab's difference rows on demand, reuses cached sessions and invalidates on membership (AC2, AC3)", async () => {
+    const app = render();
+    await selectAll();
+    expect(rowNames()).toEqual(ALL);
+    expect(differenceReads(app.flowRows)).toHaveLength(0);
+    const fullReads = app.flowRows.mock.calls.length;
+
+    flip("Flows");
+    // Equal present amounts (water "0", airLow) hide; airHigh is "-0" in
+    // two processes but absent in Beta, so it differs.
+    await loaded(6);
+    expect(rowNames()).toEqual(
+      ALL.filter((name) => name !== ROWS.water && name !== ROWS.airLow),
+    );
+    expect(differenceReads(app.flowRows)).toHaveLength(1);
+    expect(differenceReads(app.flowRows)[0][0].process_ids).toEqual(
+      [...differenceReads(app.flowRows)[0][0].process_ids].sort(),
+    );
+    expect(differenceReads(app.scoreRows)).toHaveLength(0);
+    expect(cellAt(ROWS.airHigh, BETA)).toHaveAttribute("data-state", "absent");
+
+    // Off restores the cached full rows without a difference read; on again
+    // reuses the cached difference session.
+    const reads = app.flowRows.mock.calls.length;
+    flip("Flows");
+    await loaded(8);
+    expect(rowNames()).toEqual(ALL);
+    flip("Flows");
+    await loaded(6);
+    expect(app.flowRows.mock.calls.length).toBe(reads);
+    expect(reads).toBe(fullReads + 1);
+
+    // Reordering columns reuses the session too.
+    const before = columnNames();
+    act(() =>
+      screen
+        .getAllByRole("group")
+        .find((group) => group.dataset.columnIndex === "0")!
+        .focus(),
+    );
+    for (const k of [" ", "End", " "])
+      fireEvent.keyDown(document.activeElement!, { key: k, code: k });
+    await waitFor(() => expect(columnNames()).not.toEqual(before));
+    await loaded(6);
+    expect(app.flowRows.mock.calls.length).toBe(reads);
+
+    // Membership changes invalidate: without Beta, airHigh ("-0" and "-0")
+    // is equal and hides.
+    removeFromList(BETA);
+    await loaded(4);
+    expect(rowNames()).toEqual([
+      ROWS.alphaReference,
+      ROWS.gammaReference,
+      ROWS.recovered,
+      ROWS.alphaInput,
+    ]);
+    expect(differenceReads(app.flowRows)).toHaveLength(2);
+    expect(differenceReads(app.flowRows)[1][0].process_ids).toHaveLength(2);
+
+    // Scores has its own toggle and its own difference read.
+    openTab("Scores");
+    await waitFor(() => expect(switchIn("Scores")).toBeEnabled());
+    expect(differenceReads(app.scoreRows)).toHaveLength(0);
+    flip("Scores");
+    await waitFor(() => expect(differenceReads(app.scoreRows)).toHaveLength(1));
+    expect(differenceReads(app.flowRows)).toHaveLength(2);
+  });
+
+  it("keeps the switch responsive through errors and cancellation, retries and never shows a partial session (AC4)", async () => {
+    // Difference reads: the first fails, the second waits until aborted,
+    // later ones answer normally.
+    let attempts = 0;
+    const app = render((input, signal) => {
+      if (!input.differences_only) return undefined;
+      attempts++;
+      if (attempts === 1)
+        return Promise.resolve({
+          ok: false,
+          error: {
+            code: "TEMPORARILY_UNAVAILABLE",
+            message: "Temporarily unavailable",
+            request_id: "differences-fault",
+            retryable: true,
+          },
+        });
+      if (attempts === 2)
+        return new Promise((resolve) =>
+          signal?.addEventListener("abort", () =>
+            resolve({
+              ok: false,
+              error: {
+                code: "TEMPORARILY_UNAVAILABLE",
+                message: "Cancelled",
+                request_id: "differences-cancelled",
+                retryable: true,
+              },
+            }),
+          ),
+        );
+      return undefined;
+    });
+    await selectAll();
+    flip("Flows");
+    const alert = await screen.findByRole("alert", {}, { timeout: 10000 });
+    expect(alert).toHaveTextContent("Flow values could not be loaded.");
+    // Nothing from the failed session is shown, and the switch stays usable.
+    expect(grid()).toHaveAttribute("aria-rowcount", "0");
+    expect(switchIn("Flows")).toBeEnabled();
+    expect(switchIn("Flows")).toBeChecked();
+    // Retry issues a new read; turning the switch off meanwhile cancels it
+    // and restores the cached full rows without another read.
+    const reads = app.flowRows.mock.calls.length;
+    act(() =>
+      fireEvent.click(within(alert).getByRole("button", { name: "Retry" })),
+    );
+    await waitFor(() => expect(attempts).toBe(2));
+    const pending = app.signals.at(-1)!;
+    expect(pending.input.differences_only).toBe(true);
+    flip("Flows");
+    await loaded(8);
+    expect(rowNames()).toEqual(ALL);
+    expect(screen.queryByRole("alert")).toBeNull();
+    await waitFor(() => expect(pending.signal?.aborted).toBe(true));
+    expect(app.flowRows.mock.calls.length).toBe(reads + 1);
+    // On again reads afresh and applies only the complete new session.
+    flip("Flows");
+    await loaded(6);
+    expect(attempts).toBe(3);
+    expect(rowNames()).not.toContain(ROWS.water);
+  });
+
+  it("explains an empty difference set", async () => {
+    render((input) =>
+      input.differences_only
+        ? Promise.resolve({
+            ok: true,
+            data: {
+              items: [],
+              next_cursor: null,
+              total_count: 0,
+              comparison_token: "no-differences",
+              revision_snapshot: input.revision_snapshot,
+              request_id: "no-differences",
+            },
+          })
+        : undefined,
+    );
+    await selectAll();
+    flip("Flows");
+    await waitFor(() =>
+      expect(status()).toBe(
+        "No differences: every flow has the same amount in all selected processes.",
+      ),
+    );
+    expect(grid()).toHaveAttribute("aria-rowcount", "0");
   });
 });

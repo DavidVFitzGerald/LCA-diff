@@ -15,6 +15,7 @@ import type { RowGeometry } from "./geometry";
 import type { CellAttributes } from "./SignedValueCell";
 import { useFlowGrid } from "./useFlowGrid";
 import { selectionKey } from "../../app/selection";
+import { useDifferences } from "../../app/differences";
 
 /**
  * Compact visible Type labels for the bounded block (#24, O2); the full
@@ -162,11 +163,13 @@ function FlowsBody({
   // The grid reports its anchor flows here; the data hook reads them when
   // the selection changes (no re-render per scroll).
   const anchors = useRef<readonly string[]>([]);
+  const differences = useDifferences("flows");
   const data = useFlowGrid(
     entries,
     range.rows,
     range.columns,
     () => anchors.current,
+    differences.on,
   );
   const columns = useMemo(
     (): GridColumn[] =>
@@ -245,7 +248,15 @@ function FlowsBody({
   return (
     <>
       <p role="status" className="comparison-grid-status">
-        {data.updating ? "Updating the comparison…" : ""}
+        {data.updating
+          ? "Updating the comparison…"
+          : differences.on &&
+              data.token !== undefined &&
+              !data.busy &&
+              !data.error &&
+              data.rowCount === 0
+            ? "No differences: every flow has the same amount in all selected processes."
+            : ""}
       </p>
       {data.error && (
         <p role="alert" className="comparison-grid-error">

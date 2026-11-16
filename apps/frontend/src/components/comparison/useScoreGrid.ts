@@ -69,6 +69,12 @@ export function useScoreGrid(
    * previous comparison stays shown until one is loaded in the new one.
    */
   anchorKeys: () => readonly string[] = () => [],
+  /**
+   * The tab's "Show differences only" toggle (#30, spec §6.7). On, with two or
+   * more processes, the service returns only differing rows; off sends no
+   * difference flag, so the full comparison keeps its own cached session.
+   */
+  differencesOnly = false,
 ): ScoreGridData {
   const queries = useServiceQueries();
   const snapshot = useMemo(() => selectionSnapshot(entries), [entries]);
@@ -85,6 +91,9 @@ export function useScoreGrid(
       process_ids: canonicalIds,
       indicator_ids: [...indicatorIds].sort(),
       limit: SERVICE_WINDOW,
+      ...(differencesOnly && processIds.length >= 2
+        ? { differences_only: true }
+        : {}),
     }),
     enabled: processIds.length > 0 && indicatorIds.length > 0,
     // Keep showing the previous comparison while a changed selection loads:

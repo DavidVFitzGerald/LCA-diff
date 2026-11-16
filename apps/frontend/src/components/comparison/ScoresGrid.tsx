@@ -15,6 +15,7 @@ import type { CellAttributes } from "./SignedValueCell";
 import { useScoreGrid } from "./useScoreGrid";
 import { useIndicators } from "../../app/indicator-context";
 import { selectionKey } from "../../app/selection";
+import { useDifferences } from "../../app/differences";
 
 /** The bounded sticky Scores identity block (spec §6.5). */
 const SCORE_FIELDS: readonly {
@@ -116,12 +117,14 @@ function ScoresBody({
   // The grid reports its anchor indicators here; the data hook reads them when
   // the selection changes (no re-render per scroll).
   const anchors = useRef<readonly string[]>([]);
+  const differences = useDifferences("scores");
   const data = useScoreGrid(
     entries,
     ids,
     range.rows,
     range.columns,
     () => anchors.current,
+    differences.on,
   );
   const columns = useMemo(
     (): GridColumn[] =>
@@ -192,7 +195,15 @@ function ScoresBody({
   return (
     <>
       <p role="status" className="comparison-grid-status">
-        {data.updating ? "Updating the comparison…" : ""}
+        {data.updating
+          ? "Updating the comparison…"
+          : differences.on &&
+              data.token !== undefined &&
+              !data.busy &&
+              !data.error &&
+              data.rowCount === 0
+            ? "No differences: every selected indicator has the same score in all selected processes."
+            : ""}
       </p>
       {data.error && (
         <p role="alert" className="comparison-grid-error">

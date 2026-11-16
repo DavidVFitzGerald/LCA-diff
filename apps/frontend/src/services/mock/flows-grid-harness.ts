@@ -9,6 +9,7 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { createElement, useEffect } from "react";
 import { afterAll, beforeAll, expect, vi } from "vitest";
 import { AnnouncerProvider } from "../../app/announcer";
+import { DifferencesProvider } from "../../app/differences";
 import { SelectionProvider, useSelectionStore } from "../../app/selection";
 import type { SelectedProcess, SelectionStore } from "../../app/selection";
 import { FlowsGrid } from "../../components/comparison/FlowsGrid";
@@ -154,10 +155,14 @@ export function render(latency = 0) {
       SelectionProvider,
       null,
       createElement(
-        AnnouncerProvider,
+        DifferencesProvider,
         null,
-        createElement(Probe),
-        createElement(FlowsGrid),
+        createElement(
+          AnnouncerProvider,
+          null,
+          createElement(Probe),
+          createElement(FlowsGrid),
+        ),
       ),
     ),
   });
