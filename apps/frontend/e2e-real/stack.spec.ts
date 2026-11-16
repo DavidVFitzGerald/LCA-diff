@@ -132,6 +132,99 @@ test("real seed: gated login, search, bulk selection, reorder, exact flows, Scor
   await expect(page.locator("[data-state]")).toHaveCount(0);
 });
 
+test("real seed: exact differences toggles per tab (L3 #30)", async ({
+  page,
+}) => {
+  // Row reads by tab and difference flag, from the requests the app sends.
+  const rowReads: { tab: string; differences: boolean }[] = [];
+  page.on("request", (request) => {
+    const match = /\/api\/v1\/comparison\/(flows|scores)\/rows/.exec(
+      request.url(),
+    );
+    if (match)
+      rowReads.push({
+        tab: match[1],
+        differences: request.postDataJSON()?.differences_only === true,
+      });
+  });
+  const toggle = (tab: "flows" | "scores") =>
+    page
+      .locator(`#panel-${tab}`)
+      .getByRole("checkbox", { name: "Show differences only" });
+  const flows = page.getByRole("grid", { name: "Flows comparison" });
+  const scores = page.getByRole("grid", { name: "Scores comparison" });
+  await page.goto("/");
+  await login(page);
+  // One process: the switch is disabled and off.
+  await select(page, "run-of-river");
+  await expect(toggle("flows")).toBeDisabled();
+  await expect(toggle("flows")).not.toBeChecked();
+  // Rooftop PV has a present-zero CO2 amount that run-of-river lacks.
+  await select(page, "photovoltaic, rooftop");
+  await expect(toggle("flows")).toBeEnabled();
+  await expect(toggle("flows")).not.toBeChecked();
+  await expect(flows).toHaveAttribute("aria-rowcount", "5");
+  expect(rowReads.filter((read) => read.differences)).toEqual([]);
+  await toggle("flows").check();
+  // The seed has no equal flow rows: every row differs, and the absent vs
+  // present-zero row stays.
+  await expect
+    .poll(() => rowReads.filter((read) => read.differences))
+    .toEqual([{ tab: "flows", differences: true }]);
+  await expect(flows).not.toHaveAttribute("aria-busy");
+  await expect(flows).toHaveAttribute("aria-rowcount", "5");
+  await flows.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  const co2 = flows.getByRole("row").filter({
+    has: page.getByRole("rowheader", { name: /Carbon dioxide, fossil/ }),
+  });
+  await expect(co2.locator('[data-state="zero"]')).toHaveCount(1);
+  await expect(co2.locator('[data-state="absent"]')).toHaveCount(1);
+  // Off reuses the cached full rows: no new row read.
+  const reads = rowReads.length;
+  await toggle("flows").uncheck();
+  await expect(flows).toHaveAttribute("aria-rowcount", "5");
+  await toggle("flows").check();
+  await expect(flows).toHaveAttribute("aria-rowcount", "5");
+  expect(rowReads.length).toBe(reads);
+
+  // Scores has its own switch, initially off; Flows stays on.
+  await page.getByRole("tab", { name: "Scores", exact: true }).click();
+  await expect(scores.getByRole("rowheader").first()).toContainText("GWP 100");
+  await expect(toggle("scores")).toBeEnabled();
+  await expect(toggle("scores")).not.toBeChecked();
+  await page.getByRole("tab", { name: "Flows", exact: true }).click();
+  await expect(toggle("flows")).toBeChecked();
+
+  // A uniformly missing GWP 100 is not a difference: glued laminated timber
+  // has no workbook row and rail transport's GWP 100 is missing.
+  await page.getByRole("button", { name: "Clear all", exact: true }).click();
+  await select(page, "glued laminated");
+  await expect(toggle("flows")).toBeDisabled();
+  await expect(toggle("flows")).not.toBeChecked();
+  await select(page, "transport, freight, rail");
+  await expect(toggle("flows")).not.toBeChecked();
+  await page.getByRole("tab", { name: "Scores", exact: true }).click();
+  await expect(scores.locator('[data-state="unavailable"]')).toHaveCount(2);
+  await toggle("scores").check();
+  await expect(
+    page
+      .locator("#panel-scores")
+      .getByText(
+        "No differences: every selected indicator has the same score in all selected processes.",
+      ),
+  ).toBeVisible();
+  await expect(scores).toHaveAttribute("aria-rowcount", "0");
+  expect(rowReads.filter((read) => read.differences).at(-1)).toEqual({
+    tab: "scores",
+    differences: true,
+  });
+  await toggle("scores").uncheck();
+  await expect(scores).toHaveAttribute("aria-rowcount", "1");
+  await expect(scores.locator('[data-state="unavailable"]')).toHaveCount(2);
+});
+
 test("emulator registration, verification, restore and account disable clear data", async ({
   page,
   request,
