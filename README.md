@@ -1,6 +1,33 @@
 # LCA diff
 
-LCA diff helps Life Cycle Assessment (LCA) practitioners choose unit-process datasets for their models by comparing exchange flows and provider-supplied Life Cycle Impact Assessment (LCIA) scores side by side. It makes shared flows, missing values and exact differences visible without recalculating impacts or normalizing the selected processes.
+LCA diff helps Life Cycle Assessment (LCA) practitioners choose unit-process datasets for their models by comparing flows and Life Cycle Impact Assessment (LCIA) scores side by side. It makes shared flows, missing values and exact differences visible without recalculating impacts or normalizing the selected processes.
+
+## Table of contents
+
+- [Purpose](#purpose)
+- [Demo](#demo)
+- [Guide for reviewers](#guide-for-reviewers)
+- [Quickstart](#quickstart)
+  - [Run with demo data](#run-with-demo-data)
+  - [Use the whole BAFU database [UNTESTED]](#use-the-whole-bafu-database-untested)
+  - [Configuration and troubleshooting](#configuration-and-troubleshooting)
+- [How this project was built](#how-this-project-was-built)
+- [Architecture](#architecture)
+- [Testing and evaluation](#testing-and-evaluation)
+  - [Unit and backend integration checks](#unit-and-backend-integration-checks)
+- [Local development](#local-development)
+- [CI and logs](#ci-and-logs)
+  - [Continuous integration](#continuous-integration)
+  - [Logs and operational metrics](#logs-and-operational-metrics)
+- [Project structure](#project-structure)
+- [Limitations and next steps](#limitations-and-next-steps)
+- [References](#references)
+
+## Purpose
+
+An LCA practitioner needs to choose which process best represents a material, energy supply or transport service. Similar process names can conceal different geographies, reference quantities, flows and impact indicators. Finding a dataset in a catalog or inspecting separate XML files and score spreadsheets does not, by itself, provide an aligned comparison of those differences.
+
+LCA diff makes it easier for practitioners to see how flows and scores differ between processes. Users can search for processes, select several at once and compare them side by side. The app shows which flows are shared or unique, whether values are positive, negative, zero or missing, and where scores are unavailable. Users can show only differences, while warnings highlight different reference quantities. The app compares published data; it does not calculate new LCA results.
 
 ## Demo
 
@@ -12,25 +39,25 @@ This project was created for submission as the final project for the [AI Dev Too
 
 ## Guide for reviewers
 
-The submitted MVP is deliberately **local-only** ([ADR 0006](docs/adr/0006-local-only-mvp.md)). Cloud deployment and continuous delivery, full-database release validation, browser workspace restoration, a complete accessibility audit, a telemetry dashboard, user-impact alerts and an on-call repair agent are excluded from this submission. The default run needs no licensed data or cloud credentials; the real-data import is optional.
+The submitted MVP is local-only. Cloud deployment and continuous delivery, full-database release validation, browser workspace restoration, a complete accessibility audit, a telemetry dashboard, user-impact alerts and an on-call repair agent are excluded from this submission. The default run needs no licensed data or cloud credentials; the real-data import is optional.
 
 The following self-evaluation uses the course's 24-point rubric. Scores describe the submitted artifacts, not planned features.
 
-| Criterion                | Claimed score | How to verify                                                                                                                                                                                                                                                                                                                                                                            |
-| ------------------------ | ------------: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Problem Description      |           2/2 | The opening description and [Problem and behavior](#problem-and-behavior) explain the user, difficulty and expected functionality.                                                                                                                                                                                                                                                       |
-| Product Specification    |           2/2 | Read the [PRD](docs/product/LCA_diff_PRD.md) and [implementation specification](docs/engineering/LCA_diff_Implementation_Specification.md). The [public task tracker](https://github.com/DavidVFitzGerald/LCA-diff/issues) contains acceptance criteria; [#30](https://github.com/DavidVFitzGerald/LCA-diff/issues/30) records agent readiness, engineering and independent QA handoffs. |
-| Agent Team Specification |           2/2 | [AGENTS.md](AGENTS.md), the [role documents](docs/team/) and [How this project was built](#how-this-project-was-built) define responsibilities and the work/review loop.                                                                                                                                                                                                                 |
-| Context Management       |           2/2 | [AGENTS.md](AGENTS.md) points to modular product, engineering, team and ADR documents, with precedence and context boundaries.                                                                                                                                                                                                                                                           |
-| Application              |           2/2 | Run `./dev app-up`, sign in and compare processes. The browser uses the real HTTP/Firebase adapters and PostgreSQL; stop/start preserves published data. See [local acceptance evidence](docs/engineering/local-mvp-verification.md).                                                                                                                                                    |
-| Testing                  |           2/2 | Unit, PostgreSQL/API integration, ETL and browser suites exist. [Testing and evaluation](#testing-and-evaluation) gives setup and a single command for unit plus backend integration checks; CI records passing runs.                                                                                                                                                                    |
-| Containerization         |           2/2 | [compose.app.yaml](compose.app.yaml) runs the frontend, API, database, emulator and initialization jobs through `./dev app-up`.                                                                                                                                                                                                                                                          |
-| Deployment               |           1/2 | Local deployment is documented and shown above. No public URL or hosted deployment is claimed. If the rubric accepts a demonstrated local deployment for full credit, this criterion may earn 2/2.                                                                                                                                                                                       |
-| CI/CD                    |           1/3 | [GitHub Actions](https://github.com/DavidVFitzGerald/LCA-diff/actions) runs tests on pull requests and pushes to `main`. There is no automatic deployment or production deployment workflow.                                                                                                                                                                                             |
-| Observability            |           1/2 | The [API middleware](apps/api/src/lca_api/app.py) emits structured request logs and basic counters. See [Logs and operational metrics](#logs-and-operational-metrics). Distributed traces and a telemetry storage/dashboard stack are absent.                                                                                                                                            |
-| Alerting on User Impact  |           0/1 | No user-impact alert rules or notification integration are implemented. Container healthchecks are not claimed as alerts.                                                                                                                                                                                                                                                                |
-| On-Call Agent            |           0/2 | No agent is triggered by an operational alert to repair the app. Development QA agents do not meet this criterion.                                                                                                                                                                                                                                                                       |
-| **Total**                |     **17/24** | **Pass threshold: 10 points.** Deployment interpretation could raise this to 18/24; if local-only deployment earns no credit, the total is 16/24.                                                                                                                                                                                                                                        |
+| Criterion                | Claimed score | How to verify                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------ | ------------: | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Problem Description      |           2/2 | The opening description and [Purpose](#purpose) explain the user, difficulty and expected functionality.                                                                                                                                                                                                                                                                                                        |
+| Product Specification    |           2/2 | Read the [PRD](docs/product/LCA_diff_PRD.md) and [implementation specification](docs/engineering/LCA_diff_Implementation_Specification.md). The [public task tracker](https://github.com/DavidVFitzGerald/LCA-diff/issues) contains acceptance criteria; as example, see [#30](https://github.com/DavidVFitzGerald/LCA-diff/issues/30), which records agent readiness, engineering and independent QA handoffs. |
+| Agent Team Specification |           2/2 | [AGENTS.md](AGENTS.md), the [role documents](docs/team/) and [How this project was built](#how-this-project-was-built) define responsibilities and the work/review loop.                                                                                                                                                                                                                                        |
+| Context Management       |           2/2 | [AGENTS.md](AGENTS.md) points to modular product, engineering, team and ADR documents, with precedence and context boundaries.                                                                                                                                                                                                                                                                                  |
+| Application              |           2/2 | Run `./dev app-up`, sign in and compare processes. The browser uses the real HTTP/Firebase adapters and PostgreSQL; stop/start preserves published data. See [local acceptance evidence](docs/engineering/local-mvp-verification.md).                                                                                                                                                                           |
+| Testing                  |           2/2 | Unit, PostgreSQL/API integration, ETL and browser suites exist. [Testing and evaluation](#testing-and-evaluation) gives setup and a single command for unit plus backend integration checks; CI records passing runs.                                                                                                                                                                                           |
+| Containerization         |           2/2 | [compose.app.yaml](compose.app.yaml) runs the frontend, API, database, emulator and initialization jobs through `./dev app-up`.                                                                                                                                                                                                                                                                                 |
+| Deployment               |           0/2 | The criterion requires public deployment. The application runs locally; no public URL or hosted deployment is provided.                                                                                                                                                                                                                                                                                         |
+| CI/CD                    |           1/3 | [GitHub Actions](https://github.com/DavidVFitzGerald/LCA-diff/actions) runs tests on pull requests and pushes to `main`. There is no automatic deployment or production deployment workflow.                                                                                                                                                                                                                    |
+| Observability            |           1/2 | The [API middleware](apps/api/src/lca_api/app.py) emits structured request logs and basic counters. See [Logs and operational metrics](#logs-and-operational-metrics). Distributed traces and a telemetry storage/dashboard stack are absent.                                                                                                                                                                   |
+| Alerting on User Impact  |           0/1 | No user-impact alert rules or notification integration are implemented. Container healthchecks are not claimed as alerts.                                                                                                                                                                                                                                                                                       |
+| On-Call Agent            |           0/2 | No agent is triggered by an operational alert to repair the app.                                                                                                                                                                                                                                                                                                                                                |
+| **Total**                |     **16/24** | **Pass threshold: 10 points.**                                                                                                                                                                                                                                                                                                                                                                                  |
 
 ## Quickstart
 
@@ -84,9 +111,9 @@ To view logs in PowerShell, run `docker compose -p lca-diff-app -f compose.app.y
 
 The verified demo account is recreated on every start. To test registration, create an account in the app, request a verification email and obtain its link with `./dev app-logs auth` or from `http://127.0.0.1:5180/emulator/v1/projects/demo-lca/oobCodes`. Use the frontend origin for the verification link, then choose **I've verified my email**. Emulator accounts are temporary; published PostgreSQL data persists. All committed passwords are local-only emulator/database values.
 
-### Use the whole BAFU database [1](#references)
+### Use the whole BAFU database [UNTESTED]
 
-The application also supports an opt-in import of **BAFU:2026** [1]. Download the process XMLs and corrected Excel LCIA scores from [openLCA Nexus](https://nexus.openlca.org/database/BAFU). They are external inputs and are not distributed in this repository. The [ecoSpold1 schema description files can be downloaded from ecoinvent](https://support.ecoinvent.org/data-formats-overview-2); these are useful for interpreting the source format and are required by the alternative three-archive intake example.
+The application also supports an opt-in import of **BAFU:2026** [1](#references). Download the process XMLs and corrected Excel LCIA scores from [openLCA Nexus](https://nexus.openlca.org/database/BAFU). They are external inputs and are not distributed in this repository. The [ecoSpold1 schema description files can be downloaded from ecoinvent](https://support.ecoinvent.org/data-formats-overview-2); these are useful for interpreting the source format and are required by the alternative three-archive intake example.
 
 **Verification boundary:** the MVP was exercised with a representative private import, not a validated import of the complete database. The following uses the implemented full-input path; it is not evidence of full-corpus completeness, audit sign-off or redistribution permission. Only publish a candidate after reviewing its reports. Unverified score conversions remain `N/A`, and multi-output processes are excluded.
 
@@ -179,27 +206,19 @@ Database URLs, emulator settings and local service credentials are supplied by C
 - **Login changed after switching URLs:** Firebase sessions are scoped to origin. Stay with either `127.0.0.1` or `localhost` and sign in again after switching.
 - **Need an empty demo database:** `./dev app-reset --yes` deletes this app project's database/archive volumes. The next `app-up` seeds them again. `app-down` retains them; reset is never needed for a normal restart.
 
-## Problem and behavior
-
-An LCA practitioner needs to choose which process best represents a material, energy supply or transport service. Similar process names can conceal different geographies, reference quantities, exchanges and impact indicators. Finding a dataset in a catalog or inspecting separate XML files and score spreadsheets does not, by itself, provide an aligned comparison of those differences.
-
-LCA diff provides searchable process and indicator trees, filtered bulk selection and virtualized comparison grids. Users see shared and unique flows, signed values, absent flows, present zero and missing/invalid scores. Exact differences are computed on demand, and warnings make incompatible reference quantities visible. Measurements cross the API as decimal strings; chart display rounding does not change stored values. The application compares published data; it is not an interactive LCA calculation engine.
-
 ## How this project was built
 
 I supplied an initial description of the requirements and developed a detailed specification through a brainstorm with ChatGPT's web chatbot. I then used ChatGPT, mainly GPT-6.1-Sol, and Claude Code, mainly Opus 5.5, through their respective CLIs to implement the project on a dedicated laptop accessed remotely over SSH.
 
-All implementation work was carried out by the AI models. My role was to supervise the process and merge pull requests; I did not review the code in detail. Automated checks and independent agent QA provide the recorded verification evidence, rather than a claim of detailed human code review.
+All implementation work was carried out by the AI models. I acted as maintainer, authorizing which work to focus on, supervising the process and merging pull requests; I did not review the code in detail. Automated checks and independent agent QA provide the recorded verification evidence, rather than a claim of detailed human code review.
 
-The agent workflow is based on Alexey Grigorev's [AI-Native Development: Specifications, Loop and Graph Engineering](https://aishippingblog.com/p/ai-native-development-specifications):
+The agent workflow is based on Alexey Grigorev's [AI-Native Development: Specifications, Loop and Graph Engineering](https://aishippingblog.com/p/ai-native-development-specifications). Three agent roles have written responsibility documents:
 
 | Role                                                | Responsibility                                                                                                        |
 | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Coordinator                                         | Sequences dependencies, assigns work, records handoffs and coordinates issue closure after approved merges            |
 | [Product Manager](docs/team/product-manager.md)     | Grooms issues, defines objective acceptance criteria and checks readiness against the specification                   |
 | [Software Engineer](docs/team/software-engineer.md) | Implements one ready issue, runs container checks, commits and hands the delivered SHA to QA                          |
 | [QA Engineer](docs/team/qa-engineer.md)             | Independently checks the delivered commit and criteria, reports PASS/FAIL/BLOCKED and returns failures to engineering |
-| Maintainer                                          | Supervises the process and authorizes merges                                                                          |
 
 The loop is **ready issue → implementation → independent QA → maintainer merge**. GitHub issues and PRs retain criteria, exact commands, results and handoffs; [#30](https://github.com/DavidVFitzGerald/LCA-diff/issues/30) is a complete example. [AGENTS.md](AGENTS.md) defines context, authority and container rules; [ADRs](docs/adr/README.md) record changes to the product and architecture contracts.
 
@@ -224,7 +243,7 @@ flowchart LR
 
 React, TypeScript, Vite and TanStack Query provide the UI, asynchronous reads and caching. FastAPI/Pydantic define the read API; generated TypeScript DTOs and drift checks keep the real adapter aligned with OpenAPI. PostgreSQL, SQLAlchemy and Alembic provide persistent data, immutable release revisions and migrations. Firebase verifies identities; the local MVP uses its emulator. Both deterministic mock and real adapters live behind one frontend services boundary.
 
-The optional Airflow/PySpark pipeline preserves original bytes, provenance and duplicate staging exchanges, then harmonizes exact amounts and reconciles workbook scores. Promotion loads a candidate without exposing it; explicit atomic publication changes the revision visible to the read-only API. Demo startup uses a prebuilt synthetic artifact, so it does not need provider data or Spark. Python packages share one frozen `uv.lock`; frontend dependencies use `package-lock.json`.
+The optional Airflow/PySpark pipeline preserves original bytes, provenance and duplicate source flow records, then harmonizes exact amounts and reconciles workbook scores. Promotion loads a candidate without exposing it; explicit atomic publication changes the revision visible to the read-only API. Demo startup uses a prebuilt synthetic artifact, so it does not need provider data or Spark. Python packages share one frozen `uv.lock`; frontend dependencies use `package-lock.json`.
 
 ## Testing and evaluation
 
