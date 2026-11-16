@@ -7,11 +7,9 @@ import type {
   FlowCell,
   FlowCellsRequest,
   FlowRow,
-  FlowSummariesRequest,
   HeadersRequest,
   ScoreCellsRequest,
   ScoreCell,
-  ScoreSummariesRequest,
   Indicator,
   ScoreRowsRequest,
   SearchNode,
@@ -431,14 +429,6 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
         },
       });
     },
-    /** Whole-selection chart extrema for one row window (#20). */
-    flowSummaries: (input: FlowSummariesRequest) => {
-      const dto = capture(input);
-      return options("flowSummaries", dto, async (signal) => {
-        const result = await data.flowSummaries(dto, { signal });
-        return (result.ok && mismatch(dto, result.data)) || result;
-      });
-    },
     /**
      * Cells for one visible window of any size, split into transport batches
      * that share one abort signal (#20). Every batch must answer with the
@@ -513,14 +503,6 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
           if (stale) throw new ServiceQueryError(stale.error);
           return result.data;
         },
-      });
-    },
-    /** Whole-selection chart extrema for one row window (#20). */
-    scoreSummaries: (input: ScoreSummariesRequest) => {
-      const dto = capture(input);
-      return options("scoreSummaries", dto, async (signal) => {
-        const result = await data.scoreSummaries(dto, { signal });
-        return (result.ok && mismatch(dto, result.data)) || result;
       });
     },
     /**

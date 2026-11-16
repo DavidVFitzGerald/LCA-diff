@@ -10,7 +10,6 @@ import type {
   ComparisonPage,
   FlowCell,
   FlowRow,
-  FlowRowSummary,
   RevisionSnapshot,
 } from "../../services/contracts";
 import { rowGeometry } from "./geometry";
@@ -145,7 +144,6 @@ export function useFlowGrid(
     setPrevious(fresh);
   const shown = busy && previous ? previous : fresh;
   const { token, rowCount, rows: loadedRows, index: keyIndex } = shown;
-  const loadedPages = shown.pages;
   const wantedEnd = rows ? rows[1] + ROW_LOOKAHEAD : 0;
   useEffect(() => {
     if (
@@ -166,30 +164,6 @@ export function useFlowGrid(
     seeking,
     fetchNextPage,
   ]);
-
-  // Summaries: one request per loaded row page that intersects the window.
-  const summaryPages = useMemo(() => {
-    if (!rows || !token || busy) return [];
-    const result: number[] = [];
-    for (let page = 0; page < loadedPages.length; page += 1) {
-      const start = page * SERVICE_WINDOW;
-      const end = start + loadedPages[page].items.length - 1;
-      if (end >= rows[0] && start <= rows[1]) result.push(page);
-    }
-    return result;
-  }, [rows, token, busy, loadedPages]);
-  const summaries = useQueries({
-    queries: summaryPages.map((page) =>
-      queries.flowSummaries({
-        revision_snapshot: snapshot,
-        comparison_token: token!,
-        process_ids: canonicalIds,
-        row_keys: loadedPages[page].items.map((row) => row.row_key),
-      }),
-    ),
-    combine: combineSummaries,
-  });
-  const summaryByKey = summaries.map;
 
   const tiles = useMemo(
     () =>
@@ -218,16 +192,27 @@ export function useFlowGrid(
     const geometries = new Map<number, RowGeometry>();
     const heights = new Map<number, number>();
     loadedRows.forEach((row, index) => {
-      const summary = summaryByKey.get(row.row_key);
+      // Apply sizes for mounted pages only, retaining virtualizer estimates for
+      // intermediate pages traversed during a deep seek (as before L2).
+      if (
+        !rows ||
+        busy ||
+        Math.floor(index / SERVICE_WINDOW) <
+          Math.floor(rows[0] / SERVICE_WINDOW) ||
+        Math.floor(index / SERVICE_WINDOW) >
+          Math.floor(rows[1] / SERVICE_WINDOW)
+      )
+        return;
+      const summary = row.summary;
       if (!summary) return;
       const geometry = rowGeometry(summary);
       geometries.set(index, geometry);
       heights.set(index, geometry.rowHeight);
     });
     return { geometries, heights };
-  }, [loadedRows, summaryByKey]);
+  }, [loadedRows, rows, busy]);
 
-  const failed = pages.error ?? summaries.error ?? cellResults.error ?? null;
+  const failed = pages.error ?? cellResults.error ?? null;
   return {
     token,
     rowCount,
@@ -249,7 +234,6 @@ export function useFlowGrid(
     tiles,
     retry: () => {
       if (pages.error) void pages.refetch();
-      summaries.retry();
       cellResults.retry();
     },
   };
@@ -291,15 +275,6 @@ function combined<T>(
   };
 }
 /** Stable combiners, so maps are rebuilt only when query results change. */
-function combineSummaries(
-  results: Results<{ readonly summaries: readonly FlowRowSummary[] }>,
-): Combined<FlowRowSummary> {
-  const map = new Map<string, FlowRowSummary>();
-  for (const result of results)
-    for (const summary of result.data?.summaries ?? [])
-      map.set(summary.row_key, summary);
-  return combined(results, map);
-}
 function combineCells(
   results: Results<{ readonly cells: readonly FlowCell[] }>,
 ): Combined<FlowCell> {

@@ -3,6 +3,23 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  preview: {
+    allowedHosts: ["frontend", "localhost"],
+    proxy: {
+      ...(process.env.LCA_API_PROXY
+        ? { "/api/": { target: process.env.LCA_API_PROXY } }
+        : {}),
+      ...Object.fromEntries(
+        process.env.LCA_AUTH_PROXY
+          ? [
+              "/identitytoolkit.googleapis.com/",
+              "/securetoken.googleapis.com/",
+              "/emulator/",
+            ].map((path) => [path, { target: process.env.LCA_AUTH_PROXY }])
+          : [],
+      ),
+    },
+  },
   test: {
     include: ["src/**/*.test.{ts,tsx}"],
     environment: "jsdom",

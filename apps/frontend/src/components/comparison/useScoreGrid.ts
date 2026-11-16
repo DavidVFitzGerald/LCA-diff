@@ -10,7 +10,6 @@ import type {
   ComparisonPage,
   ScoreCell,
   Indicator,
-  ScoreRowSummary,
 } from "../../services/contracts";
 import { rowGeometry } from "./geometry";
 import type { RowGeometry } from "./geometry";
@@ -135,7 +134,6 @@ export function useScoreGrid(
     setPrevious(fresh);
   const shown = busy && previous ? previous : fresh;
   const { token, rowCount, rows: loadedRows, index: keyIndex } = shown;
-  const loadedPages = shown.pages;
   const wantedEnd = rows ? rows[1] + ROW_LOOKAHEAD : 0;
   useEffect(() => {
     if (
@@ -156,30 +154,6 @@ export function useScoreGrid(
     seeking,
     fetchNextPage,
   ]);
-
-  // Summaries: one request per loaded row page that intersects the window.
-  const summaryPages = useMemo(() => {
-    if (!rows || !token || busy) return [];
-    const result: number[] = [];
-    for (let page = 0; page < loadedPages.length; page += 1) {
-      const start = page * SERVICE_WINDOW;
-      const end = start + loadedPages[page].items.length - 1;
-      if (end >= rows[0] && start <= rows[1]) result.push(page);
-    }
-    return result;
-  }, [rows, token, busy, loadedPages]);
-  const summaries = useQueries({
-    queries: summaryPages.map((page) =>
-      queries.scoreSummaries({
-        revision_snapshot: snapshot,
-        comparison_token: token!,
-        process_ids: canonicalIds,
-        indicator_ids: loadedPages[page].items.map((row) => row.id),
-      }),
-    ),
-    combine: combineSummaries,
-  });
-  const summaryByKey = summaries.map;
 
   const tiles = useMemo(
     () =>
@@ -208,16 +182,27 @@ export function useScoreGrid(
     const geometries = new Map<number, RowGeometry>();
     const heights = new Map<number, number>();
     loadedRows.forEach((row, index) => {
-      const summary = summaryByKey.get(row.id);
+      // Apply sizes for mounted pages only, retaining virtualizer estimates for
+      // intermediate pages traversed during a deep seek (as before L2).
+      if (
+        !rows ||
+        busy ||
+        Math.floor(index / SERVICE_WINDOW) <
+          Math.floor(rows[0] / SERVICE_WINDOW) ||
+        Math.floor(index / SERVICE_WINDOW) >
+          Math.floor(rows[1] / SERVICE_WINDOW)
+      )
+        return;
+      const summary = row.summary;
       if (!summary) return;
       const geometry = rowGeometry(summary);
       geometries.set(index, geometry);
       heights.set(index, geometry.rowHeight);
     });
     return { geometries, heights };
-  }, [loadedRows, summaryByKey]);
+  }, [loadedRows, rows, busy]);
 
-  const failed = pages.error ?? summaries.error ?? cellResults.error ?? null;
+  const failed = pages.error ?? cellResults.error ?? null;
   return {
     token,
     rowCount,
@@ -239,7 +224,6 @@ export function useScoreGrid(
     tiles,
     retry: () => {
       if (pages.error) void pages.refetch();
-      summaries.retry();
       cellResults.retry();
     },
   };
@@ -279,15 +263,6 @@ function combined<T>(
   };
 }
 /** Stable combiners, so maps are rebuilt only when query results change. */
-function combineSummaries(
-  results: Results<{ readonly summaries: readonly ScoreRowSummary[] }>,
-): Combined<ScoreRowSummary> {
-  const map = new Map<string, ScoreRowSummary>();
-  for (const result of results)
-    for (const summary of result.data?.summaries ?? [])
-      map.set(summary.indicator_id, summary);
-  return combined(results, map);
-}
 function combineCells(
   results: Results<{ readonly cells: readonly ScoreCell[] }>,
 ): Combined<ScoreCell> {

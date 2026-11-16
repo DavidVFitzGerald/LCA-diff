@@ -15,7 +15,6 @@ import { FlowsGrid } from "../../components/comparison/FlowsGrid";
 import { STANDARD_ROW_HEIGHT } from "../../components/comparison/geometry";
 import type {
   FlowCellsRequest,
-  FlowSummariesRequest,
   ComparisonRowsRequest,
   RequestOptions,
 } from "../contracts";
@@ -141,12 +140,6 @@ export function render(latency = 0) {
       return result;
     },
   );
-  const flowSummaries = vi.fn(
-    (input: FlowSummariesRequest, options?: RequestOptions) => (
-      busy("flowSummaries"),
-      comparison.flowSummaries(input, options)
-    ),
-  );
   const flowCells = vi.fn(
     (input: FlowCellsRequest, options?: RequestOptions) => {
       busy("flowCells");
@@ -156,7 +149,7 @@ export function render(latency = 0) {
   );
   const app = mount({
     catalog: discovery,
-    wrap: () => ({ flowRows, flowSummaries, flowCells }),
+    wrap: () => ({ flowRows, flowCells }),
     ui: createElement(
       SelectionProvider,
       null,
@@ -171,7 +164,6 @@ export function render(latency = 0) {
   return {
     ...app,
     flowRows,
-    flowSummaries,
     flowCells,
     signals,
     busyReads,
