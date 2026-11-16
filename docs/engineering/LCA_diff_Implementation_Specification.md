@@ -614,13 +614,20 @@ POST /api/v1/comparison/flows/cells
 {
   "process_ids": ["<process-uuid-1>", "<process-uuid-2>"],
   "row_keys": ["<flow-uuid>|Technosphere"],
-  "revision_snapshot": ["<published-revision-uuid>"]
+  "comparison_token": "<token-from-flows/rows>",
+  "revision_snapshot": [
+    {"release_id": "<release-uuid>", "revision_id": "<published-revision-uuid>"}
+  ]
 }
 ```
 
 ```json
 {
-  "revision_snapshot": ["<published-revision-uuid>"],
+  "request_id": "<request-id>",
+  "revision_snapshot": [
+    {"release_id": "<release-uuid>", "revision_id": "<published-revision-uuid>"}
+  ],
+  "comparison_token": "<token-from-flows/rows>",
   "cells": [
     {
       "process_id": "<process-uuid-1>",
