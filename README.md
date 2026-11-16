@@ -1,9 +1,10 @@
 # LCA diff
 
 Read-only comparison of harmonized unit-process inventories and provider-supplied
-LCIA scores. The MVP is local-only (accepted ADR 0006). The one-command
-`./dev app-up` stack arrives with L1 (#96), and the real frontend/API connection
-with L2 (#97). Until then the frontend runs in explicit mock mode as described below.
+LCIA scores. The MVP is local-only (accepted ADR 0006). `./dev app-up` (L1, #96)
+starts the whole local application with one command. In L1 the frontend in that
+stack still uses its explicit mock adapter. The real frontend/API connection
+arrives with L2 (#97).
 
 - [Current product requirements](docs/product/LCA_diff_PRD.md)
 - [Current implementation specification](docs/engineering/LCA_diff_Implementation_Specification.md)
@@ -12,6 +13,172 @@ with L2 (#97). Until then the frontend runs in explicit mock mode as described b
 - [Agent working instructions](AGENTS.md)
 - [Architecture decision records](docs/adr/README.md)
 - [Development environment details and verification](docs/engineering/development-environment.md)
+
+## Run the local application
+
+Host prerequisites are the same as for the workspace below: a rootless Docker
+Engine with Docker Compose, and no `.env` file, private data or host runtimes.
+On the Docker host, in the repository checkout:
+
+```sh
+./dev app-up      # or: make up
+./dev app-smoke   # optional live check, run in a container
+./dev app-down    # or: make down; keeps the data
+```
+
+`app-up` builds the images, then starts the stack in order, using healthchecks
+and one-shot tasks:
+
+1. PostgreSQL starts.
+2. Alembic migrations run as `lca_migrator`.
+3. The committed synthetic release is seeded and published through the B4
+   `promote`/`publish` commands, as `lca_import`/`lca_publisher`.
+4. The Firebase Auth Emulator starts, and the verified demo account is created.
+5. The API starts as the read-only `lca_api` role.
+6. The frontend starts.
+
+The command returns once every service is healthy and every one-shot task has
+exited 0. It then prints the URLs. Airflow and Spark are not started. The first
+run builds the ETL tooling image and takes a few minutes; later starts reuse the
+image cache.
+
+| Service | URL on the host loopback | Override |
+| --- | --- | --- |
+| Frontend | http://127.0.0.1:5180 | `LCA_APP_FRONTEND_PORT` |
+| API | http://127.0.0.1:8010/api/v1/health and `/api/v1/ready` | `LCA_APP_API_PORT` |
+| Auth Emulator | `127.0.0.1:9110` (project `demo-lca`) | `LCA_APP_AUTH_PORT` |
+
+PostgreSQL has no host port. Every port binds to `127.0.0.1` only. Use SSH or VS
+Code forwarding to reach them from another machine. The defaults do not overlap
+the workspace (5173) or `./dev api-up` (8000, 9099), so both can run at the same
+time.
+
+**Demo login (local-only, emulator only):** `demo@example.com` /
+`local-demo-password-not-secret`. The account is recreated and verified on every
+start, because the emulator keeps no state. These values, and every other password
+in `compose.app.yaml`, are development-only. Never reuse them in a production
+configuration. The API still refuses emulator settings in production.
+
+**L1 limitation:** the stack's frontend is built with `VITE_SERVICE_MODE=mock`. It
+shows the "Local demo mode" banner and its own mock data, not the seeded release.
+L2 (#97) switches it to the real HTTP and Firebase adapters. Until then, the
+seeded data is reachable through the API, for example via `./dev app-smoke`.
+
+**Data and reset.** The stack is Compose project `lca-diff-app`, with named
+volumes `lca-diff-app_app-db` (database) and `lca-diff-app_app-archive` (B4
+promoted archive). `./dev app-down` and `./dev app-up` keep both volumes and the
+published release. The seed then reuses its fixed B4 operations and writes nothing
+new. `./dev app-reset` refuses to run. `./dev app-reset --yes` deletes only this
+stack's two volumes, and the next `./dev app-up` seeds a clean release again. The
+test suites' disposable `postgres`/`postgres-target` databases belong to other
+Compose projects and cannot reach this stack's data.
+
+`./dev app-status` lists services and exit codes, and `./dev app-logs [service]`
+shows recent logs. `LCA_APP_PROJECT` selects a different project name, for an
+isolated second copy such as QA.
+
+**Smoke check.** `./dev app-smoke` runs `ops/local/local_stack.py smoke` in the
+stack's tools container on its private network. It checks health and readiness.
+It checks `GET /api/v1/releases` three ways:
+
+- with no token, it gets 401 `AUTH_REQUIRED`;
+- with an unverified emulator user, it gets 403 `EMAIL_NOT_VERIFIED`;
+- with the demo user's emulator ID token, it gets the seeded release and active
+  revision.
+
+It also checks one exact high-precision flow amount, and that a preflight from a
+non-allowlisted origin gets no CORS allow header. It prints no tokens.
+
+**Troubleshooting**
+
+- **Port in use:** `app-up` stops before starting anything and names the variable
+  to change. For example: `LCA_APP_FRONTEND_PORT=5181 ./dev app-up`. Use the same
+  variables for later commands.
+- **After changing code or locks:** `app-up` always rebuilds with `--build`. To
+  start from a clean data state, run `./dev app-reset --yes` and then
+  `./dev app-up`.
+- **A one-shot task failed:** `app-up` exits non-zero. Inspect it with
+  `./dev app-status` and `./dev app-logs seed` (or `migrate`, `auth-seed`). If the
+  database holds a revision or publication pointer that the seed did not create,
+  the seed refuses to run (`SEED_UNEXPECTED_REVISION` or
+  `SEED_UNEXPECTED_ACTIVE_REVISION`) rather than republishing.
+
+### Synthetic seed
+
+Everything in `data_pipeline/seed/` is invented and BAFU-shaped:
+
+- 25 EcoSpold-like XML processes, of which one multi-output process is excluded;
+- a 47-indicator workbook;
+- empty rule files;
+- a pre-built ready B3 artifact.
+
+The stack therefore needs neither Spark nor provider data. The release
+`synthetic-local-2026.1` publishes 24 processes under the `Energy`, `Materials`
+and `Transport` categories. It covers several reference units and amounts, a
+CO2 flow that is positive, negative, exactly zero and absent across processes,
+valid, missing and unresolved-basis IPCC 2021 GWP 100 scores, and
+high-precision decimals.
+
+To regenerate the artifact from the committed sources after an intended change,
+run the Spark B3 pipeline in an isolated ETL project, whose `postgres` serves as
+a disposable import database:
+
+```sh
+mkdir -p private/no-input   # the ETL overlay requires an existing read-only input mount
+export COMPOSE_PROJECT_NAME=lca-diff-seed FRONTEND_PORT=5195 LCA_PRIVATE_INPUT_DIR="$PWD/private/no-input"
+./dev etl-up
+./dev etl-run uv sync --frozen --all-packages
+./dev etl-run env LCA_DATABASE_URL=postgresql+psycopg://lca_migrator:local-migration-only@postgres/lca uv run --frozen alembic upgrade head
+./dev etl-run uv run --frozen --package lca-etl python -m lca_etl.seed build --root data_pipeline/seed
+```
+
+Use a fresh import database for this. A changed source, rule or pipeline
+implementation yields a new revision ID. Run `./dev app-reset --yes` before
+loading a regenerated seed into an existing stack, because the seed never adds a
+second revision. `make backend-test-seed`, inside `./dev publication-run`,
+checks these things:
+
+- the sources regenerate byte for byte;
+- the artifact is bound to them;
+- the load is idempotent;
+- the variety above holds;
+- exact decimals survive through the API cell endpoints.
+
+### Opt-in private BAFU import
+
+This is optional and never part of `app-up`. It loads the maintainer's private
+inputs into the same stack database, with the same B4 semantics:
+
+1. **Import with B3.** Use the existing commands
+   ([B3 ingestion](docs/engineering/b3-ingestion.md)) in this checkout. Choose
+   their own disposable Compose project as the import database, for example
+   `COMPOSE_PROJECT_NAME=lca-diff-bafu`, so test resets cannot touch it. Then
+   review the reports. A ready run writes
+   `private/imports/<frozen-hash>/artifact/manifest.json`.
+2. **Promote and publish into the stack.** Use `./dev app-import`, which runs
+   `lca-import` in the stack's ETL tools container. It runs on the stack's own
+   network and mounts the stack's archive volume. Your `private/` directory is
+   mounted read-only at `/private`; set `LCA_APP_PRIVATE_DIR` to use another
+   checkout's directory. Use the committed target
+   [`ops/local/target.json`](ops/local/target.json):
+   `{"name": "local-app", "environment": "local", "archive_uri": "file:///var/lib/lca-archive"}`.
+   Its credentials come only from the container variables
+   `LCA_TARGET_IMPORT_DATABASE_URL` (`lca_import`) and
+   `LCA_TARGET_PUBLISH_DATABASE_URL` (`lca_publisher`) for the `db` service. Pick
+   one new UUID per action and keep it for retries:
+
+   ```sh
+   ./dev app-import promote --target /app/ops/target.json --artifact /private/imports/<frozen-hash>/artifact/manifest.json --operation-id <promotion-uuid> --dry-run
+   ./dev app-import promote --target /app/ops/target.json --artifact /private/imports/<frozen-hash>/artifact/manifest.json --operation-id <promotion-uuid>
+   ./dev app-import publish --target /app/ops/target.json --release <release-uuid> --revision <revision-uuid> --expected-active none --operation-id <publication-uuid>
+   ```
+
+The BAFU release is separate from the synthetic one, so both stay listed. A
+`sample_process_limit` manifest yields a representative artifact, which must not
+be presented as a full release. Full-corpus validation, LCIA audit sign-off and
+licensing remain post-MVP gates (ADR 0006). For later publication, rollback and
+failure recovery, see [B4 publication](docs/engineering/b4-publication.md).
+Executing this path end to end is L3 (#30) verification.
 
 ## Open the development workspace
 
@@ -95,8 +262,11 @@ verify the application scaffold. Lifecycle commands belong on the Docker host.
 
 ## Delivery boundaries
 
-Phase 1 implements the frontend with mock services. Phase 2 introduces the backend
-and real service adapter. The current Compose setup starts only the workspace:
-no API, database, Firebase, Airflow, Spark, cloud resources or licensed files are
-required. Application checks/import targets will be added with their components;
-`dev-check` is environment verification, not an application test suite.
+The workspace (`./dev up`) and the mock-only frontend flow above need no API,
+database, Firebase, Airflow, Spark, cloud resources or licensed files. The local
+application stack (`./dev app-up`) is separate. It uses its own Compose project
+and volumes, and it starts PostgreSQL, the Auth Emulator and the API, but not
+Airflow or Spark. Backend, ETL and publication checks run in their own containers
+(see the development environment guide). `dev-check` verifies the environment;
+it is not an application test suite. No cloud deployment is part of the MVP
+(ADR 0006).

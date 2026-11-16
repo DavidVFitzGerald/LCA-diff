@@ -103,7 +103,7 @@ workflow is documented in [B4 publication](b4-publication.md).
 | F2 — shell and simulated authentication | Complete: #11–#15 merged after independent QA and hosted CI (final PR #49 at `1f82774`) | F1 complete; each task's issue dependencies |
 | F3–F5 — remaining mock frontend journeys | F3 complete: #16–#19 merged after independent QA and hosted CI (final PR #62 at `d3fddb1`). F4 complete: #20–#25, #64 and #69 merged after independent QA and hosted CI; gate #26 (PR #78, `af5317d`) recorded in [F4 verification](f4-verification.md) after blockers #75, #77 and #79 merged. F5: #27 merged through PR #88 at `f5769bb` and #28 Scores merged through PR #92 at `d4827c5`, each after independent QA and hosted CI. Under ADR 0006 #30 became L3 and #29, #31–#34 are post-MVP | F2 completion and each task's issue dependencies |
 | B1–B4 — Phase 2, backend and ingestion | B1 #57 / PR #61 merged; B2 #58 and B3 #59 delivered to main through recovery PR #82 after QA/CI; B4 #60 / PR #86 merged at `f0e2f9c` after QA/CI | M1/M2 and accepted ADR 0005, then milestone gates below |
-| L1 — single-command local stack (#96) | Not started; ADR dependency satisfied | ADR 0006 merged (PR #98, `cf7f1d5`); B1–B4 delivered |
+| L1 — single-command local stack (#96) | Implemented on `feat/l1-local-stack` (one PR, `Refs #96`); engineering checks recorded in the development-environment guide; awaiting independent QA, hosted CI and maintainer merge | ADR 0006 merged (PR #98, `cf7f1d5`); B1–B4 delivered |
 | L2 — real adapter and Auth Emulator (#97), replaces I1 locally | Not started | L1 |
 | L3 — differences toggles and local MVP acceptance (#30) | Not started | L2 |
 | PM1 — hosted release: infrastructure/deployment (former R1) | Post-MVP | L3; maintainer scheduling |
@@ -414,6 +414,13 @@ Gate: from a clean checkout the single command yields healthy services. An
 emulator-token request returns the seeded release, and unauthenticated/unverified
 requests are denied. Data survives down/up, and reset recreates a clean seed. Seed
 idempotence and decimal round-trip are tested. The README quick start is current.
+
+Delivery (engineering, awaiting QA): `compose.app.yaml` with its own project and
+volumes, `./dev app-up|app-down|app-reset --yes|app-status|app-logs|app-smoke|app-import`
+and `make up`/`make down`. The committed invented seed is `data_pipeline/seed/`, a pre-built
+B3 artifact loaded only through B4 with fixed operation IDs. The tests are `make
+backend-test-seed` and the container-run `./dev app-smoke`. In L1 the stack frontend is
+still an explicit mock-mode build; L2 switches it to the real adapters.
 
 ### L2 — real adapter, generated contracts and Auth Emulator (#97)
 
