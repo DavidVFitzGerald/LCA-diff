@@ -142,6 +142,24 @@ export function createComparisonCatalog(
                     amount: null,
                     warnings: cell.warnings,
                   };
+          // Invented large-demo Scores extrema include offscreen signed values.
+          // The three default examples keep their zero/missing/unverified states.
+          if (varied && index >= 3) {
+            const id = fixture.indicator_tree.default_indicator_ids[0];
+            scores[id] = {
+              status: "valid",
+              amount: decimalString(
+                index === processCount - 1
+                  ? "-80"
+                  : index % 3 === 0
+                    ? "20"
+                    : index % 3 === 1
+                      ? "-10"
+                      : "0",
+              ),
+              warnings: [],
+            };
+          }
           return { header, flows, scores };
         },
       );

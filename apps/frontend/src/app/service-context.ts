@@ -165,6 +165,7 @@ export function guardDataService(
     "flowSummaries",
     "scoreRows",
     "scoreCells",
+    "scoreSummaries",
     "health",
   ] as const satisfies readonly (keyof DataService)[];
   return Object.fromEntries(

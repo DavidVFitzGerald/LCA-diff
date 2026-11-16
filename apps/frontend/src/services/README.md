@@ -703,3 +703,30 @@ assistive technology. Saved order is #31.
   reorder and `×` removal by pointer and keyboard with Selected-list and
   tree parity, edge auto-scroll drag and an off-screen keyboard reorder in
   the large scenario.
+
+## Scores composition (#28)
+
+`ScoresGrid` consumes the shared process selection and `useIndicators` IDs.
+Its sticky block shows Method (including its native version), Category, Indicator
+and Unit; a null Category stays visibly blank. Source-order row pages are keyed
+by canonical process/indicator sets and immutable revision snapshots. No names
+or labels establish cross-provider indicator equivalence. `SignedValueCell`,
+`ComparisonGrid` and `ComparisonHeader` are shared with Flows, so exact zero,
+unavailable score reasons/warnings, full precision, signed geometry, process
+metadata, column operations and comparability warnings follow the same rules.
+
+`scoreRowPages`, `scoreCellWindow` and `scoreSummaries` validate snapshot/token
+responses. Cell windows split into the existing transport budgets; row pages
+and summary requests contain at most 100 indicators. Summaries take the whole
+selected process set, including offscreen extrema, and ignore missing/unverified
+scores while retaining their separate counts. Summaries contain no difference
+predicate or LCIA calculation. In-flight windows lose observers and cancel when
+the viewport changes. A changed selection holds the previous row identity while
+loading, with no old-token/new-selection cell or summary reads.
+
+`ScoreSummariesRequest`/`ScoreRowSummary`/`ScoreSummariesResponse` and the
+`scoreSummaries` operation are provisional Phase 1 interfaces, like
+`flowSummaries`; I1 must reconcile both with generated FastAPI OpenAPI types and
+adapter-parity/drift checks. They do not introduce a real endpoint here. The
+existing large mock scenario now includes invented valid signed Scores for its
+generated processes, retaining the three default zero/missing/unverified cases.

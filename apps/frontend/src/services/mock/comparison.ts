@@ -10,6 +10,8 @@ import type {
   IndicatorTree,
   RevisionSnapshot,
   ScoreCellsRequest,
+  ScoreRowSummary,
+  ScoreSummariesResponse,
 } from "../contracts";
 import {
   compareDecimalMagnitude,
@@ -40,6 +42,7 @@ export type ComparisonService = Pick<
   | "flowSummaries"
   | "scoreRows"
   | "scoreCells"
+  | "scoreSummaries"
 >;
 export interface ComparisonOptions {
   readonly catalog?: ComparisonCatalog;
@@ -458,6 +461,93 @@ export function createMockComparison(
               negative_count,
               zero_count,
               absent_count,
+            };
+          });
+          return {
+            summaries,
+            revision_snapshot: result.refs,
+            comparison_token: captured.comparison_token,
+            request_id,
+          };
+        },
+      );
+    },
+    scoreSummaries: (input, options) => {
+      const captured = copy(input);
+      return request(
+        "scoreSummaries",
+        options?.signal,
+        (request_id): ScoreSummariesResponse => {
+          const result = selected(
+            captured.revision_snapshot,
+            captured.process_ids,
+          );
+          const rows = uniqueIds(captured.indicator_ids);
+          if (rows.length > windowLimit)
+            throw new MockFailure("REQUEST_WINDOW_TOO_LARGE");
+          const context = contexts.get(captured.comparison_token);
+          if (
+            !context ||
+            JSON.stringify(context.refs) !== JSON.stringify(result.refs)
+          )
+            throw new MockFailure("STALE_SNAPSHOT");
+          // The summary covers the token's whole selection, never a subset.
+          if (
+            context.tab !== "scores" ||
+            result.processes.size !== context.processes.size ||
+            [...result.processes.keys()].some(
+              (id) => !context.processes.has(id),
+            ) ||
+            rows.some((id) => !context.row_ids.includes(id))
+          )
+            invalid();
+          const ordered = [...result.processes]
+            .sort(([a], [b]) => compare(a, b))
+            .map(([, entry]) => entry);
+          const zero = decimalString("0");
+          const summaries = rows.map((indicator_id): ScoreRowSummary => {
+            let max_positive = zero;
+            let max_negative_magnitude = zero;
+            let positive_count = 0;
+            let negative_count = 0;
+            let zero_count = 0;
+            let missing_count = 0;
+            let unresolved_basis_count = 0;
+            for (const { process } of ordered) {
+              const value = process.scores[indicator_id];
+              if (!value || value.status !== "valid") {
+                if (value?.status === "unresolved_basis")
+                  unresolved_basis_count += 1;
+                else missing_count += 1;
+                continue;
+              }
+              const sign = decimalSign(value.amount);
+              if (sign === 0) zero_count += 1;
+              else if (sign > 0) {
+                positive_count += 1;
+                // Strictly greater: the first process in ID order wins ties.
+                if (compareDecimalMagnitude(value.amount, max_positive) > 0)
+                  max_positive = value.amount;
+              } else {
+                negative_count += 1;
+                if (
+                  compareDecimalMagnitude(
+                    value.amount,
+                    max_negative_magnitude,
+                  ) > 0
+                )
+                  max_negative_magnitude = decimalMagnitude(value.amount);
+              }
+            }
+            return {
+              indicator_id: indicator_id as ScoreRowSummary["indicator_id"],
+              max_positive,
+              max_negative_magnitude,
+              positive_count,
+              negative_count,
+              zero_count,
+              missing_count,
+              unresolved_basis_count,
             };
           });
           return {

@@ -10,6 +10,9 @@ import type {
   FlowSummariesRequest,
   HeadersRequest,
   ScoreCellsRequest,
+  ScoreCell,
+  ScoreSummariesRequest,
+  Indicator,
   ScoreRowsRequest,
   SearchNode,
   SearchRequest,
@@ -454,6 +457,97 @@ export function createServiceQueries(data: DataService, scope: QueryScope) {
           ),
         );
         const cells: FlowCell[] = [];
+        let snapshot: RevisionSnapshot | undefined;
+        for (const result of results) {
+          if (!result.ok) return result;
+          // Every batch, including a lone one, must answer the request.
+          const stale = mismatch(dto, result.data);
+          if (stale) return stale;
+          snapshot = result.data.revision_snapshot;
+          cells.push(...result.data.cells);
+        }
+        return {
+          ok: true,
+          data: {
+            cells,
+            revision_snapshot: snapshot ?? dto.revision_snapshot,
+            comparison_token: dto.comparison_token,
+          },
+        } as const;
+      });
+    },
+    scoreRowPages: (input: Omit<ScoreRowsRequest, "cursor">) => {
+      const dto: ScoreRowsRequest = capture(input);
+      return infiniteQueryOptions({
+        queryKey: [
+          "lca-services",
+          1,
+          scope.namespace,
+          scope.uid,
+          "scoreRowPages",
+          dto,
+        ] as const,
+        enabled: scope.uid !== null,
+        initialPageParam: undefined as RowPageParam | undefined,
+        getNextPageParam: (
+          last: ComparisonPage<Indicator>,
+        ): RowPageParam | undefined =>
+          last.next_cursor === null
+            ? undefined
+            : { cursor: last.next_cursor, token: last.comparison_token },
+        queryFn: async ({ signal, pageParam }) => {
+          if (scope.uid === null) throw denied();
+          const result = await data.scoreRows(
+            pageParam === undefined
+              ? dto
+              : { ...dto, cursor: pageParam.cursor },
+            { signal },
+          );
+          if (!result.ok) throw new ServiceQueryError(result.error);
+          const stale = mismatch(
+            pageParam === undefined
+              ? dto
+              : { ...dto, comparison_token: pageParam.token },
+            result.data,
+          );
+          if (stale) throw new ServiceQueryError(stale.error);
+          return result.data;
+        },
+      });
+    },
+    /** Whole-selection chart extrema for one row window (#20). */
+    scoreSummaries: (input: ScoreSummariesRequest) => {
+      const dto = capture(input);
+      return options("scoreSummaries", dto, async (signal) => {
+        const result = await data.scoreSummaries(dto, { signal });
+        return (result.ok && mismatch(dto, result.data)) || result;
+      });
+    },
+    /**
+     * Cells for one visible window of any size, split into transport batches
+     * that share one abort signal (#20). Every batch must answer with the
+     * request's token and snapshot, so revisions are never mixed.
+     */
+    scoreCellWindow: (input: ScoreCellsRequest) => {
+      const dto = capture(input);
+      return options("scoreCells", ["window", dto], async (signal) => {
+        const batches = cellBatches(dto.indicator_ids, dto.process_ids, {
+          window: SERVICE_WINDOW,
+          cells: SERVICE_CELL_WINDOW,
+        });
+        const results = await Promise.all(
+          batches.map((batch) =>
+            data.scoreCells(
+              {
+                ...dto,
+                process_ids: batch.process_ids,
+                indicator_ids: batch.row_keys,
+              },
+              { signal },
+            ),
+          ),
+        );
+        const cells: ScoreCell[] = [];
         let snapshot: RevisionSnapshot | undefined;
         for (const result of results) {
           if (!result.ok) return result;

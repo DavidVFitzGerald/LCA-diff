@@ -272,6 +272,22 @@ export interface FlowSummariesResponse extends SnapshotResponse {
   readonly summaries: readonly FlowRowSummary[];
   readonly comparison_token: string;
 }
+/** Provisional whole-selection score extrema (#28); reconciled with OpenAPI in I1. */
+export type ScoreSummariesRequest = ScoreCellsRequest;
+export interface ScoreRowSummary {
+  readonly indicator_id: IndicatorId;
+  readonly max_positive: DecimalString;
+  readonly max_negative_magnitude: DecimalString;
+  readonly positive_count: number;
+  readonly negative_count: number;
+  readonly zero_count: number;
+  readonly missing_count: number;
+  readonly unresolved_basis_count: number;
+}
+export interface ScoreSummariesResponse extends SnapshotResponse {
+  readonly summaries: readonly ScoreRowSummary[];
+  readonly comparison_token: string;
+}
 export interface DataService {
   identity(options?: RequestOptions): Promise<ServiceResult<Identity>>;
   releases(options?: RequestOptions): Promise<ServiceResult<Page<Release>>>;
@@ -311,6 +327,10 @@ export interface DataService {
     input: ScoreCellsRequest,
     options?: RequestOptions,
   ): Promise<ServiceResult<CellsResponse<ScoreCell>>>;
+  scoreSummaries(
+    input: ScoreSummariesRequest,
+    options?: RequestOptions,
+  ): Promise<ServiceResult<ScoreSummariesResponse>>;
   health(
     options?: RequestOptions,
   ): Promise<ServiceResult<{ readonly status: "ok" }>>;
