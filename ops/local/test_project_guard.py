@@ -127,7 +127,16 @@ def main() -> None:
                             "config must render only the workspace"
                         )
         for variable in port_names:
-            for literal in ('"0008011"', "'8011'", "8011  # local", "65536", "abc", "${PORT}"):
+            for literal in (
+                '"0008011"',
+                "'8011'",
+                '"8011"#local',
+                "'8011'#local",
+                "8011  # local",
+                "65536",
+                "abc",
+                "${PORT}",
+            ):
                 (root / ".env").write_text(f"{variable}={literal}\n")
                 marker.unlink(missing_ok=True)
                 result = subprocess.run(

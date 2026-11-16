@@ -75,7 +75,12 @@ def run_fixture(tmp_path: Path, *, invalid: bool, spark: bool) -> tuple[dict, ob
 
 @pytest.mark.etl
 @pytest.mark.integration
-def test_golden_spark_postgres_and_failed_audit(tmp_path: Path) -> None:
+def test_golden_spark_postgres_and_failed_audit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A stale image-level worker path must not override the active uv interpreter.
+    # This executes real Spark workers and fails before the #101 fix.
+    monkeypatch.setenv("PYSPARK_PYTHON", "/does-not-exist/lca-test-worker-python")
     result, manifest = run_fixture(tmp_path / "golden", invalid=False, spark=True)
     assert result["status"] == "ready"
     revision = UUID(result["revision_id"])
