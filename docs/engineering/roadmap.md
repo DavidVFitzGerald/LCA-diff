@@ -1,7 +1,8 @@
 # LCA diff implementation roadmap
 
-Status: frontend foundation implementation, issue #5. Milestone status means
-verified delivery, not merely written plans.
+Status: 2026-11-16 — local-only MVP revision (proposed ADR 0006, #95). Remaining
+MVP path: L1 → L2 → L3. Milestone status means verified delivery, not merely
+written plans.
 
 ## Authority and delivery policy
 
@@ -21,8 +22,12 @@ All three were accepted through the maintainer's merge of
 
 This roadmap follows the maintainer's requested order instead of §12's suggested
 sequence: workflow → roadmap → dev environment → GitHub issues → complete mock
-frontend → backend → real frontend integration → production readiness. It does
-not change scientific requirements, the required stack, or MVP scope.
+frontend → backend → real frontend integration → production readiness. ADR 0005
+allowed backend/frontend overlap. Proposed ADR 0006 then narrows the MVP to a
+local, single-command, end-to-end application: workflow → environment → issues →
+F1–F5 Scores and B1–B4 (delivered) → **L1 stack → L2 real adapter → L3
+differences and acceptance** → post-MVP hosted release. Scientific requirements
+and the required stack are unchanged.
 
 All tools, installs, builds and tests run in containers. Nothing is installed on
 the host without permission. Use the stack and repository layout in §3; choose
@@ -38,6 +43,31 @@ only when its gate has evidence and associated issues are resolved through the
 PM → Software Engineer → QA → review/merge workflow. Blocked is not complete.
 
 ## Current position
+
+**Local-only MVP revision (proposed [ADR 0006](../adr/0006-local-only-mvp.md),
+[#95](https://github.com/DavidVFitzGerald/LCA-diff/issues/95); authoritative only
+after the maintainer merges it).** The maintainer removed deployment from the MVP
+on 2026-11-16. The MVP is reached when the app runs locally end to end from one
+command: the frontend calls the real API, data persists in PostgreSQL, and login
+uses the Firebase Auth Emulator. B1–B4 and F1–F4 plus F5 #27/#28 are delivered.
+The remaining work is three sequential implementation issues, one PR each:
+
+| Step | Issue | Outcome | Depends on |
+| --- | --- | --- | --- |
+| L1 | [#96](https://github.com/DavidVFitzGerald/LCA-diff/issues/96) | `./dev app-up` / `make up` starts Postgres, migrations, synthetic seeded/published release, Auth Emulator with demo user, API and frontend; data persists | ADR 0006 merged (#95) |
+| L2 | [#97](https://github.com/DavidVFitzGerald/LCA-diff/issues/97) | Real HTTP + Firebase-emulator adapters, OpenAPI-generated DTOs with drift check, real-stack Playwright smoke | L1 |
+| L3 | [#30](https://github.com/DavidVFitzGerald/LCA-diff/issues/30) (re-scoped) | Differences toggles on the real API; local MVP acceptance including one opt-in representative BAFU import | L2 |
+
+Deferred to post-MVP (label `post-MVP`, milestone Post-MVP):
+- #29 exhaustive mock difference predicates.
+- #31 workspace persistence.
+- #32 stale-ID/publication reconciliation.
+- #33 state/accessibility audit.
+- #34 mock-only Phase 1 gate.
+
+Cloud deployment (former R1) and full-data release validation (former R2) also
+move post-MVP. Open frontend Bugs #51, #91 and #85 are unchanged. Fix flaky
+required tests when they block L1–L3 merges.
 
 **Accepted sequencing revision:** [ADR 0005](../adr/0005-parallel-backend-delivery.md)
 ([#55](https://github.com/DavidVFitzGerald/LCA-diff/issues/55)) records the
@@ -71,10 +101,14 @@ workflow is documented in [B4 publication](b4-publication.md).
 | M2 — GitHub execution setup | Forms/PR guidance and activation merged; #4 solo protection proposal in review | M0/M1 delivered; main protection waits for approved ADR 0004 |
 | F1 — frontend foundation | Complete: #5–#10 merged; final PR #44 at `9612943`, independent QA and hosted CI passed | M2 activation delivered; protection tracked separately in #4 |
 | F2 — shell and simulated authentication | Complete: #11–#15 merged after independent QA and hosted CI (final PR #49 at `1f82774`) | F1 complete; each task's issue dependencies |
-| F3–F5 — remaining mock frontend journeys | F3 complete: #16–#19 merged after independent QA and hosted CI (final PR #62 at `d3fddb1`). F4 complete: #20–#25, #64 and #69 merged after independent QA and hosted CI; gate #26 (PR #78, `af5317d`) recorded in [F4 verification](f4-verification.md) after blockers #75, #77 and #79 merged. F5: #27 merged through PR #88 at `f5769bb` after independent QA and hosted CI; #28 Scores passed independent QA in PR #92 and awaits maintainer merge; later F5 tasks not started; predecessor gates retained | F2 completion and each task's issue dependencies |
+| F3–F5 — remaining mock frontend journeys | F3 complete: #16–#19 merged after independent QA and hosted CI (final PR #62 at `d3fddb1`). F4 complete: #20–#25, #64 and #69 merged after independent QA and hosted CI; gate #26 (PR #78, `af5317d`) recorded in [F4 verification](f4-verification.md) after blockers #75, #77 and #79 merged. F5: #27 merged through PR #88 at `f5769bb` and #28 Scores merged through PR #92 at `d4827c5`, each after independent QA and hosted CI. Under ADR 0006 #30 became L3 and #29, #31–#34 are post-MVP | F2 completion and each task's issue dependencies |
 | B1–B4 — Phase 2, backend and ingestion | B1 #57 / PR #61 merged; B2 #58 and B3 #59 delivered to main through recovery PR #82 after QA/CI; B4 #60 / PR #86 merged at `f0e2f9c` after QA/CI | M1/M2 and accepted ADR 0005, then milestone gates below |
-| I1 — real frontend integration | Not started | Phase 1 gate, B2 and validated synthetic publication from B4 |
-| R1–R2 — production readiness and release | Not started | Dependencies below |
+| L1 — single-command local stack (#96) | Not started | ADR 0006 merged; B1–B4 delivered |
+| L2 — real adapter and Auth Emulator (#97), replaces I1 locally | Not started | L1 |
+| L3 — differences toggles and local MVP acceptance (#30) | Not started | L2 |
+| PM1 — hosted release: infrastructure/deployment (former R1) | Post-MVP | L3; maintainer scheduling |
+| PM2 — full-data validation and hosted release (former R2) | Post-MVP | PM1 |
+| PM3 — deferred frontend completion (#29, #31–#34) | Post-MVP | L3 |
 
 M0–M2 are the explicitly authorized documentation/environment bootstrap exception
 to issue-first execution. When M2 opens initial issues, record roadmap/environment
@@ -223,13 +257,13 @@ record environment/workload evidence rather than inventing an SLA.
 
 ### F5 — Scores, differences and workspace completion
 
-Current handoff (2026-11-16): F4 #26 and selector #27 are merged/closed;
-PR #88 delivered #27 at `f5769bb` after independent QA and hosted checks.
-PM rechecked #28 as READY; its Scores implementation/verification runs on
-`feat/f5-scores`. See [Scores verification](f5-scores-verification.md) for delivered
-commits, criterion evidence and exact container commands. #28 remains open for
-independent QA, required checks and maintainer review/merge. Differences #29/#30,
-persistence/reconciliation #31/#32, async audit #33 and Phase 1 gate #34 remain.
+Current handoff (2026-11-16): F4 #26, selector #27 (PR #88, `f5769bb`) and
+Scores #28 (PR #92, `d4827c5`) are merged/closed after independent QA and hosted
+checks; see [Scores verification](f5-scores-verification.md). **Closed by
+ADR 0006:** the differences toggles move to L3 (#30, re-scoped against the real
+API). #29, #31, #32, #33 and #34 are post-MVP; their bodies are kept for later
+re-grooming. F5's mock-delivered scope is therefore complete for the MVP. The
+text below is the original F5 plan, kept for reference.
 
 Depends on F4 for integrated Scores-grid delivery. Maintainer-authorized exception
 (2026-11-15, #27): the independent indicator selector may overlap ongoing F4
@@ -244,7 +278,8 @@ invalidation. Persist only the specified UID-scoped workspace fields; handle
 stale selections and account changes. Complete loading/error/empty/retry states,
 accessible controls, browser coverage and manual UAT (§9.3's UI scenarios).
 
-Phase 1 gate: every MVP UI journey works with deterministic synthetic mocks;
+Former Phase 1 gate (post-MVP #34 under ADR 0006; no longer a prerequisite of
+L2): every MVP UI journey works with deterministic synthetic mocks;
 Vitest, typecheck/build and Playwright pass in containers. Check Chromium and
 Firefox, Safari as practicable, large grids and account isolation. Record a
 UI/spec coverage checklist and remaining real-integration checks. A mock demo is
@@ -354,38 +389,97 @@ published and rolled back without partial/mixed visibility, lost audit history,
 or dependence on local-only staging FKs. Actual production publication still
 requires the release gates and explicit approval below.
 
-### I1 — real adapter and end-to-end integration
+## Local MVP — single command, end to end (ADR 0006)
 
-Depends on the Phase 1 gate, B2 and B4. Generate frontend DTOs from FastAPI OpenAPI with reproducible
-drift checks; replace provisional types deliberately and verify mock/real adapter
-parity. Implement the HTTP/Firebase adapter behind the existing services boundary,
-then select it through explicit configuration. Never silently fall back to mocks.
-Reconcile the provisional frontend-only `flowSummaries` read summary (#20,
-`apps/frontend/src/services/README.md`) with the generated OpenAPI contract: B2
-provides an equivalent stateless endpoint or the spec/ADR workflow replaces it.
+One issue and one PR per milestone, in sequence. Each issue body carries detailed
+criteria and container verification. Each uses an isolated worktree and container
+project, and coordinates shared root tooling (`compose.yaml`, `dev`, `Makefile`,
+CI). Keep mock mode independently runnable throughout.
 
-Gate: complete UI journeys work against the real API and a published synthetic
-release with emulator-backed auth. Verify no protected calls before login,
-refresh/expiry/revocation, forbidden responses, query cancellation, exact decimals,
-missingness, snapshots during publication, and restored/stale workspace behavior.
-Mocks remain separately runnable. All applicable PR gates, targeted Spark/Airflow
-checks and real-integration Playwright smoke checks pass.
+### L1 — single-command local stack with a seeded synthetic release (#96)
 
-Carried from F2 (#14/#15): browser-level expiry/revocation/401/403 journeys with
-the Auth Emulator; signout-failure UX for unverified sessions when the adapter
-emits no new state; no lock/unlock cycling when the adapter re-emits the same
-verified state against a persistent server 401/403. See
-[F2 verification](f2-verification.md).
+Depends on ADR 0006's merge; B1–B4 are delivered. Add `./dev app-up` / `make up`,
+`./dev app-down` and a confirmed `./dev app-reset`. The stack:
+- starts Postgres (named volume);
+- runs a one-shot migrate-and-seed task (never migrations on API startup) that
+  idempotently seeds and publishes a committed synthetic release with the same
+  immutable revision/publication semantics as B4;
+- starts the Auth Emulator with a seeded local-only verified demo account;
+- starts the API as `lca_api` with explicit local CORS, and the frontend.
 
-## Production readiness and release
+Ports bind to localhost. Document the opt-in private BAFU import into the same
+database with the B3/B4 commands.
 
-### R1 — infrastructure and operational readiness
+Gate: from a clean checkout the single command yields healthy services. An
+emulator-token request returns the seeded release, and unauthenticated/unverified
+requests are denied. Data survives down/up, and reset recreates a clean seed. Seed
+idempotence and decimal round-trip are tested. The README quick start is current.
 
-Depends on I1 for integrated staging acceptance; documentation/estimates can be
+### L2 — real adapter, generated contracts and Auth Emulator (#97)
+
+Replaces I1 for the local MVP. Depends on L1; the former Phase 1 gate is no longer
+a prerequisite. Generate frontend DTOs from FastAPI OpenAPI into
+`packages/contracts/` with reproducible drift checks. Replace provisional types
+deliberately and verify mock/real adapter parity. Implement the HTTP and Firebase
+JS SDK (emulator) adapters behind the existing services boundary and select them
+through explicit validated configuration; never fall back silently to mocks. The
+L1 stack runs the frontend in real mode. Reconcile the provisional frontend-only
+`flowSummaries` read summary (#20, `apps/frontend/src/services/README.md`) with
+B2: an equivalent stateless endpoint or derivation, or the spec/ADR workflow
+if §7 semantics change.
+
+Gate: login (demo and newly registered, emulator-verified), search, bulk select,
+reorder and Flows/Scores comparison work against the L1 stack. Exact decimals,
+zero/absence and N/A survive. No protected calls before login; 401/403 and
+expiry/revocation lock the shell and clear caches. Misconfiguration shows an
+explicit error. A real-stack Playwright smoke passes (per-PR CI if reliable on
+hosted runners; otherwise a documented local check with a tracked gap).
+
+Carried from F2 (#14/#15), applies in L2:
+- browser-level expiry/revocation/401/403 journeys with the Auth Emulator;
+- signout-failure UX for unverified sessions when the adapter emits no new state;
+- no lock/unlock cycling when the adapter re-emits the same verified state against a persistent server 401/403.
+
+See [F2 verification](f2-verification.md).
+
+### L3 — differences toggles and local MVP acceptance (#30)
+
+Depends on L2. Add independent Flows/Scores "Show differences only" toggles backed
+by the API's exact `differences_only` reads. Toggles start off, are disabled/reset
+below two processes, and are not persisted. Cached eligibility is
+order-independent and invalidated by membership, indicator or revision changes.
+Mock mode gets only a minimal exact-string predicate for deterministic tests.
+Then accept the MVP locally: §9.3 UAT journeys (except restoration) and the
+real-stack smoke with a differences step. Run one opt-in import of the
+representative private BAFU manifest into the local app, keeping evidence private.
+Record everything in `local-mvp-verification.md`.
+
+Gate (**local MVP definition of done**, specification §12): from a clean clone,
+`./dev app-up` alone yields a working app in which an emulator-verified user can
+log in, search, bulk-select, compare Flows and Scores from PostgreSQL, toggle
+differences, reorder/remove columns, and find data persisted after restart. All
+applicable per-PR checks pass. Remaining post-MVP gaps are listed explicitly.
+
+## Post-MVP — hosted release and deferred completion
+
+Not scheduled. Keep at milestone level and do not start without a new maintainer
+instruction. These milestones retain the former R1/R2 contracts so that the
+hosted release still meets specification §§3.2, 8 and 9.
+
+### PM3 — deferred frontend completion
+
+#29 exhaustive mock difference predicates, #31 UID-scoped workspace persistence,
+#32 stale-ID/publication reconciliation, #33 state/accessibility audit, #34
+full frontend acceptance/coverage checklist. Re-groom against the real adapter
+before starting; #34's evidence becomes part of PM2.
+
+### PM1 (former R1) — infrastructure and operational readiness
+
+Depends on L3 for integrated staging acceptance; documentation/estimates can be
 tracked earlier without provisioning production. Implement Terraform and separate
 frontend/API Docker deployments to Cloud Run, Cloud SQL connectivity, private
 GCS archives, Artifact Registry, Secret Manager, IAM, backups/deletion protection,
-monitoring and budgets. Keep Airflow/Spark local for MVP. Run migrations as a
+monitoring and budgets, and a production Firebase project. Keep Airflow/Spark local. Run migrations as a
 controlled task, never implicitly on API startup. Document import/report/rule
 approval, promotion/publication/rollback, restore and credential-revocation flows.
 
@@ -394,9 +488,9 @@ backup/restore and rollback evidence, access/logging checks and smoke tests are
 available. Production Terraform applies/deployments need maintainer approval;
 this roadmap is not permission to incur cloud costs or publish data.
 
-### R2 — full-data validation and MVP release
+### PM2 (former R2) — full-data validation and hosted release
 
-Depends on B3, B4, I1 and R1. Obtain the actual complete XML manifest/workbook,
+Depends on B3, B4, L3 and PM1. Obtain the actual complete XML manifest/workbook,
 confirm hosting/redistribution rights and release metadata, and verify source
 reconciliation/basis rules. Run full ingestion privately, inspect every report,
 resolve critical issues and sign off the LCIA audit. Validate the real manifest
@@ -408,7 +502,8 @@ recorded evidence. Benchmark actual dev-laptop/Cloud SQL workloads with hardware
 release, row counts and network documented. No known MVP-critical failures remain.
 With manifest/hash/migration previews and explicit maintainer approval, deploy
 and atomically publish the ready release; run deployed smoke checks and retain
-rollback capability. Only then claim the PRD/specification MVP definition of done.
+rollback capability. Only then claim the hosted-release definition of done (the
+local MVP's definition of done is L3's gate).
 Missing data/license/evidence blocks release, not unrelated synthetic development.
 
 ## Specification and test coverage ownership
@@ -418,17 +513,19 @@ scope loss; test numbers refer to the 19 mandatory behaviors in §9.2.
 
 | Contract                                                                  | Milestones owning delivery and evidence             | §9.2 behaviors                  |
 | ------------------------------------------------------------------------- | --------------------------------------------------- | ------------------------------- |
-| Governance, stack, environment, tiered CI (§§0, 3, 9)                     | M0–M2; F1/B1 introduce checks; R1–R2 complete gates | All applicable checks           |
-| UI, identity state and account isolation (§§6.1, 6.8, 8)                  | F2/F5 mock; B2/I1 real; R2 acceptance               | 13, 17                          |
-| Search, bulk selection, ordering, grid, warnings (§§6.2–6.4, 9.1)         | F3–F5; B2/I1; R2 benchmarks                         | 17–18                           |
-| Scores, signed bars, exact differences (§§6.5–6.7)                        | F1/F4/F5; B2/I1                                     | 7, 15–16                        |
-| Schema, decimals, isolation, provenance (§4)                              | B1/B3/B4; B2/I1 wire precision                      | 2–3, 11–12, 14                  |
-| XML mapping, duplicates, reference resolution, exclusion (§§1–2, 5.1–5.5) | B3; R2 full manifest                                | 1–6                             |
-| Workbook matching, verified basis, full-row audits (§§5.6–5.8)            | B3; R2 audit signoff                                | 7–10                            |
-| Read API, snapshots, errors, auth (§7)                                    | F1 provisional; B2 authoritative; B4/I1 integration | 12–18                           |
-| Configuration/logs, security, publish/operations (§§5.8, 8)               | B1–B4; I1; R1–R2                                    | 12–14, 19                       |
-| Future insertion points without future features (§10)                     | F1/B1/B3/B2 as applicable; inspect at I1            | Review against DESIGN-NOW scope |
-| Conservative defaults and external verification (§11)                     | B3/R2 data gates; R1 licensing/operations           | Relevant failure/gating cases   |
+| Contract | Local MVP owners | Post-MVP owners | §9.2 behaviors |
+| --- | --- | --- | --- |
+| Governance, stack, environment, tiered CI (§§0, 3, 9) | M0–M2; F1/B1 checks; L1 single-command stack; L2 drift/real smoke | PM1–PM2 release gates | All applicable checks |
+| UI, identity state and account isolation (§§6.1, 6.8, 8) | F2 mock; B2/L2 real (emulator); L3 acceptance | PM3 persistence (#31/#32) | 13, 17 |
+| Search, bulk selection, ordering, grid, warnings (§§6.2–6.4, 9.1) | F3–F5; B2/L2; L3 acceptance | PM2 benchmarks | 17–18 |
+| Scores, signed bars, exact differences (§§6.5–6.7) | F1/F4/F5; B2; L3 toggles | PM3 #29 mock predicates | 7, 15–16 |
+| Schema, decimals, isolation, provenance (§4) | B1/B3/B4; L1 seed; L2 wire precision | — | 2–3, 11–12, 14 |
+| XML mapping, duplicates, reference resolution, exclusion (§§1–2, 5.1–5.5) | B3; L3 opt-in representative import | PM2 full manifest | 1–6 |
+| Workbook matching, verified basis, full-row audits (§§5.6–5.8) | B3 | PM2 audit signoff | 7–10 |
+| Read API, snapshots, errors, auth (§7) | F1 provisional; B2 authoritative; L2 integration | — | 12–18 |
+| Configuration/logs, security, publish/operations (§§5.8, 8) | B1–B4; L1 local stack | PM1–PM2 cloud items 4, 6, 7, 9 | 12–14, 19 |
+| Future insertion points without future features (§10) | F1/B1/B3/B2 as applicable; inspect at L2 | — | Review against DESIGN-NOW scope |
+| Conservative defaults and external verification (§11) | B3 data gates | PM2 data gates; PM1 licensing/operations | Relevant failure/gating cases |
 
 ## Published frontend issues and session handoffs
 
@@ -437,11 +534,14 @@ The maintainer requested the full F1–F5 backlog at M2. The
 their implementation dependencies: F1 has 6, F2 has 5, F3 has 4, F4 has 7, and F5
 has 8. Four additional bootstrap issues track baseline review, unfinished runtime
 verification, GitHub setup and the private-repository branch-protection limitation.
-No backend or post-MVP issues were created.
+No backend or post-MVP issues were created at M2. On 2026-11-16 (ADR 0006), the
+coordinator re-scoped #30 into L3 and moved #29 and #31–#34 to the `post-MVP` label
+and the Post-MVP milestone. It also published L1 #96 and L2 #97 in the new
+"L — Local MVP" milestone.
 
 Task/Bug forms are copied to `.github/ISSUE_TEMPLATE/` and a PR handoff template
-is prepared. The `task`, `bug`, `frontend`, `bootstrap`, and `blocked` labels are
-available. Forms and PR guidance are merged into `main`; the maintainer confirmed
+is prepared. The `task`, `bug`, `frontend`, `bootstrap`, `blocked` and `post-MVP`
+labels are available. Forms and PR guidance are merged into `main`; the maintainer confirmed
 both forms visible in the rendered chooser. See [M2 verification](m2-verification.md).
 The original private-repository protection probe returned HTTP 403.
 On this follow-up, GitHub reports the repository public and main protection returns
@@ -473,4 +573,9 @@ Keep follow-up work linked and leave incomplete issues open.
 No user uploads, exports, metadata/details tab, named cloud workspaces, multi-output
 support, fuzzy search, cross-provider mappings, assisted matching, recalculated
 LCIA, or managed cloud Airflow/Spark in MVP. See §10 for their future contracts.
-Preserve required extensibility now without opening a speculative post-MVP backlog.
+Under ADR 0006, Google Cloud deployment/Terraform, production Firebase, full-corpus
+release validation and licensing sign-off (PM1–PM2) are also outside the MVP, as is
+browser workspace persistence and the deferred F5 work (PM3). Preserve required
+extensibility now without opening a speculative post-MVP backlog beyond the
+existing deferred issues. Earlier references to I1 in milestone history now
+mean L2.

@@ -1,8 +1,9 @@
 # LCA diff
 
 Read-only comparison of harmonized unit-process inventories and provider-supplied
-LCIA scores. The frontend currently contains a technical React mount scaffold;
-product journeys arrive in subsequent issues.
+LCIA scores. The MVP is local-only (proposed ADR 0006). The one-command
+`./dev app-up` stack arrives with L1 (#96), and the real frontend/API connection
+with L2 (#97). Until then the frontend runs in explicit mock mode as described below.
 
 - [Current product requirements](docs/product/LCA_diff_PRD.md)
 - [Current implementation specification](docs/engineering/LCA_diff_Implementation_Specification.md)
@@ -50,7 +51,7 @@ Use VS Code/SSH forwarding to reach http://localhost:5173. The page is a technic
 mount target identifying local demo mode and the placeholder authentication state.
 The placeholder resolves to unauthenticated and makes no protected dataset reads.
 Product login/account journeys follow in F2. Missing, invalid or unsupported
-service modes (including `real` until I1) show a safe startup error; there is no
+service modes (including `real` until L2, formerly I1) show a safe startup error; there is no
 implicit mock fallback. A mock bundle also requires explicitly setting
 `VITE_SERVICE_MODE=mock` when running the build command below.
 
