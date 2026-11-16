@@ -297,7 +297,7 @@ describe("mock comparison scientific states", () => {
     ]);
   });
 
-  it("defaults differences to false without filtering equal values or all-missing indicators; true is unsupported", async () => {
+  it("defaults differences to false without filtering equal values or all-missing indicators", async () => {
     const service = createMockComparison();
     const implicit = data(await finish(service.flowRows(base)));
     const explicit = data(
@@ -309,18 +309,6 @@ describe("mock comparison scientific states", () => {
       explicit.items.some((row) => row.flow_id === FIXTURE_IDS.water),
     ).toBe(true);
     expect(
-      await finish(service.flowRows({ ...base, differences_only: true })),
-    ).toMatchObject({ ok: false, error: { code: "UNSUPPORTED_OPERATION" } });
-    expect(
-      await finish(
-        service.scoreRows({
-          ...base,
-          indicator_ids: indicators,
-          differences_only: true,
-        }),
-      ),
-    ).toMatchObject({ ok: false, error: { code: "UNSUPPORTED_OPERATION" } });
-    expect(
       await finish(
         service.flowRows({
           ...base,
@@ -328,6 +316,152 @@ describe("mock comparison scientific states", () => {
         } as unknown as ComparisonRowsRequest),
       ),
     ).toMatchObject({ ok: false, error: { code: "INVALID_FILTER" } });
+  });
+
+  it("filters flow rows exactly: equal present amounts hide, absent differs from zero, -0 equals 0", async () => {
+    const service = createMockComparison();
+    const full = data(await finish(service.flowRows(base)));
+    const only = data(
+      await finish(service.flowRows({ ...base, differences_only: true })),
+    );
+    const keys = (page: typeof only) => page.items.map((row) => row.row_key);
+    const airHigh = flowRowKey(FIXTURE_IDS.airHigh, "Ecosphere Output");
+    // Water is "0" everywhere and airLow is one exact value everywhere.
+    expect(keys(only)).toEqual(
+      keys(full).filter(
+        (key) =>
+          ![FIXTURE_IDS.water, FIXTURE_IDS.airLow].includes(
+            key.split("|")[0] as typeof FIXTURE_IDS.water,
+          ),
+      ),
+    );
+    // airHigh is absent in one process and "-0" in the others: it differs.
+    expect(keys(only)).toContain(airHigh);
+    expect(only.total_count).toBe(only.items.length);
+    expect(only.comparison_token).not.toBe(full.comparison_token);
+    // Without the absent process, "-0" and "-0" are equal: hidden.
+    const pair = data(
+      await finish(
+        service.flowRows({
+          ...base,
+          process_ids: [ids[2], ids[0]],
+          differences_only: true,
+        }),
+      ),
+    );
+    expect(keys(pair)).not.toContain(airHigh);
+    // Reordering keeps the difference session.
+    const reordered = data(
+      await finish(
+        service.flowRows({
+          ...base,
+          process_ids: [...ids].reverse(),
+          differences_only: true,
+        }),
+      ),
+    );
+    expect(reordered.comparison_token).toBe(only.comparison_token);
+    // Cells of hidden rows are outside the difference session.
+    const hidden = keys(full).find((k) => k.startsWith(FIXTURE_IDS.water))!;
+    expect(hidden).toBeDefined();
+    expect(
+      await finish(
+        service.flowCells({
+          ...base,
+          row_keys: [hidden],
+          comparison_token: only.comparison_token,
+        } as FlowCellsRequest),
+      ),
+    ).toMatchObject({ ok: false, error: { code: "INVALID_FILTER" } });
+    expect(
+      data(
+        await finish(
+          service.flowCells({
+            ...base,
+            row_keys: [airHigh],
+            comparison_token: only.comparison_token,
+          } as FlowCellsRequest),
+        ),
+      ).cells.map((cell) => cell.present),
+    ).toEqual([true, false, true]);
+    // One process: nothing to compare, the full rows and session return.
+    const single = { ...base, process_ids: [ids[0]] };
+    const one = data(
+      await finish(service.flowRows({ ...single, differences_only: true })),
+    );
+    const plain = data(await finish(service.flowRows(single)));
+    expect([one.items, one.comparison_token]).toEqual([
+      plain.items,
+      plain.comparison_token,
+    ]);
+  });
+
+  it("filters score rows exactly: equal valid values and uniform N/A hide; valid vs N/A and N/A states differ", async () => {
+    const generated = createComparisonCatalog();
+    const [first, , third] = generated.revisions[1].processes;
+    const scores = (status: "valid" | "missing", amount: string | null) =>
+      Object.fromEntries(
+        Object.keys(first.scores).map((id) => [
+          id,
+          status === "valid"
+            ? {
+                ...first.scores[id],
+                amount:
+                  id === FIXTURE_IDS.gwp ? amount : first.scores[id].amount,
+              }
+            : { status, amount: null, warnings: [] },
+        ]),
+      );
+    const override = (
+      replace: Readonly<Record<number, ReturnType<typeof scores>>>,
+    ) =>
+      createMockComparison({
+        catalog: {
+          ...generated,
+          revisions: generated.revisions.map((revision, index) =>
+            index !== 1
+              ? revision
+              : {
+                  ...revision,
+                  processes: revision.processes.map((process, position) =>
+                    replace[position]
+                      ? { ...process, scores: replace[position] }
+                      : process,
+                  ),
+                },
+          ),
+        } as typeof generated,
+      });
+    // Process 1 repeats process 0 with "-0" for its "0"; process 2 is
+    // missing everywhere, unlike the fixture's unresolved basis.
+    const service = override({
+      1: scores("valid", "-0"),
+      2: scores("missing", null),
+    });
+    const rows = async (processes: readonly string[], source = service) =>
+      data(
+        await finish(
+          source.scoreRows({
+            ...base,
+            process_ids: processes,
+            indicator_ids: indicators,
+            differences_only: true,
+          }),
+        ),
+      ).items.map((row) => row.id);
+    expect(third).toBeDefined();
+    expect(await rows([ids[0], ids[1]])).toEqual([]);
+    expect(await rows([ids[0], ids[2]])).toEqual(indicators);
+    expect(await rows([ids[1], ids[2]])).toEqual(indicators);
+    // Missing vs unresolved basis: different N/A states differ.
+    expect(await rows([ids[1], ids[2]], createMockComparison())).toEqual(
+      indicators,
+    );
+    // Missing everywhere: uniform N/A is not a difference.
+    const uniform = override({ 0: scores("missing", null) });
+    expect(await rows([ids[0], ids[1]], uniform)).toEqual([]);
+    // One process: nothing to compare.
+    expect(await rows([ids[2]])).toEqual(indicators);
   });
 
   it("honors per-process absence overrides of shared values in row unions and cells", async () => {

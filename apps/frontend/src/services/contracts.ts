@@ -223,7 +223,7 @@ export type ScoreCell = ScoreValue & {
 };
 export interface ComparisonRowsRequest extends SnapshotRequest, PageRequest {
   readonly process_ids: readonly ProcessId[];
-  /** Defaults to false. The mock predicate and UI toggle arrive in L3/#30. */
+  /** Defaults to false; the UI sends true only for an on toggle (#30). */
   readonly differences_only?: boolean;
 }
 export interface ScoreRowsRequest extends ComparisonRowsRequest {

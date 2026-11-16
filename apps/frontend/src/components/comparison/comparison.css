@@ -202,3 +202,23 @@
   overflow-wrap: anywhere;
   cursor: grabbing;
 }
+.differences-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  margin: 0 0 0.75rem;
+}
+.differences-control label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+.differences-control label:has(input:disabled) {
+  color: #6b7a72;
+}
+.differences-hint {
+  font-size: 0.8rem;
+  color: #52675b;
+}

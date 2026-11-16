@@ -209,7 +209,7 @@ export function createMockComparison(
       context.refs,
       [...context.processes.keys()].sort(compare),
       [...indicatorIds].sort(compare),
-      false,
+      differencesOnly(input, context.processes.size),
     ]);
     const comparison_token = token({ ...context, key, tab, row_ids });
     let start = 0;
@@ -320,13 +320,44 @@ export function createMockComparison(
       ).values(),
     ].sort(rowOrder);
   }
-  function differences(input: ComparisonRowsRequest) {
+  /**
+   * Minimal exact difference predicates (#30, spec §§6.7, 7.3), matching the
+   * API: decimal comparison without floats or tolerance (`-0` equals `0`);
+   * absent differs from any present amount, including zero; N/A is never a
+   * value, valid differs from N/A, and uniformly N/A rows of one state are
+   * equal. The exhaustive mock instrumentation stays post-MVP (#29).
+   */
+  function differencesOnly(input: ComparisonRowsRequest, processes: number) {
     if (
       input.differences_only !== undefined &&
       typeof input.differences_only !== "boolean"
     )
       invalid();
-    if (input.differences_only) throw new MockFailure("UNSUPPORTED_OPERATION");
+    return input.differences_only === true && processes >= 2;
+  }
+  function sameAmounts(amounts: readonly DecimalString[]) {
+    return amounts.every((amount) => compareDecimal(amount, amounts[0]) === 0);
+  }
+  function flowDiffers(row: FlowRow, result: ReturnType<typeof selected>) {
+    const amounts: DecimalString[] = [];
+    for (const { process, revision } of result.processes.values()) {
+      const value =
+        process.flows[row.row_key] ?? revision.shared_flows[row.row_key];
+      if (!value?.present) return true;
+      amounts.push(value.amount);
+    }
+    return !sameAmounts(amounts);
+  }
+  function scoreDiffers(id: string, result: ReturnType<typeof selected>) {
+    const values = [...result.processes.values()].map(
+      ({ process }) => process.scores[id] ?? { status: "missing" as const },
+    );
+    if (new Set(values.map((value) => value.status)).size > 1) return true;
+    return !sameAmounts(
+      values.flatMap((value) =>
+        value.status === "valid" ? [value.amount] : [],
+      ),
+    );
   }
   function cellContext(
     input: FlowCellsRequest | ScoreCellsRequest,
@@ -386,11 +417,11 @@ export function createMockComparison(
     flowRows: (input, options) => {
       const captured = copy(input);
       return request("flowRows", options?.signal, (request_id) => {
-        differences(captured);
         const result = selected(
           captured.revision_snapshot,
           captured.process_ids,
         );
+        const only = differencesOnly(captured, result.processes.size);
         const key = JSON.stringify([
           result.refs,
           [...result.processes.keys()].sort(compare),
@@ -402,17 +433,18 @@ export function createMockComparison(
             flowRowSets.delete(flowRowSets.keys().next().value!);
           flowRowSets.set(key, rows);
         }
+        if (only) rows = rows.filter((row) => flowDiffers(row, result));
         return rowPage(captured, "flows", rows, result, [], request_id);
       });
     },
     scoreRows: (input, options) => {
       const captured = copy(input);
       return request("scoreRows", options?.signal, (request_id) => {
-        differences(captured);
         const result = selected(
           captured.revision_snapshot,
           captured.process_ids,
         );
+        const only = differencesOnly(captured, result.processes.size);
         const ids = uniqueIds(captured.indicator_ids);
         const available = indicators(result.revisions);
         if (
@@ -422,7 +454,11 @@ export function createMockComparison(
         return rowPage(
           captured,
           "scores",
-          available.filter((indicator) => ids.includes(indicator.id)),
+          available.filter(
+            (indicator) =>
+              ids.includes(indicator.id) &&
+              (!only || scoreDiffers(indicator.id, result)),
+          ),
           result,
           ids,
           request_id,

@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useDifferences } from "../../app/differences";
 import { useServiceQueries } from "../../app/queries";
 import { selectionKey, useSelection } from "../../app/selection";
 import type { SelectedProcess } from "../../app/selection";
@@ -25,6 +26,36 @@ function useContentWidth() {
     return () => observer.disconnect();
   }, []);
   return { ref, width };
+}
+
+/**
+ * The tab's own "Show differences only" switch (#30, spec §6.7): off by
+ * default, disabled and off with fewer than two selected processes.
+ */
+function DifferencesControl({ tab }: { tab: ComparisonTab }) {
+  const { available, on, set } = useDifferences(tab);
+  const hint = `differences-hint-${tab}`;
+  return (
+    <div className="differences-control">
+      <label>
+        <input
+          type="checkbox"
+          checked={on}
+          disabled={!available}
+          aria-describedby={hint}
+          onChange={(event) => set(event.target.checked)}
+        />
+        Show differences only
+      </label>
+      <span id={hint} className="differences-hint">
+        {available
+          ? tab === "flows"
+            ? "Hides flows with the same amount in every selected process; a missing flow differs from 0."
+            : "Hides indicators with the same score in every selected process; N/A differs from a value."
+          : "Select at least two processes to show differences."}
+      </span>
+    </div>
+  );
 }
 
 export interface ComparisonLayout {
@@ -78,6 +109,7 @@ export function ComparisonHeader({
   return (
     <div className={children ? "comparison-frame" : undefined}>
       <div className="comparison-header" data-tab={tab}>
+        <DifferencesControl tab={tab} />
         <ComparabilityWarning headers={loaded} />
         {error && (
           <p role="alert" className="comparison-header-error">

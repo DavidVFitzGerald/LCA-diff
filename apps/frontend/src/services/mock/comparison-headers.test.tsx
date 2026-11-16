@@ -14,6 +14,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { createElement, Fragment, useEffect } from "react";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { AnnouncerProvider } from "../../app/announcer";
+import { DifferencesProvider } from "../../app/differences";
 import {
   SelectionProvider,
   selectionKey,
@@ -138,12 +139,16 @@ function render(options: Parameters<typeof mount>[0] = {}, tabs = false) {
       SelectionProvider,
       null,
       createElement(
-        AnnouncerProvider,
+        DifferencesProvider,
         null,
-        createElement(Probe),
-        tabs
-          ? createElement(Tabs)
-          : createElement(ComparisonHeader, { tab: "flows" }),
+        createElement(
+          AnnouncerProvider,
+          null,
+          createElement(Probe),
+          tabs
+            ? createElement(Tabs)
+            : createElement(ComparisonHeader, { tab: "flows" }),
+        ),
       ),
     ),
   });
