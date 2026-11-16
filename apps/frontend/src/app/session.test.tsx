@@ -215,9 +215,9 @@ describe("session restoration and zero protected reads", () => {
         ok: false,
       });
       await expect(
-        app.services().data.scoreSummaries({
+        app.services().data.scoreRows({
           revision_snapshot: [],
-          comparison_token: "protected",
+          limit: 100,
           process_ids: [],
           indicator_ids: [],
         }),
@@ -236,14 +236,16 @@ describe("Scores summary authentication boundary (#28)", () => {
     const app = harness(user("account-a"));
     await act(async () => {});
     let answer!: () => void;
-    app.data.scoreSummaries = vi.fn<typeof app.data.scoreSummaries>(
+    app.data.scoreRows = vi.fn<typeof app.data.scoreRows>(
       () =>
         new Promise((resolve) => {
           answer = () =>
             resolve({
               ok: true,
               data: {
-                summaries: [],
+                items: [],
+                next_cursor: null,
+                total_count: 0,
                 revision_snapshot: [],
                 comparison_token: "account-a-summary",
                 request_id: "summary",
@@ -251,15 +253,13 @@ describe("Scores summary authentication boundary (#28)", () => {
             });
         }),
     );
-    const pending = app.services().data.scoreSummaries({
+    const pending = app.services().data.scoreRows({
       revision_snapshot: [],
-      comparison_token: "account-a-summary",
+      limit: 100,
       process_ids: [],
       indicator_ids: [],
     });
-    await waitFor(() =>
-      expect(app.data.scoreSummaries).toHaveBeenCalledTimes(1),
-    );
+    await waitFor(() => expect(app.data.scoreRows).toHaveBeenCalledTimes(1));
     app.emit(next);
     answer();
     await expect(pending).resolves.toMatchObject({

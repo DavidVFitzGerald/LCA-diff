@@ -79,7 +79,6 @@ function render() {
     catalog: createDiscoveryCatalog(3),
     wrap: () => ({
       flowRows,
-      flowSummaries: comparison.flowSummaries,
       flowCells: comparison.flowCells,
     }),
   });

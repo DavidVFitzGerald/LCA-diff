@@ -46,8 +46,9 @@ describe(
       render(30);
       await selectAll();
       await settledAt(1300);
-      act(() => at(1312, 5)!.focus());
-      const flow = at(1312, -1)!.getAttribute("aria-label")!;
+      const focusRow = topRow()!.index + 6;
+      act(() => at(focusRow, 5)!.focus());
+      const flow = at(focusRow, -1)!.getAttribute("aria-label")!;
       // Its reference row sorts above, so the focused flow moves up one row
       // while the node at 1312/5 stays mounted, showing another flow.
       act(() => store.deselectMany([selectionKey(entries[5])]));
@@ -55,7 +56,7 @@ describe(
       const focused = document.activeElement as HTMLElement;
       expect(grid()).toContainElement(focused);
       expect(focused).toHaveAttribute("tabindex", "0");
-      expect(focused).toHaveAttribute("data-row", "1311");
+      expect(focused).toHaveAttribute("data-row", String(focusRow - 1));
       expect(
         focused.closest('[role="row"]')!.querySelector('[role="rowheader"]'),
       ).toHaveAttribute("aria-label", flow);
@@ -125,11 +126,11 @@ describe(
       anchor: { name: string; offset: number },
       rowCount: number,
     ) {
-      const summaries = app.flowSummaries.mock.calls.length;
+      const summaries = app.flowRows.mock.calls.length;
       const cells = app.flowCells.mock.calls.length;
       const rows = app.flowRows.mock.calls.length;
       await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
-      expect(app.flowSummaries).toHaveBeenCalledTimes(summaries);
+      expect(app.flowRows).toHaveBeenCalledTimes(summaries);
       expect(app.flowCells).toHaveBeenCalledTimes(cells);
       expect(app.flowRows).toHaveBeenCalledTimes(rows);
       expect(Number(grid().getAttribute("aria-rowcount"))).toBe(rowCount);

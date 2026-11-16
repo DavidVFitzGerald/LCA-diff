@@ -1,4 +1,6 @@
-/** Provisional §7 DTOs. Replace with generated OpenAPI DTOs in I1. */
+import type { components } from "../../../../packages/contracts/openapi";
+/** UI-facing contracts; wire DTOs are generated from the FastAPI schema. */
+export type WireSchemas = components["schemas"];
 declare const decimalBrand: unique symbol;
 export type DecimalString = string & { readonly [decimalBrand]: true };
 
@@ -19,17 +21,13 @@ export type ProcessId = string;
 export type FlowId = string;
 export type IndicatorId = string;
 export type Cursor = string;
-export type FlowType =
-  "Reference" | "Technosphere" | "Ecosphere Input" | "Ecosphere Output";
+export type FlowType = WireSchemas["FlowType"];
 export type FlowRowKey = `${string}|${FlowType}`;
 export function flowRowKey(flowId: FlowId, type: FlowType): FlowRowKey {
   return `${flowId}|${type}`;
 }
 
-export interface RevisionRef {
-  readonly release_id: ReleaseId;
-  readonly revision_id: RevisionId;
-}
+export type RevisionRef = Readonly<WireSchemas["RevisionRef"]>;
 export type RevisionSnapshot = readonly RevisionRef[];
 export interface RequestOptions {
   readonly signal?: AbortSignal;
@@ -164,6 +162,7 @@ export interface HeadersRequest extends SnapshotRequest {
   readonly process_ids: readonly ProcessId[];
 }
 export interface Indicator {
+  readonly summary?: RowSummary;
   readonly id: IndicatorId;
   readonly release_id: ReleaseId;
   readonly method_id: string;
@@ -194,6 +193,7 @@ export interface IndicatorTree extends SnapshotResponse {
   readonly default_indicator_ids: readonly IndicatorId[];
 }
 export interface FlowRow {
+  readonly summary?: RowSummary;
   readonly row_key: FlowRowKey;
   readonly flow_id: FlowId;
   readonly flow_type: FlowType;
@@ -244,49 +244,11 @@ export interface CellsResponse<T> extends SnapshotResponse {
   readonly cells: readonly T[];
   readonly comparison_token: string;
 }
-/**
- * Provisional frontend-only read summary (#20): whole-selection chart extrema
- * for one row window, independent of the visible process-column window. I1
- * reconciles it with the generated OpenAPI contract.
- */
-export interface FlowSummariesRequest extends SnapshotRequest {
-  readonly comparison_token: string;
-  /** The complete selected set (unbounded), so servers need no token state. */
-  readonly process_ids: readonly ProcessId[];
-  /** One row window, bounded by the transport window. */
-  readonly row_keys: readonly FlowRowKey[];
-}
-export interface FlowRowSummary {
-  readonly row_key: FlowRowKey;
-  /** P: exact lexeme of the largest present positive amount, or "0". */
+/** Whole-selection scale derived exactly from the API's NumericSummary. */
+export interface RowSummary {
   readonly max_positive: DecimalString;
-  /** N: exact unsigned lexeme of the most negative present amount, or "0". */
   readonly max_negative_magnitude: DecimalString;
-  readonly positive_count: number;
-  readonly negative_count: number;
-  /** Present exact zeros, distinct from absences. */
-  readonly zero_count: number;
   readonly absent_count: number;
-}
-export interface FlowSummariesResponse extends SnapshotResponse {
-  readonly summaries: readonly FlowRowSummary[];
-  readonly comparison_token: string;
-}
-/** Provisional whole-selection score extrema (#28); reconciled with OpenAPI in I1. */
-export type ScoreSummariesRequest = ScoreCellsRequest;
-export interface ScoreRowSummary {
-  readonly indicator_id: IndicatorId;
-  readonly max_positive: DecimalString;
-  readonly max_negative_magnitude: DecimalString;
-  readonly positive_count: number;
-  readonly negative_count: number;
-  readonly zero_count: number;
-  readonly missing_count: number;
-  readonly unresolved_basis_count: number;
-}
-export interface ScoreSummariesResponse extends SnapshotResponse {
-  readonly summaries: readonly ScoreRowSummary[];
-  readonly comparison_token: string;
 }
 export interface DataService {
   identity(options?: RequestOptions): Promise<ServiceResult<Identity>>;
@@ -315,10 +277,6 @@ export interface DataService {
     input: FlowCellsRequest,
     options?: RequestOptions,
   ): Promise<ServiceResult<CellsResponse<FlowCell>>>;
-  flowSummaries(
-    input: FlowSummariesRequest,
-    options?: RequestOptions,
-  ): Promise<ServiceResult<FlowSummariesResponse>>;
   scoreRows(
     input: ScoreRowsRequest,
     options?: RequestOptions,
@@ -327,10 +285,6 @@ export interface DataService {
     input: ScoreCellsRequest,
     options?: RequestOptions,
   ): Promise<ServiceResult<CellsResponse<ScoreCell>>>;
-  scoreSummaries(
-    input: ScoreSummariesRequest,
-    options?: RequestOptions,
-  ): Promise<ServiceResult<ScoreSummariesResponse>>;
   health(
     options?: RequestOptions,
   ): Promise<ServiceResult<{ readonly status: "ok" }>>;

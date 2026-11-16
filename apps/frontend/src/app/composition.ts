@@ -1,3 +1,8 @@
+import {
+  createFirebaseServices,
+  realSettings,
+} from "../services/firebase-adapter";
+import { createHttpData } from "../services/http-adapter";
 import type { Services } from "../services/contracts";
 import {
   browserMockSessionStorage,
@@ -30,6 +35,23 @@ export function createApplication(
   mode: unknown,
   scenario: unknown = null,
 ): ApplicationRuntime {
+  if (mode === "real") {
+    if (scenario !== null) throw new Error(CONFIGURATION_ERROR);
+    let settings;
+    try {
+      settings = realSettings(import.meta.env);
+    } catch {
+      throw new Error(CONFIGURATION_ERROR);
+    }
+    const firebase = createFirebaseServices(settings);
+    return {
+      mode: "real",
+      services: {
+        auth: firebase.auth,
+        data: createHttpData(settings.apiBase, firebase.tokens),
+      },
+    };
+  }
   if (mode !== "mock") throw new Error(CONFIGURATION_ERROR);
   if (scenario !== null && scenario !== "large")
     throw new Error(CONFIGURATION_ERROR);

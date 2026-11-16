@@ -76,15 +76,9 @@ function render(processes = 220, rowCount = 230, latency = 0) {
     busy("cells");
     return comparison.scoreCells(input, options);
   });
-  const scoreSummaries = vi.fn<typeof comparison.scoreSummaries>(
-    (input, options) => {
-      busy("summaries");
-      return comparison.scoreSummaries(input, options);
-    },
-  );
   const app = mount({
     catalog: discovery,
-    wrap: () => ({ ...comparison, scoreRows, scoreCells, scoreSummaries }),
+    wrap: () => ({ ...comparison, scoreRows, scoreCells }),
     ui: createElement(
       SelectionProvider,
       null,
@@ -111,7 +105,6 @@ function render(processes = 220, rowCount = 230, latency = 0) {
     comparison,
     scoreRows,
     scoreCells,
-    scoreSummaries,
     busyReads,
     entries,
     ids,
@@ -192,14 +185,14 @@ describe("Scores grid (#28)", { timeout: 20000 }, () => {
       screen.getByText(/different reference amounts and units/),
     ).toBeVisible();
     const rowsBefore = app.scoreRows.mock.calls.length;
-    const summaryBefore = app.scoreSummaries.mock.calls.length;
+    const summaryBefore = app.scoreRows.mock.calls.length;
     act(() => store.move(selectionKey(app.entries[5]), 0));
     await loaded();
     expect(at(0, 0)).toHaveAccessibleName(
       new RegExp(`: ${negative.replaceAll(".", "\\.")}, negative$`),
     );
     expect(app.scoreRows).toHaveBeenCalledTimes(rowsBefore);
-    expect(app.scoreSummaries).toHaveBeenCalledTimes(summaryBefore);
+    expect(app.scoreRows).toHaveBeenCalledTimes(summaryBefore);
   });
 
   it("virtualizes both axes, pages and batches bounded windows, keeping offscreen extrema unchanged", async () => {
@@ -247,10 +240,7 @@ describe("Scores grid (#28)", { timeout: 20000 }, () => {
     );
     for (const [request] of app.scoreRows.mock.calls)
       expect(request.limit).toBe(100);
-    for (const [request] of app.scoreSummaries.mock.calls) {
-      expect(request.process_ids).toHaveLength(220);
-      expect(request.indicator_ids.length).toBeLessThanOrEqual(100);
-    }
+
     for (const [request] of app.scoreCells.mock.calls)
       expect(
         request.process_ids.length * request.indicator_ids.length,

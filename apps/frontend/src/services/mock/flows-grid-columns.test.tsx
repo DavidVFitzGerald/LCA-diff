@@ -167,7 +167,7 @@ describe("Flows grid column operations (#25)", { timeout: 20000 }, () => {
     await settled();
     const reads = {
       rows: app.flowRows.mock.calls.length,
-      summaries: app.flowSummaries.mock.calls.length,
+      summaries: app.flowRows.mock.calls.length,
       headers: app.headers.mock.calls.length,
       cells: app.flowCells.mock.calls.length,
     };
@@ -205,7 +205,7 @@ describe("Flows grid column operations (#25)", { timeout: 20000 }, () => {
     quiet.stop();
     expect(quiet.seen).toEqual([]);
     expect(app.flowRows).toHaveBeenCalledTimes(reads.rows);
-    expect(app.flowSummaries).toHaveBeenCalledTimes(reads.summaries);
+    expect(app.flowRows).toHaveBeenCalledTimes(reads.summaries);
     expect(app.headers).toHaveBeenCalledTimes(reads.headers);
     // Cell tiles are read only for column compositions not already cached
     // (a read aborted when its window was left caches nothing), same token.
@@ -274,8 +274,9 @@ describe("Flows grid column operations (#25)", { timeout: 20000 }, () => {
     render(30);
     await selectAll();
     await settledAt(1300);
-    act(() => at(1312, 5)!.focus());
-    const flow = at(1312, -1)!.getAttribute("aria-label")!;
+    const focusRow = topRow()!.index + 6;
+    act(() => at(focusRow, 5)!.focus());
+    const flow = at(focusRow, -1)!.getAttribute("aria-label")!;
     removeColumn(entries[5]);
     await settled();
     expect(order()).not.toContain(entries[5].id);
@@ -330,7 +331,7 @@ describe(
       const { app, anchor, view } = await deepRemoval({ page: 2, times: 1 });
       const alert = await loadError();
       view.stop();
-      const summaries = app.flowSummaries.mock.calls.length;
+      const summaries = app.flowRows.mock.calls.length;
       const cells = app.flowCells.mock.calls.length;
       // At least five rows down and one column window (a 20-process tile) right.
       scrollTo(
@@ -338,7 +339,7 @@ describe(
         scroller().scrollLeft + 20 * COLUMN,
       );
       await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
-      expect(app.flowSummaries).toHaveBeenCalledTimes(summaries);
+      expect(app.flowRows).toHaveBeenCalledTimes(summaries);
       expect(app.flowCells).toHaveBeenCalledTimes(cells);
       expect(app.busyReads).toEqual([]);
       expect(grid()).toHaveAttribute("aria-busy", "true");

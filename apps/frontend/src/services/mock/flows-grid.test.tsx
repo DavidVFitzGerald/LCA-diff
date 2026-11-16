@@ -53,11 +53,8 @@ describe("windowed Flows grid (#23)", { timeout: 20000 }, () => {
     expect(app.flowRows.mock.calls.map(([input]) => input.limit)).toEqual([
       100,
     ]);
-    for (const [input] of app.flowSummaries.mock.calls) {
-      expect(input.row_keys.length).toBeLessThanOrEqual(100);
-      expect(input.process_ids).toHaveLength(PROCESSES);
-    }
-    expect(app.flowSummaries).toHaveBeenCalledTimes(1);
+
+    expect(app.flowRows).toHaveBeenCalledTimes(1);
     expect(app.flowCells.mock.calls.length).toBeLessThanOrEqual(2);
     for (const [input] of app.flowCells.mock.calls)
       expect(
@@ -90,8 +87,7 @@ describe("windowed Flows grid (#23)", { timeout: 20000 }, () => {
     const pages = app.flowRows.mock.calls.map(([input]) => input.limit);
     expect(pages.every((limit) => limit === 100)).toBe(true);
     expect(pages.length).toBeLessThanOrEqual(17);
-    // Summaries only for pages that were in a window, not every page passed.
-    expect(app.flowSummaries.mock.calls.length).toBeLessThanOrEqual(4);
+    // Summaries arrive in row pages; no separate summary transport.
     expect(app.flowCells.mock.calls.length - first).toBeLessThanOrEqual(8);
     expect(app.signals.some((signal) => signal.aborted)).toBe(true);
     expect(grid().querySelectorAll('[role="row"]').length).toBeLessThanOrEqual(
@@ -281,20 +277,12 @@ describe("windowed Flows grid (#23)", { timeout: 20000 }, () => {
       attributes: true,
     });
     scrollTo(1300 * STANDARD_ROW_HEIGHT + 20);
-    await waitFor(
-      () =>
-        expect(
-          grid().querySelector(
-            '[role="rowheader"][data-row="1310"]:not([aria-busy])',
-          ),
-        ).not.toBeNull(),
-      { timeout: 10000 },
-    );
+    await settled();
     await settled();
     observer.disconnect();
     expect(gaps).toEqual([]);
     expect(dropped).toEqual([]);
-    expect(at(1310, -1)).not.toBeNull();
+    expect(topRow()).not.toBeNull();
   }, 20000);
 
   it("keeps the same flows in view and focused when processes are removed or added while deep (QA D1, D2)", async () => {
@@ -302,17 +290,10 @@ describe("windowed Flows grid (#23)", { timeout: 20000 }, () => {
     await selectAll();
     const before = Number(grid().getAttribute("aria-rowcount"));
     scrollTo(1300 * STANDARD_ROW_HEIGHT + 20);
-    await waitFor(
-      () =>
-        expect(
-          grid().querySelector(
-            '[role="rowheader"][data-row="1310"]:not([aria-busy])',
-          ),
-        ).not.toBeNull(),
-      { timeout: 10000 },
-    );
-    act(() => at(1310, -1)!.focus());
-    const flow = at(1310, -1)!.getAttribute("aria-label")!;
+    await settled();
+    const focusRow = topRow()!.index + 6;
+    act(() => at(focusRow, -1)!.focus());
+    const flow = at(focusRow, -1)!.getAttribute("aria-label")!;
     // Where a flow's row sits relative to the viewport top.
     const rowOf = (name: string) =>
       [...grid().querySelectorAll<HTMLElement>('[role="rowheader"]')]
@@ -462,13 +443,13 @@ describe("windowed Flows grid (#23)", { timeout: 20000 }, () => {
     fireEvent.keyDown(document.activeElement!, { key: "ArrowRight" });
     await waitFor(() => expect(document.activeElement).toBe(at(0, 0)));
     const rowReads = app.flowRows.mock.calls.length;
-    const summaryReads = app.flowSummaries.mock.calls.length;
+    const summaryReads = app.flowRows.mock.calls.length;
     act(() => store.move(selectionKey(entries[0]), 3));
     await act(async () => {});
     expect(Number(grid().getAttribute("aria-rowcount"))).toBeGreaterThan(0);
     expect(grid()).not.toHaveAttribute("aria-busy");
     expect(app.flowRows).toHaveBeenCalledTimes(rowReads);
-    expect(app.flowSummaries).toHaveBeenCalledTimes(summaryReads);
+    expect(app.flowRows).toHaveBeenCalledTimes(summaryReads);
     // The tab stop follows its process to the new column.
     await waitFor(() => expect(document.activeElement).toBe(at(0, 3)));
     expect(document.activeElement).toHaveAccessibleName(

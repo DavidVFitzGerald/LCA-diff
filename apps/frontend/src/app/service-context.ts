@@ -20,7 +20,7 @@ export interface DemoGuidance {
 }
 export type MockScenarioName = "default" | "large";
 export interface ApplicationRuntime {
-  readonly mode: "mock" | "test";
+  readonly mode: "mock" | "real" | "test";
   readonly services: Services;
   readonly demo?: DemoGuidance;
 }
@@ -162,10 +162,8 @@ export function guardDataService(
     "indicatorTree",
     "flowRows",
     "flowCells",
-    "flowSummaries",
     "scoreRows",
     "scoreCells",
-    "scoreSummaries",
     "health",
   ] as const satisfies readonly (keyof DataService)[];
   return Object.fromEntries(
