@@ -15,6 +15,7 @@ import {
 import type { SelectionStore } from "../../app/selection";
 import { ScoresGrid } from "../../components/comparison/ScoresGrid";
 import { decimalString } from "../contracts";
+import type { IndicatorTree } from "../contracts";
 import { rowGeometry } from "../../components/comparison/geometry";
 import { createMockComparison } from "./comparison";
 import { createDiscoveryCatalog } from "./discovery";
@@ -60,7 +61,39 @@ function Probe() {
   }, [selection, chosen]);
   return entries.length && chosen.ids.length ? <ScoresGrid /> : null;
 }
-function render(processes = 220, rowCount = 230, latency = 0) {
+/** A second release's method whose GWP 100 is also a default (#107). */
+const FOREIGN_RELEASE = "99999999-0000-4000-8000-000000000001";
+const FOREIGN = "99999999-0000-4000-8000-0000000000aa";
+function withForeignRelease(tree: IndicatorTree): IndicatorTree {
+  const indicator = {
+    id: FOREIGN,
+    release_id: FOREIGN_RELEASE,
+    method_id: "foreign-ipcc",
+    method_name: "IPCC 2021",
+    method_version: "",
+    category: null,
+    name: "GWP 100",
+    unit: "kg CO2-eq",
+    source_order: 0,
+  };
+  return {
+    ...tree,
+    methods: [
+      ...tree.methods,
+      {
+        id: "foreign-ipcc",
+        release_id: FOREIGN_RELEASE,
+        name: "IPCC 2021",
+        version: "",
+        source_order: 0,
+        indicators: [indicator],
+        categories: [],
+      },
+    ],
+    default_indicator_ids: [...tree.default_indicator_ids, FOREIGN],
+  };
+}
+function render(processes = 220, rowCount = 230, latency = 0, foreign = false) {
   const catalog = scoresCatalog(processes, rowCount);
   const discovery = createDiscoveryCatalog(processes);
   const comparison = createMockComparison({
@@ -79,7 +112,23 @@ function render(processes = 220, rowCount = 230, latency = 0) {
   });
   const app = mount({
     catalog: discovery,
-    wrap: () => ({ ...comparison, scoreRows, scoreCells }),
+    wrap: () => ({
+      ...comparison,
+      scoreRows,
+      scoreCells,
+      ...(foreign
+        ? {
+            indicatorTree: async (
+              ...args: Parameters<typeof comparison.indicatorTree>
+            ) => {
+              const result = await comparison.indicatorTree(...args);
+              return result.ok
+                ? { ...result, data: withForeignRelease(result.data) }
+                : result;
+            },
+          }
+        : {}),
+    }),
     ui: createElement(
       SelectionProvider,
       null,
@@ -146,6 +195,23 @@ function scroll(top: number, left: number) {
 }
 
 describe("Scores grid (#28)", { timeout: 20000 }, () => {
+  it("requests only indicators of the selected processes' releases (#107)", async () => {
+    const app = render(3, 2, 0, true);
+    // Both releases' defaults are chosen; the mock, like the API, rejects
+    // indicators outside the comparison's revision snapshot.
+    await waitFor(() =>
+      expect([...indicators.ids].sort()).toEqual([app.ids[0], FOREIGN].sort()),
+    );
+    act(() => store.selectMany(app.entries));
+    await loaded();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(app.scoreRows).toHaveBeenCalled();
+    for (const [input] of app.scoreRows.mock.calls)
+      expect(input.indicator_ids).toEqual([app.ids[0]]);
+    for (const [input] of app.scoreCells.mock.calls)
+      expect(input.indicator_ids).not.toContain(FOREIGN);
+  });
+
   it("renders source identity, valid zero and unavailable cells with whole-selection signed geometry", async () => {
     const app = render(6, 2);
     await select(app);

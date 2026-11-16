@@ -19,6 +19,7 @@ import type {
   ComparisonPage,
   ComparisonRowsRequest,
   FlowRow,
+  IndicatorTree,
   RequestOptions,
   ScoreRowsRequest,
   ServiceResult,
@@ -74,6 +75,8 @@ function render(
     input: ComparisonRowsRequest,
     signal?: AbortSignal,
   ) => Promise<ServiceResult<ComparisonPage<FlowRow>>> | undefined,
+  /** Optional indicator-tree transform (#107). */
+  tree?: (value: IndicatorTree) => IndicatorTree,
 ) {
   const comparison = createMockComparison();
   const responses: FlowRow[][] = [];
@@ -94,7 +97,12 @@ function render(
     wrap: () => ({
       flowRows,
       flowCells: comparison.flowCells,
-      indicatorTree: comparison.indicatorTree,
+      indicatorTree: async (input, options) => {
+        const result = await comparison.indicatorTree(input, options);
+        return result.ok && tree
+          ? { ...result, data: tree(result.data) }
+          : result;
+      },
       scoreRows,
       scoreCells: comparison.scoreCells,
     }),
@@ -820,5 +828,40 @@ describe("Show differences only (#30)", { timeout: 20000 }, () => {
       ),
     );
     expect(grid()).toHaveAttribute("aria-rowcount", "0");
+  });
+});
+
+describe("Scores indicator release scope (#107)", { timeout: 20000 }, () => {
+  it("explains when no chosen indicator belongs to the selected processes' release", async () => {
+    // Replace the tree's release with another one: every chosen indicator
+    // then belongs to a release outside the selection.
+    render(undefined, (value) => ({
+      ...value,
+      methods: value.methods.map((method) => ({
+        ...method,
+        release_id: "99999999-0000-4000-8000-000000000001",
+        indicators: method.indicators.map((indicator) => ({
+          ...indicator,
+          release_id: "99999999-0000-4000-8000-000000000001",
+        })),
+        categories: method.categories.map((category) => ({
+          ...category,
+          indicators: category.indicators.map((indicator) => ({
+            ...indicator,
+            release_id: "99999999-0000-4000-8000-000000000001",
+          })),
+        })),
+      })),
+    }));
+    await selectAll();
+    act(() => fireEvent.click(screen.getByRole("tab", { name: "Scores" })));
+    const panel = screen.getByRole("tabpanel", { name: "Scores" });
+    await waitFor(() =>
+      expect(panel).toHaveTextContent(
+        "None of the chosen indicators belongs to the database version of the selected processes.",
+      ),
+    );
+    expect(within(panel).queryByRole("grid")).toBeNull();
+    expect(within(panel).queryByRole("alert")).toBeNull();
   });
 });
