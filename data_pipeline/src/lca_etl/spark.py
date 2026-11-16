@@ -2,6 +2,8 @@
 
 import argparse
 import json
+import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +14,11 @@ def extract(
     input_paths: list[str], output: Path, *, max_bytes: int, master: str = "local[2]"
 ) -> None:
     from pyspark.sql import SparkSession
+
+    # SparkContext captures this environment variable as pythonExec. Use the
+    # current uv interpreter rather than the image's default .venv location, so
+    # local workers import the same locked packages when the environment moves.
+    os.environ["PYSPARK_PYTHON"] = sys.executable
 
     spark = (
         SparkSession.builder.master(master)

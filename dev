@@ -49,10 +49,45 @@ if [[ "${1:-}" == app-* ]]; then
     fi
 fi
 app_compose=(docker compose --project-name "$app_project" --project-directory "$repo_dir" --file "$repo_dir/compose.app.yaml")
-app_port() { local value="${!1:-$2}"; [[ "$value" =~ ^[0-9]+$ ]] || { echo "$1 must be a port number." >&2; exit 2; }; echo "$value"; }
-app_frontend_port="$(app_port LCA_APP_FRONTEND_PORT 5180)"
-app_api_port="$(app_port LCA_APP_API_PORT 8010)"
-app_auth_port="$(app_port LCA_APP_AUTH_PORT 9110)"
+app_port() {
+    local variable="$1" value="${!1-$2}" line
+    # Resolve a literal .env setting only when the process environment did not
+    # define it. Never source/eval configuration; interpolation is not a port.
+    if [[ ! -v "$variable" && -f "$repo_dir/.env" ]]; then
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            if [[ "$line" =~ ^[[:space:]]*(export[[:space:]]+)?$variable[[:space:]]*=[[:space:]]*(.*)$ ]]; then
+                value="${BASH_REMATCH[2]}"
+                value="${value%%[[:space:]]#*}"
+                value="${value%$'\r'}"
+                value="${value%"${value##*[![:space:]]}"}"
+                if [[ "$value" == \"*\" || "$value" == \'*\' ]]; then
+                    value="${value:1:${#value}-2}"
+                fi
+            fi
+        done < "$repo_dir/.env"
+    fi
+    if [[ ! "$value" =~ ^[0-9]+$ ]]; then
+        echo "$variable must be an integer from 1 to 65535." >&2
+        return 2
+    fi
+    # Strip leading zeros before arithmetic: no octal interpretation or overflow,
+    # even for arbitrarily long inputs. The remaining value has at most 5 digits.
+    value="${value#"${value%%[!0]*}"}"
+    if [[ -z "$value" || "${#value}" -gt 5 ]] || (( 10#$value > 65535 )); then
+        echo "$variable must be an integer from 1 to 65535." >&2
+        return 2
+    fi
+    printf '%s\n' "$value"
+}
+if [[ "${1:-}" == app-* ]]; then
+    app_frontend_port="$(app_port LCA_APP_FRONTEND_PORT 5180)"
+    app_api_port="$(app_port LCA_APP_API_PORT 8010)"
+    app_auth_port="$(app_port LCA_APP_AUTH_PORT 9110)"
+    # Compose receives the same canonical decimal values used by the port probe.
+    export LCA_APP_FRONTEND_PORT="$app_frontend_port"
+    export LCA_APP_API_PORT="$app_api_port"
+    export LCA_APP_AUTH_PORT="$app_auth_port"
+fi
 app_ports_free() {
     # A running stack legitimately owns its ports; only check before a fresh start.
     [[ -z "$("${app_compose[@]}" ps --quiet)" ]] || return 0
@@ -76,7 +111,7 @@ SUMMARY
 case "${1:-help}" in
     build|up|down|shell|check|logs|backend-up|backend-down|etl-up|etl-shell|etl-run|airflow-up|api-up|api-down|auth-up|publication-up|publication-run|app-up|app-down|app-reset|app-status|app-logs|app-smoke|app-import|app-e2e)
         bash "$repo_dir/.devcontainer/check-docker.sh" ;;
-    config|help) ;;
+    config|app-config|help) ;;
     *) echo "Unknown command: $1" >&2; exit 2 ;;
 esac
 case "${1:-help}" in
@@ -97,7 +132,8 @@ case "${1:-help}" in
     shell) "${compose[@]}" exec workspace bash ;;
     check) "${compose[@]}" exec -T workspace bash .devcontainer/check-env.sh ;;
     logs) "${compose[@]}" logs --tail=100 workspace ;;
-    config) "${compose[@]}" config --quiet && "${app_compose[@]}" config --quiet ;;
+    config) "${compose[@]}" config --quiet ;;
+    app-config) "${app_compose[@]}" config --quiet ;;
     app-up) app_ports_free; "${app_compose[@]}" up --detach --build --wait --remove-orphans; app_summary ;;
     app-down) "${app_compose[@]}" down --remove-orphans ;;
     app-reset)
@@ -113,6 +149,6 @@ case "${1:-help}" in
     app-import) shift; "${app_compose[@]}" --profile import run --rm --no-deps import "$@" ;;
     help)
         echo 'Usage: ./dev {build|up|shell|check|down|logs|config|backend-up|backend-down|api-up|api-down|auth-up|etl-up|etl-shell|etl-run|airflow-up|publication-up|publication-run}'
-        echo '       ./dev {app-up|app-down|app-reset [--yes]|app-status|app-logs [service]|app-smoke|app-e2e|app-import <lca-import args>}'
+        echo '       ./dev {app-config|app-up|app-down|app-reset [--yes]|app-status|app-logs [service]|app-smoke|app-e2e|app-import <lca-import args>}'
         echo 'Requires a rootless Docker daemon; run development tools inside its workspace.' ;;
 esac

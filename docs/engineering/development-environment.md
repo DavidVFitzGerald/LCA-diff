@@ -93,7 +93,16 @@ On the Docker host, ensure `docker info` reports rootless, then:
 ./dev shell
 ```
 
-`config` validates Compose without requiring a daemon. Runtime operations perform
+`config` validates only the workspace Compose configuration without requiring a
+daemon. `app-config` validates the separate application Compose configuration,
+including all three `LCA_APP_*_PORT` values, without requiring a daemon. App ports
+must be decimal integers 1–65535; leading zeros are accepted and removed before
+Compose sees them. Invalid app ports affect only `app-*`, including `app-down`
+(and its `make down` alias), never workspace commands.
+Process environment values take precedence over literal `.env` values (unquoted,
+single-quoted or double-quoted, with optional trailing comments). Port expressions
+such as `${PORT}` are rejected; set a literal integer or an explicit process
+environment value instead. Configuration is never sourced as shell code. Runtime operations perform
 the rootless preflight. `./dev logs` shows workspace logs; `./dev down` removes
 this project's container without deleting source files. Do not prune unrelated
 containers/images/volumes. `COMPOSE_PROJECT_NAME` and `FRONTEND_PORT` allow isolated
@@ -104,6 +113,44 @@ If host Make already exists, `make dev-build`, `dev-up`, `dev-shell`, `dev-check
 aliases. Inside the container, `make dev-check` runs the environment smoke check.
 All dependency resolution, format/lint/type/build/test commands belong inside the
 workspace. No Docker socket is exposed there; lifecycle commands stay on the host.
+
+Before Python/backend work in either `./dev shell` or the editor container
+terminal, explicitly select all workspace members from the committed lock:
+
+```sh
+uv sync --frozen --all-packages
+make backend-format-check backend-lint backend-typecheck backend-test-unit
+```
+
+`./dev up` starts the workspace without syncing packages. `./dev check` and the
+editor post-create smoke check run a default frozen sync, which does not select
+all Python workspace members; they do not replace the command above. These four
+backend checks need neither PostgreSQL nor private inputs.
+
+The ETL overlay also needs an existing private-input directory, even when using
+only synthetic fixtures. For example, create `private/empty-input` inside the
+workspace container, then on the host use:
+
+```sh
+export LCA_PRIVATE_INPUT_DIR="$PWD/private/empty-input"
+./dev publication-up
+./dev publication-run bash -c 'uv sync --frozen --all-packages && env LCA_DATABASE_URL=postgresql+psycopg://lca_migrator:local-migration-only@postgres/lca uv run --frozen alembic upgrade head'
+./dev etl-run make backend-test-etl
+./dev publication-run make backend-test-seed
+```
+
+Spark workers use the active uv interpreter (`sys.executable`). The default is
+`/workspaces/lca-diff/.venv/bin/python`. To put the environment on the ETL
+container's own filesystem instead, pass the override **inside** that container:
+
+```sh
+./dev publication-run env UV_PROJECT_ENVIRONMENT=/var/tmp/lca-venv bash -c 'uv sync --frozen --all-packages && make backend-test-etl backend-test-seed'
+```
+
+A host-side `UV_PROJECT_ENVIRONMENT` alone is not forwarded by Compose `exec`.
+No paired `PYSPARK_PYTHON` override is needed. Migrations and destructive tests
+above operate on this project's disposable `postgres`/`postgres-target`, never
+on the separate `app-*` stack. See the exact test host guards below.
 
 For VS Code: connect using Remote SSH, open this repository on the Docker host,
 and choose **Dev Containers: Reopen in Container**. Required editor extensions are
@@ -141,9 +188,19 @@ boundaries.
 **Isolation.** `./dev app-*` always passes `--project-name ${LCA_APP_PROJECT:-lca-diff-app}`,
 so `COMPOSE_PROJECT_NAME` (used for workspaces and worktrees) never selects it.
 The stack has its own network and named volumes, `app-db` and `app-archive`. Its
-database service is `db`. The destructive suites refuse any host other than
-`postgres`/`postgres-target`, and they run in other projects whose networks cannot
-resolve `db`. Running `make backend-test-integration` and
+database service is `db`. Destructive test guards require database name `lca`
+and these host allowlists:
+
+- API fixtures (`apps/api/tests/conftest.py`) and schema tests
+  (`packages/python/lca_shared/tests/test_schema.py`): `postgres`, `localhost`,
+  `127.0.0.1`.
+- Publication tests (`data_pipeline/tests/test_publication.py`): `postgres`,
+  `postgres-target`.
+- Seed tests (`data_pipeline/tests/test_seed.py`): `postgres-target` only.
+
+Run these suites only in their disposable test project. The Compose test networks
+cannot resolve the app stack's `db`; the guards themselves also permit the
+loopback hosts above in the API/schema suites. Running `make backend-test-integration` and
 `make backend-test-publication` against a workspace while the stack runs left its
 release, revision, pointer, operations and archive digest unchanged (record below).
 The default host ports 5180/8010/9110 avoid the workspace (5173) and
