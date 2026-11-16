@@ -85,8 +85,8 @@ under ADR 0006. Use one issue and one PR per L milestone.
 **Maintainer-requested revision (2026-11-14; accepted ADR 0005, #55):** PR #56
 merged at `125b090` with explicit maintainer authorization; B1–B4 may overlap
 F3–F5. This overrides the
-frontend-completion prerequisite below only for backend implementation; I1 still
-requires Phase 1, B2 and B4. B1 precedes B2/B3; B3 precedes B4; B4's API visibility
+frontend-completion prerequisite below only for backend implementation; I1 then
+required Phase 1, B2 and B4 (ADR 0006 replaces I1 with L2, without the Phase 1 gate). B1 precedes B2/B3; B3 precedes B4; B4's API visibility
 gate requires B2. Use exactly one implementation issue and one PR per B milestone,
 even across sessions, with internal checklists and incremental commits. This is
 an explicit exception to session-sized issue/splitting rules, including role and
@@ -246,7 +246,7 @@ keep its UI private, and do not expose the Docker socket to Airflow for ETL.
   publish and Terraform apply require explicit maintainer approval (§§8–9).
 
 Apply specification §9.2's tiered CI. Every PR receives applicable frozen-lock,
-format/lint/type, unit, targeted integration, build, migration, Terraform and
+format/lint/type, unit, targeted integration, build, migration, Terraform (post-MVP) and
 critical Playwright smoke checks. Full integration/E2E/performance checks run on
 request and for release candidates. Introduce checks with their components; do
 not report unbuilt layers as passed or weaken gates to conceal failures.
