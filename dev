@@ -57,11 +57,12 @@ app_port() {
         while IFS= read -r line || [[ -n "$line" ]]; do
             if [[ "$line" =~ ^[[:space:]]*(export[[:space:]]+)?$variable[[:space:]]*=[[:space:]]*(.*)$ ]]; then
                 value="${BASH_REMATCH[2]}"
-                value="${value%%[[:space:]]#*}"
                 value="${value%$'\r'}"
-                value="${value%"${value##*[![:space:]]}"}"
-                if [[ "$value" == \"*\" || "$value" == \'*\' ]]; then
-                    value="${value:1:${#value}-2}"
+                if [[ "$value" =~ ^\"([^\"]*)\"[[:space:]]*(#.*)?$ || "$value" =~ ^\'([^\']*)\'[[:space:]]*(#.*)?$ ]]; then
+                    value="${BASH_REMATCH[1]}"
+                else
+                    value="${value%%[[:space:]]#*}"
+                    value="${value%"${value##*[![:space:]]}"}"
                 fi
             fi
         done < "$repo_dir/.env"

@@ -7,7 +7,7 @@ independent; the maintainer supplied the successful output in response to the
 requested editor-reopen check. This attribution is distinct from agent-observed GUI evidence.
 L1 (#96) delivered the single-command local application stack in merged PR #100.
 L2 (#97, PR #105) connects the real adapters; its final evidence is recorded in
-[L2 verification](l2-verification.md). Maintainer review/merge remains required.
+[L2 verification](l2-verification.md). PR #105 merged at `cd6d8a6`; #97 is closed.
 
 ## Topology and identity
 
