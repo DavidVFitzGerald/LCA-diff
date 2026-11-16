@@ -1,8 +1,9 @@
 # LCA diff implementation roadmap
 
-Status: 2026-11-16 — local-only MVP revision (accepted ADR 0006, #95). Remaining
-MVP path: L1 → L2 → L3. Milestone status means verified delivery, not merely
-written plans.
+Status: 2026-11-16 — local-only MVP revision (accepted ADR 0006, #95). The
+local MVP path L1 → L2 → L3 is delivered: L3 merged through PR #109 at
+`ae65061`. Remaining milestones are post-MVP. Milestone status means verified
+delivery, not merely written plans.
 
 ## Authority and delivery policy
 
@@ -105,7 +106,7 @@ workflow is documented in [B4 publication](b4-publication.md).
 | B1–B4 — Phase 2, backend and ingestion | B1 #57 / PR #61 merged; B2 #58 and B3 #59 delivered to main through recovery PR #82 after QA/CI; B4 #60 / PR #86 merged at `f0e2f9c` after QA/CI | M1/M2 and accepted ADR 0005, then milestone gates below |
 | L1 — single-command local stack (#96) | Delivered in PR #100 at `41c6b14`; #96 closed | ADR 0006 merged (PR #98, `cf7f1d5`); B1–B4 delivered |
 | L2 — real adapter and Auth Emulator (#97), replaces I1 locally | Delivered in PR #105, merged at `cd6d8a6`; #97 closed after independent QA and all five hosted jobs passed | L1 delivered in PR #100 at `41c6b14` |
-| L3 — differences toggles and local MVP acceptance (#30) | Implemented on `feat/l3-differences`; awaiting independent QA and maintainer merge ([local MVP verification](local-mvp-verification.md)) | L2 delivered in PR #105 at `cd6d8a6` |
+| L3 — differences toggles and local MVP acceptance (#30) | Delivered in PR #109, merged at `ae65061`; #30 and bundled fix #107 closed after independent clean-clone QA and all five hosted jobs passed ([local MVP verification](local-mvp-verification.md)). Follow-up #108 open | L2 delivered in PR #105 at `cd6d8a6` |
 | PM1 — hosted release: infrastructure/deployment (former R1) | Post-MVP | L3; maintainer scheduling |
 | PM2 — full-data validation and hosted release (former R2) | Post-MVP | PM1 |
 | PM3 — deferred frontend completion (#29, #31–#34) | Post-MVP | L3 |
@@ -415,7 +416,7 @@ emulator-token request returns the seeded release, and unauthenticated/unverifie
 requests are denied. Data survives down/up, and reset recreates a clean seed. Seed
 idempotence and decimal round-trip are tested. The README quick start is current.
 
-Delivery (engineering, awaiting QA): `compose.app.yaml` with its own project and
+Delivery (PR #100 at `41c6b14`): `compose.app.yaml` with its own project and
 volumes, `./dev app-up|app-down|app-reset --yes|app-status|app-logs|app-smoke|app-import`
 and `make up`/`make down`. The committed invented seed is `data_pipeline/seed/`, a pre-built
 B3 artifact loaded only through B4 with fixed operation IDs. The tests are `make
@@ -472,7 +473,10 @@ differences, reorder/remove columns, and find data persisted after restart. All
 applicable per-PR checks pass. Remaining post-MVP gaps are listed explicitly.
 
 L3 delivery evidence: [local MVP verification](local-mvp-verification.md).
-Final clean-clone QA and hosted CI status are recorded on #30.
+Independent clean-clone QA passed at `f57d5e6` (recorded on #30), and all five
+hosted jobs passed. PR #109 merged at `ae65061`; #30 and #107 are closed. This
+meets the local MVP definition of done. #108 (release labels in the indicator
+tree with several published releases) remains open and ungroomed.
 
 ## Post-MVP — hosted release and deferred completion
 
