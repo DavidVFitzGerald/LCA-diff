@@ -68,6 +68,20 @@ DESIGN-NOW interfaces without implementing POST-MVP features.
 
 ## Delivery sequence and gates
 
+**Local-only MVP (2026-11-16; proposed ADR 0006, #95 — authoritative only after
+merge):** the MVP runs locally only. Remaining MVP work is three sequential
+issues/PRs:
+- L1 [#96](https://github.com/DavidVFitzGerald/LCA-diff/issues/96): `./dev app-up` single-command stack with a seeded synthetic release.
+- L2 [#97](https://github.com/DavidVFitzGerald/LCA-diff/issues/97): real HTTP/Firebase-emulator adapter with generated DTOs; replaces I1 locally.
+- L3 [#30](https://github.com/DavidVFitzGerald/LCA-diff/issues/30): differences toggles and local acceptance.
+
+L2 no longer waits for the mock-only Phase 1 gate. Cloud
+infrastructure/deployment (former R1), full-data release validation (former R2),
+browser workspace persistence and deferred F5 tasks #29, #31–#34 are post-MVP
+(label `post-MVP`); do not start them without a new maintainer instruction. Where
+the older text below or in role documents conflicts with this, this revision wins
+once ADR 0006 is merged. Use one issue and one PR per L milestone.
+
 **Maintainer-requested revision (2026-11-14; accepted ADR 0005, #55):** PR #56
 merged at `125b090` with explicit maintainer authorization; B1–B4 may overlap
 F3–F5. This overrides the
@@ -118,8 +132,9 @@ boundary remains authoritative; its scheduling gate is partially superseded.
    reconciliation, audit reports, and publication through small issues. Connect
    a real service adapter; retain mocks for deterministic tests. Generate TS
    DTOs from FastAPI OpenAPI, reconcile provisional contracts, and verify adapter
-   parity. Complete real auth/integration/E2E checks. Infrastructure, deployment,
-   licensing and full-data validation remain MVP completion gates.
+   parity. Complete real auth/integration/E2E checks against the local stack
+   (Auth Emulator). Under ADR 0006, infrastructure, deployment, licensing and
+   full-data validation are post-MVP gates of a later hosted release.
 
 In Phase 1 define provisional typed DTOs against specification §7 without
 implementing an API server early. Components/hooks must not call HTTP/Firebase
@@ -202,7 +217,9 @@ Also choose and commit a pinned frontend package-manager lockfile.
 Provide container-backed `make dev-up`, `make dev-down`, `make import`,
 `make format`, `make lint`, `make typecheck`, `make test`, `make test-unit`,
 `make test-integration`, and `make test-e2e` flows. Document exact invocations once
-implemented. Compose profiles must let mock frontend work run independently of
+implemented. The local MVP application starts with `./dev app-up` (wrapped by
+`make up`), stops with `./dev app-down` and resets only with explicit confirmation
+(L1 #96). Compose profiles must let mock frontend work run independently of
 API/Postgres/Airflow/Spark. Separate Airflow metadata from application data,
 keep its UI private, and do not expose the Docker socket to Airflow for ETL.
 
@@ -223,7 +240,8 @@ keep its UI private, and do not expose the Docker socket to Airflow for ETL.
 - No arbitrary selection cap. Virtualize rows and columns, batch/window reads,
   preserve revision snapshots, and compute differences only on demand.
 - No protected data before verified authentication; clear in-memory data/caches
-  on logout/account change. Persist workspace under versioned UID-scoped keys.
+  on logout/account change. Post-MVP (ADR 0006): persist workspace under
+  versioned UID-scoped keys.
 - Published revisions are immutable; promotion is not publication. Production
   publish and Terraform apply require explicit maintainer approval (§§8–9).
 

@@ -85,22 +85,25 @@ alongside F4 verification using its existing service/auth/selection prerequisite
 Scores-grid integration #28 still requires both #26 and #27. This changes task
 scheduling only; product/scientific scope and F4/F5 acceptance gates are unchanged.
 
-Current handoff (2026-11-16): #26 and #27 are merged/closed; #27 was delivered
-by PR #88 at `f5769bb`. PM rechecked #28 as READY against those merged interfaces.
-Scores implementation/verification is on `feat/f5-scores`; see
-[Scores evidence](f5-scores-verification.md). Leave #28 open for independent QA,
-required checks and review/merge; later F5 dependencies remain unchanged.
+Current handoff (2026-11-16): #26, #27 (PR #88, `f5769bb`) and #28 (PR #92,
+`d4827c5`) are merged/closed; see [Scores evidence](f5-scores-verification.md).
+
+**Local-only MVP re-scope (proposed ADR 0006, #95):** #30 is now L3 (differences
+toggles on the real API plus local MVP acceptance) and depends on L2 #97, which
+depends on L1 #96. #29, #31, #32, #33 and #34 carry the `post-MVP` label and the
+Post-MVP milestone, with their bodies kept for later re-grooming. The table keeps
+their original keys and dependencies for history.
 
 | Key | Issue | Blocking predecessors |
 | --- | --- | --- |
 | F5-01 | [#27 — Add the indicator tree and source-ordered selection state](https://github.com/DavidVFitzGerald/LCA-diff/issues/27) | [#8](https://github.com/DavidVFitzGerald/LCA-diff/issues/8), [#9](https://github.com/DavidVFitzGerald/LCA-diff/issues/9), [#15](https://github.com/DavidVFitzGerald/LCA-diff/issues/15), [#19](https://github.com/DavidVFitzGerald/LCA-diff/issues/19) |
 | F5-02 | [#28 — Assemble windowed Scores with valid and unavailable cell states](https://github.com/DavidVFitzGerald/LCA-diff/issues/28) | [#26](https://github.com/DavidVFitzGerald/LCA-diff/issues/26), [#27](https://github.com/DavidVFitzGerald/LCA-diff/issues/27) |
-| F5-03 | [#29 — Implement exact on-demand difference queries in mock services](https://github.com/DavidVFitzGerald/LCA-diff/issues/29) | [#28](https://github.com/DavidVFitzGerald/LCA-diff/issues/28) |
-| F5-04 | [#30 — Wire independent difference toggles and canonical query caching](https://github.com/DavidVFitzGerald/LCA-diff/issues/30) | [#29](https://github.com/DavidVFitzGerald/LCA-diff/issues/29) |
-| F5-05 | [#31 — Persist the versioned account-scoped workspace](https://github.com/DavidVFitzGerald/LCA-diff/issues/31) | [#30](https://github.com/DavidVFitzGerald/LCA-diff/issues/30) |
-| F5-06 | [#32 — Reconcile restored IDs and publication changes atomically](https://github.com/DavidVFitzGerald/LCA-diff/issues/32) | [#31](https://github.com/DavidVFitzGerald/LCA-diff/issues/31) |
-| F5-07 | [#33 — Complete comparison loading, recovery and accessibility states](https://github.com/DavidVFitzGerald/LCA-diff/issues/33) | [#32](https://github.com/DavidVFitzGerald/LCA-diff/issues/32) |
-| F5-08 | [#34 — Record full mock-frontend acceptance and the Phase 1 gate](https://github.com/DavidVFitzGerald/LCA-diff/issues/34) | [#33](https://github.com/DavidVFitzGerald/LCA-diff/issues/33) |
+| F5-03 (post-MVP) | [#29 — Implement exact on-demand difference queries in mock services](https://github.com/DavidVFitzGerald/LCA-diff/issues/29) | [#28](https://github.com/DavidVFitzGerald/LCA-diff/issues/28) |
+| F5-04 → L3 | [#30 — Differences toggles on the real API and local MVP acceptance](https://github.com/DavidVFitzGerald/LCA-diff/issues/30) | [#97](https://github.com/DavidVFitzGerald/LCA-diff/issues/97) (formerly #29) |
+| F5-05 (post-MVP) | [#31 — Persist the versioned account-scoped workspace](https://github.com/DavidVFitzGerald/LCA-diff/issues/31) | [#30](https://github.com/DavidVFitzGerald/LCA-diff/issues/30) |
+| F5-06 (post-MVP) | [#32 — Reconcile restored IDs and publication changes atomically](https://github.com/DavidVFitzGerald/LCA-diff/issues/32) | [#31](https://github.com/DavidVFitzGerald/LCA-diff/issues/31) |
+| F5-07 (post-MVP) | [#33 — Complete comparison loading, recovery and accessibility states](https://github.com/DavidVFitzGerald/LCA-diff/issues/33) | [#32](https://github.com/DavidVFitzGerald/LCA-diff/issues/32) |
+| F5-08 (post-MVP) | [#34 — Record full mock-frontend acceptance and the Phase 1 gate](https://github.com/DavidVFitzGerald/LCA-diff/issues/34) | [#33](https://github.com/DavidVFitzGerald/LCA-diff/issues/33) |
 
 ## Coverage and evidence ownership
 

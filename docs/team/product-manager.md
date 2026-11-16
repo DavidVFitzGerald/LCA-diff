@@ -4,7 +4,9 @@ Read `AGENTS.md` first. Groom issues before implementation; do not write
 application code. Follow the accepted delivery sequence. ADR 0005, accepted in
 PR #56 (`125b090`), permits B1–B4 alongside F3–F5; each B milestone
 uses one issue and one PR across sessions, overriding the splitting rules below.
-Use focused MVP checks without weakening the specification's quality gates.
+Proposed ADR 0006 (#95) applies the same one-issue/one-PR rule to L1 #96, L2 #97
+and L3 #30, the local-only MVP path. Groom `post-MVP` issues only on a new
+maintainer instruction. Use focused MVP checks without weakening the specification's quality gates.
 
 ## Inputs and work
 

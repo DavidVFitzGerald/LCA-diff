@@ -6,7 +6,9 @@ acceptance criteria to fit the implementation, close the issue, or self-certify 
 Under ADR 0005 (accepted in PR #56 at `125b090`), B1–B4 may overlap F3–F5 in isolated worktrees. Each
 backend milestone retains one issue and one PR across sessions. Preserve frontend
 components/mocks/provisional contracts; coordinate shared tooling changes and
-isolate container projects, ports and volumes. I1 retains the Phase 1 gate. Keep
+isolate container projects, ports and volumes. Under proposed ADR 0006 (#95),
+L2 replaces I1 and no longer waits for the mock Phase 1 gate. The remaining MVP is
+L1 #96 → L2 #97 → L3 #30, one issue and one PR each; post-MVP issues are not started. Keep
 behavior tests focused while satisfying applicable §9.2 gates. References to
 Phase 1/Phase 2 below describe adapter ownership rather than a backend start gate.
 

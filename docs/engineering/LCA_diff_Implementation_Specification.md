@@ -1,6 +1,6 @@
 # LCA diff — Detailed Product and Engineering Specification
 
-**Status:** Revised implementation blueprint, 13 November 2026 (v2; supersedes 12 November draft)  
+**Status:** Revised implementation blueprint, 16 November 2026 (v3; local-only MVP per proposed ADR 0006, see §0.3)  
 **Audience:** AI software engineering agents, human engineers, QA, and maintainers  
 **Companion:** `LCA_diff_PRD.md` (under 1,000 words; canonical repository copy in `docs/product/`)
 
@@ -47,6 +47,17 @@ merged; revisit it when another regular maintainer joins.
 5. Resolve conflicting accepted ADRs by explicit supersession (or newest accepted amendment with a documented relationship), not by file naming or guessing. If no clear precedence exists, flag a blocker and seek a decision before changing scientifically material behavior.
 
 **Precedence for product/architecture instructions:** latest applicable **accepted ADR on `main`** → current implementation specification on `main` → current PRD → incidental issue text. Historical/archive/reference documents are excluded from agent implementation context, not fallback authority. GitHub Issues are execution plans, **not** authority for changing product/architecture contracts without an approved ADR/spec change. User-provided raw files remain the factual source of truth about their **own data format/content**; documentation cannot make a malformed source value correct. External library documentation guides implementation but does not override agreed product semantics.
+
+### 0.3 Local-only MVP scope revision (proposed ADR 0006, issue #95)
+
+The MVP runs **locally only**. Wherever this document labels Google Cloud hosting, Terraform, Cloud Run, Cloud SQL, Cloud Storage, Artifact Registry, Secret Manager, production deployment/publish tiers or production benchmarks as **[MVP]**, read them as **[POST-MVP]**. Their contracts remain the target design for the later hosted release. The MVP instead requires:
+
+1. **Single-command local stack:** `./dev app-up` (wrapped by `make up`) starts PostgreSQL, runs migrations as a one-shot task (never on API startup), seeds and publishes a committed synthetic release idempotently, starts the Firebase Auth Emulator with a local-only verified demo account, the FastAPI API (read-only role) and the frontend. `./dev app-down` keeps the named data volume; `./dev app-reset` explicitly removes it. Ports bind to localhost only.
+2. **Real integration:** the frontend uses the HTTP/Firebase adapters with OpenAPI-generated DTOs against that stack (former I1). The mock adapter stays independently runnable for development and deterministic tests; there is no silent fallback.
+3. **Data:** the synthetic seed uses the same immutable-revision and atomic-publication semantics as §5.8. Private BAFU inputs load into the same local database through the documented opt-in B3/B4 commands. Full-corpus validation, LCIA audit sign-off and licensing confirmation are post-MVP prerequisites of any hosted or shared release.
+4. **Frontend scope:** §6.7 difference toggles remain MVP but are not persisted. §6.8's browser workspace persistence/restoration and stale-ID reconciliation are POST-MVP; clearing protected in-memory data and caches on logout/account change remains MVP.
+
+Scientific, data-integrity, identity-verification, least-privilege and container rules are unchanged.
 
 ### 1.1 Objective [MVP]
 
@@ -117,14 +128,15 @@ The reported input contains ~11,947 XML files; do not assume that count is alway
 | Python quality | **Ruff formatter + linter; MyPy type checker** | Mandatory developer and CI checks, version-pinned |
 | Python observability/config | **Loguru; python-dotenv** (local only) | Structured application/pipeline logging; `.env` for development, cloud secrets in production |
 | Tests | **pytest**, pytest-cov, PostgreSQL/Spark/Airflow integration fixtures, **Vitest**, **Playwright** | Unit + integration + E2E are all mandatory for MVP |
-| User identity | Firebase Authentication email/password; Firebase Admin SDK token verification | Verified self-registration without custom password storage |
+| User identity | Firebase Authentication email/password; Firebase Admin SDK token verification; **Firebase Auth Emulator for the local MVP** | Verified self-registration without custom password storage; production Firebase project is POST-MVP |
 | Pipeline orchestration | Apache Airflow, Dockerized on local development laptop | Required technology; local-only initial deployment |
 | XML ETL | PySpark in local mode initially, with a portable Spark job entry point | Required technology; parallel ingestion/normalization |
 | Local development | VS Code Remote SSH + Dev Containers + Docker Compose | All app development on dedicated laptop; no host-specific manual setup |
-| Production app hosting | Two Google Cloud Run services (frontend and backend) | Separate Docker-deployed services; autoscaling |
-| Production database | Google Cloud SQL for PostgreSQL | Managed backups and security |
-| Raw artifacts / releases | Filesystem for local runs; private Google Cloud Storage for production source archives and release artifacts | Immutable, reproducible release records |
-| Images / secrets / IaC | Artifact Registry, Secret Manager, Terraform | Reproducible infrastructure; no committed credentials |
+| MVP app runtime | Local Docker Compose: frontend, API, PostgreSQL (named volume), Auth Emulator; one `./dev app-up` / `make up` command | Local-only MVP (ADR 0006) |
+| Production app hosting **[POST-MVP]** | Two Google Cloud Run services (frontend and backend) | Separate Docker-deployed services; autoscaling |
+| Production database **[POST-MVP]** | Google Cloud SQL for PostgreSQL | Managed backups and security |
+| Raw artifacts / releases | Filesystem for local runs (MVP); private Google Cloud Storage for production source archives and release artifacts **[POST-MVP]** | Immutable, reproducible release records |
+| Images / secrets / IaC **[POST-MVP]** | Artifact Registry, Secret Manager, Terraform | Reproducible infrastructure; no committed credentials |
 
 **[DESIGN-NOW]** Airflow and PySpark job entry points should be environment-independent so they can later be deployed on Google Cloud. **[POST-MVP]** Managed Airflow/Spark hosting; do not provision Cloud Composer or an always-on Spark cluster for the MVP. Google currently offers the managed product **Managed Service for Apache Spark** (formerly Dataproc), which can execute serverless batches when needed.
 
@@ -142,7 +154,11 @@ Use one Dev Container workspace attached via VS Code Remote SSH. `docker compose
 
 Choose an Airflow executor appropriate to local Compose, e.g. LocalExecutor; keep its UI private to localhost/SSH forwarding. Do not require Docker socket exposure to an Airflow container just to run ETL jobs. An optional Spark standalone cluster profile is permissible for learning, but **not required for MVP correctness**. Add one documented `make dev-up`, `make test`, `make import`, and `make dev-down` flow. Container images and dependency lock files must be pinned/reproducible.
 
-### 3.2 Initial Google Cloud topology [MVP]
+**Single-command application run (ADR 0006):** `./dev app-up` (and `make up`) runs the complete local MVP application as described in §0.3: `postgres` → one-shot migrate/seed task → `auth` emulator with demo account → `api` → `frontend` in real-adapter mode, ordered by healthchecks. `./dev app-down` stops it and keeps the data volume; `./dev app-reset` removes this stack's volumes only after explicit confirmation. The opt-in BAFU import writes into the same local database through the B3/B4 `lca-import` commands, then publishes atomically. The workspace (`./dev up`) and mock-only frontend flows remain available independently.
+
+### 3.2 Initial Google Cloud topology [POST-MVP]
+
+*Moved out of the MVP by ADR 0006; retained as the target design for the first hosted release. In the MVP, the local PostgreSQL of §3.1 replaces Cloud SQL as the publication target.*
 
 ```text
 Browser
@@ -181,7 +197,7 @@ lca-diff/
   db/
     models/                             # SQLAlchemy mappings (shared package or importable module)
     migrations/                         # Alembic
-  infra/terraform/                      # GCP environments, IAM, service modules
+  infra/terraform/                      # [POST-MVP] GCP environments, IAM, service modules
   ops/                                  # publish/rollback/audit commands
   docs/product/ docs/engineering/ docs/adr/ docs/reference/
   AGENTS.md
@@ -557,7 +573,7 @@ Each tab has its **own** toggle, initially OFF. It is disabled and unchecked whi
 - **ON:** Flows: hide a row only if every selected process has the same **present amount** for that row. If one process is missing the flow while another has it—even a zero amount—**show** the row. Scores: hide a row when all selected processes have the same score **state and exact value**; show when one is valid and another `N/A`, or their valid amounts differ. Uniformly missing/N/A scores are not meaningful differences.
 - Exact equality; no numerical tolerance or percent-threshold setting in MVP. Values `-0` and `0` are numerically equal but both remain present; handle sign-of-zero for display consistently.
 - **Compute only on activation or when inputs change while ON**. Cache the computed eligible-row set in the front-end query cache (and optionally short-lived backend cache). Toggling OFF then ON with unchanged inputs should reuse it. Invalidate cache when selected process identities, published revision IDs, indicator selection, or actual underlying release data changes. Column **order** changes do not change the difference set.
-- A newly disabled toggle after reducing selection to one process resets to OFF. Both tabs persist their independent toggle state in browser storage when valid.
+- A newly disabled toggle after reducing selection to one process resets to OFF. *[POST-MVP, ADR 0006]* Both tabs persist their independent toggle state in browser storage when valid; in the MVP toggles start OFF on every load.
 
 For large comparisons, the **backend** may compute row-difference predicates across selected processes and return a windowed set of visible row IDs; this is a runtime query, not modification of stored LCA values. Do not fetch an entire millions-of-cells matrix solely to determine differences.
 
@@ -566,8 +582,8 @@ For large comparisons, the **backend** may compute row-difference predicates acr
 - With no processes: show an actionable empty state explaining selection. With one: show all rows, difference toggle disabled. With no matching search results: show an explicit no-results message without clearing selections. With no chosen indicators: Scores shows a select-an-indicator empty state.
 - Loading large comparisons: progress/skeletons and a non-blocking performance notice. **Never** require confirmation just for a large selection. Keep controls responsive and allow cancellation.
 - All checkboxes, tree disclosure buttons, tabs, selected-process removal, column actions, tooltips, and sidebars must be accessible via keyboard; expose focus rings, labels, `aria-checked="mixed"`, informative warnings, and contrast appropriate for quantitative data.
-- Save the following under a versioned, **user-UID-scoped** browser storage key: ordered process IDs, selected indicator IDs, current tab, Flows difference toggle, Scores difference toggle. Restore on reload/revisit using the same browser. **Do not** persist search filters, temporary expanded tree nodes, or sidebar collapse state. Selected processes removed from the published catalog on a later revision should be skipped with a visible explanation.
-- Sign-out does not delete this account-scoped state; protect authenticated UI state by clearing in-memory data and query caches when the user changes/logs out; sign-in as another user must **never load or display** the first user's stored state. Browser storage is not a strong boundary against a person with control of the same operating-system browser profile; do not store secrets or proprietary raw payloads there. Explain shared-browser limitations in privacy guidance if relevant.
+- **[POST-MVP, ADR 0006]** Save the following under a versioned, **user-UID-scoped** browser storage key: ordered process IDs, selected indicator IDs, current tab, Flows difference toggle, Scores difference toggle. Restore on reload/revisit using the same browser. **Do not** persist search filters, temporary expanded tree nodes, or sidebar collapse state. Selected processes removed from the published catalog on a later revision should be skipped with a visible explanation.
+- *(MVP: protected-state clearing; POST-MVP: the stored-state parts.)* Sign-out does not delete this account-scoped state; protect authenticated UI state by clearing in-memory data and query caches when the user changes/logs out; sign-in as another user must **never load or display** the first user's stored state. Browser storage is not a strong boundary against a person with control of the same operating-system browser profile; do not store secrets or proprietary raw payloads there. Explain shared-browser limitations in privacy guidance if relevant.
 
 ## 7. Backend API contract [MVP]
 
@@ -641,6 +657,8 @@ Return structured errors with machine-readable codes: `AUTH_REQUIRED`, `EMAIL_NO
 
 ## 8. Security, reliability, operations [MVP]
 
+*Local-only MVP (ADR 0006):* items 1–3, 5 (except HTTPS, which local HTTP on localhost replaces), 8 and 10's local playbooks (`app-up`, fixture/opt-in import, report, approve, promote, publish, rollback) are MVP. Items 4, 6, 7 and 9 and the Cloud SQL/HTTPS/production parts elsewhere are **POST-MVP** prerequisites of any hosted release. Locally, the Auth Emulator replaces production Firebase, committed local-only credentials must stay restricted to disposable development containers, and no service listens beyond localhost.
+
 1. **Authentication:** Firebase Authentication email/password registration and verification; login, password reset and logout flows. Require verified Firebase ID tokens on every private API call; derive user UID server-side rather than trust submitted user IDs. Deny unverified users. Follow provider best practices for session expiry and token revocation.
 2. **Authorization:** One shared published BAFU release entitlement for all verified registered users. Model entitlements behind an interface for later per-database licenses; do not expose unpublished or proprietary releases without explicit entitlement checks.
 3. **Database:** Least-privileged read-only API DB role for harmonized data; separate ETL/import/publish roles; Alembic migration role; TLS/authenticated Cloud SQL access. Never run the app using a superuser DB credential.
@@ -661,7 +679,7 @@ Return structured errors with machine-readable codes: `AUTH_REQUIRED`, `EMAIL_NO
 - Virtualize process rows and columns, memoize row/cell components, debounce search, cancel stale requests, and fetch visible grid windows with overscan. Use progressive loading and non-blocking warnings for unusually large selections.
 - Use row heights derived from the fixed normalization formula (including mixed-sign expansion) and a variable-size virtualizer; ensure sticky headers remain aligned while scrolling. Avoid scroll-jump when rows arrive asynchronously.
 - Prefer batched SQL results and canonical sorted process/indicator ID arrays over repeated N+1 fetches. SQL aggregation handles union/difference predicates for a selected process set; source data stays unchanged.
-- After integration, establish reproducible performance benchmarks on the actual dev laptop and Cloud SQL. Indicative acceptance targets—not contractual guarantees—are: process search normally feels reactive on BAFU; first two-process grid usable within a few seconds; 100-column grid scrolls without sustained UI freezing; progressively larger selections load with clear progress rather than crashing. Benchmark must specify hardware, dataset version, row count and network.
+- After integration, establish reproducible performance benchmarks on the actual dev laptop (MVP, as practicable) and Cloud SQL (POST-MVP). Indicative acceptance targets—not contractual guarantees—are: process search normally feels reactive on BAFU; first two-process grid usable within a few seconds; 100-column grid scrolls without sustained UI freezing; progressively larger selections load with clear progress rather than crashing. Benchmark must specify hardware, dataset version, row count and network.
 
 ### 9.2 Automated tests, tools and GitHub Actions gates
 
@@ -685,7 +703,7 @@ Return structured errors with machine-readable codes: `AUTH_REQUIRED`, `EMAIL_NO
 14. Pydantic rejects invalid API and manifest/rule payloads; SQLAlchemy migrations can upgrade a clean disposable DB; decimal-string API outputs survive parse/format without precision loss.
 15. Present zero, absent flow and missing LCIA score are distinct; signed bar axis/height geometry and full-precision tooltips are correct.
 16. Differences toggle is OFF by default, disabled for fewer than two processes, computes only on demand, distinguishes missing from zero, and reuses caches with unchanged inputs.
-17. AND tokenized search, category-filtered bulk selection, selected-process persistence, per-user storage, drag reorder, sticky grids, indicator hierarchies and warning states work.
+17. AND tokenized search, category-filtered bulk selection, selected-process persistence across filtering, drag reorder, sticky grids, indicator hierarchies and warning states work. Per-user browser storage/restoration is POST-MVP (ADR 0006).
 18. Hundreds of selected columns use virtualized/widowed reads without unbounded browser DOM size; comparability warning appears for different reference unit **or amount** without interactive normalization.
 19. Loguru logs include relevant job/revision context but never secrets or protected full source rows; `.env` cannot override production environment/secret values.
 
@@ -693,9 +711,9 @@ Return structured errors with machine-readable codes: `AUTH_REQUIRED`, `EMAIL_NO
 
 | Trigger | Mandatory checks |
 |---|---|
-| **Every pull request** | `uv lock --check` / frozen sync, **`ruff format --check`**, **`ruff check`**, **`mypy`** on supported Python packages, Python **unit tests**, targeted **integration tests** (PostgreSQL + miniature Spark/Airflow fixtures), Vitest, build/typecheck, migrations, Terraform fmt/validate, a **small critical Playwright E2E smoke suite** (unauthenticated modal, login/auth guard, core comparison using synthetic fixture) |
+| **Every pull request** | `uv lock --check` / frozen sync, **`ruff format --check`**, **`ruff check`**, **`mypy`** on supported Python packages, Python **unit tests**, targeted **integration tests** (PostgreSQL + miniature Spark/Airflow fixtures), Vitest, build/typecheck, migrations, OpenAPI contract drift (from L2), a **small critical Playwright E2E smoke suite** (unauthenticated modal, login/auth guard, core comparison using synthetic fixture), and the real-stack smoke against the local Compose application once it runs reliably on hosted runners (otherwise a documented local check with a tracked gap). Terraform fmt/validate is added with Terraform post-MVP |
 | **Manual workflow (`workflow_dispatch`) and release candidate** | Full PySpark/Airflow integration suite, full Playwright E2E suite across supported desktop browsers, full migration regression, realistic BAFU-sized ETL validation on a licensed/private runner where available, report schema/audit checks, performance regression |
-| **Before production publish/deploy** | Successful required CI, release manifest/checksum verification, migration preview, critical issue gating, explicit maintainer approval, smoke tests against deployed app after rollout |
+| **Before production publish/deploy [POST-MVP]** | Successful required CI, release manifest/checksum verification, migration preview, critical issue gating, explicit maintainer approval, smoke tests against deployed app after rollout |
 
 Use `pytest -m unit/integration` or equivalent test markers for reproducible separation. Integration tests on PRs must use a **small** self-contained workload; full 11,947-file ingestion is not required on every PR and must not leak proprietary data to public CI runners. Fail the PR on formatting, lint, MyPy or required-test failures. Coverage reports are useful, but don't substitute arbitrary percentage thresholds for tests of scientific correctness. Track known missing tests as GitHub Issues; no knowingly failing MVP critical scenario is allowed at launch.
 
@@ -705,7 +723,8 @@ Use `pytest -m unit/integration` or equivalent test markers for reproducible sep
 - Compare two processes having both shared and unique flows; inspect positive, negative, present-zero and absent states, then toggle differences and re-order columns.
 - Compare two processes with different reference units; verify warning and unchanged numbers.
 - Select additional LCIA methods and nested categories; verify rows follow workbook order and score values/units display correctly; toggle score differences.
-- Select 100+ processes; drag/scroll horizontally and vertically, preserve sticky identification, switch tabs, remove processes, and refresh the browser to confirm restoration.
+- Select 100+ processes; drag/scroll horizontally and vertically, preserve sticky identification, switch tabs and remove processes. Refreshing the browser to confirm restoration is POST-MVP (ADR 0006).
+- Run `./dev app-up` from a clean checkout; log in with the demo account and with a newly registered emulator-verified account; stop and restart the stack and confirm the published data persists.
 - In a test import, insert duplicate exchanges, missing references, multi-output processes, missing LCIA rows and a score unit mismatch; inspect error/resolution reports, verify gating, and publish an approved candidate atomically.
 
 ## 10. Full-version extensibility and post-MVP features
@@ -769,10 +788,10 @@ The brainstorming is finished; the following are **implementation-time verificat
 
 | Risk / unresolved fact | Required default and action |
 |---|---|
-| Private XML/workbook/schema archives are now available | B3's representative import is not full-data validation; keep observed inventory and processing evidence private, and **do not claim the full BAFU database is imported** until the actual manifest and full reconciliation pass R2 |
+| Private XML/workbook/schema archives are now available | B3's representative import is not full-data validation; keep observed inventory and processing evidence private, and **do not claim the full BAFU database is imported** until the actual manifest and full reconciliation pass the post-MVP release validation (former R2). The local MVP's opt-in import is not that validation |
 | Workbook has **no numeric process ID** column | Use strict composite matching plus version-controlled curated overrides; unresolved rows never auto-associate |
 | Workbook/XML unit mismatch (`m`/`km`, `t*km`/`tkm`) | Use **verified, approved ETL conversion to the XML reference quantity/unit**; capture full original Excel row in audit CSV; leave unverified values `N/A` |
-| Provider licensing for centralized storage/redistribution | Confirm legally before public deployment; product decision on all-registered access remains, subject to permission |
+| Provider licensing for centralized storage/redistribution | Confirm legally before any hosted/shared deployment (post-MVP); not required for the maintainer's private local MVP use; product decision on all-registered access remains, subject to permission |
 | Stable flow identity across future source versions is not guaranteed by source `number` alone | Use UUIDv5 from versioned identity keys scoped by provider release, including type and compartment; cross-version mapping deferred, names not keys |
 | Missing technosphere referenced process | Use approved manual rule if available; otherwise explicit isolated fallback with warning and provenance; block harmonized load if no safe resolution is implemented |
 | Multi-output exclusions may affect score/workbook row counts | Report separately from missing XML/score errors and do not misreport exclusion as accidental data loss |
@@ -785,17 +804,26 @@ The workbook's `Info` sheet reports **BAFU:2026 v1** and a July 2026 correction 
 
 **Revised delivery sequence (accepted ADR 0005, issue #55 / PR #56):** workflow/roadmap → verified container environment and issue setup → parallel mock frontend (F3–F5) and backend/ETL (B1–B4) → real frontend integration → production readiness. PR #56 was explicitly authorized and merged at `125b090` on 2026-11-14; ADR 0005 partially supersedes ADR 0002's scheduling gate while retaining its service boundary. Use one issue and one PR per backend milestone, permitting multiple sessions and incremental commits. B1 precedes B2/B3; B3 precedes B4; B4's API visibility gate requires B2. I1 requires the Phase 1 gate, B2 and B4. Separate worktrees and container projects/ports/volumes; coordinate root tooling, locks, Compose, CI and shared documents. Backend changes must preserve the frontend agent's components, mock fixtures and provisional contracts. Phase 1 centralizes calls and authentication behind typed services and deterministic asynchronous mocks, independently of API/database/Firebase/cloud/private inputs. Provisional DTOs follow §7; reconcile differences and generate DTOs from FastAPI OpenAPI in I1, with drift/parity checks and one explicit real-adapter composition boundary. Never silently fall back to mocks in production. Use the smallest meaningful behavior suite satisfying §9.2's applicable tiered gates; avoid duplicate tests and arbitrary coverage targets. Scientific correctness, verified authorization, revision integrity, ingestion audits, atomic publication/rollback and full release validation remain required. Mock checks do not satisfy real integration gates. The [roadmap](roadmap.md) defines evidence. The list below is a scope inventory, not an execution order.
 
+**Local-only MVP revision (proposed ADR 0006, #95):** after B1–B4 and the merged F1–F5 Scores work, the remaining MVP is three sequential issues/PRs:
+- L1 #96: single-command local stack and synthetic seed.
+- L2 #97: real adapter, generated DTOs and Auth Emulator. It replaces I1 locally and no longer waits for the mock-only Phase 1 gate.
+- L3 #30: differences toggles and local acceptance.
+
+Items 1, 5, 7 and 8 below are amended accordingly: Terraform, Cloud SQL/GCS, browser persistence, production hardening, full-corpus validation and license sign-off are POST-MVP.
+
 1. **Foundation:** Monorepo/uv workspace + lockfile, Dev Container, Compose, local Postgres, Ruff/MyPy/Pydantic/Loguru/python-dotenv, **tiered CI with pytest/Vitest/Playwright smoke**, Terraform scaffolding, Firebase auth, API health, and frontend shell + login modal. Add `AGENTS.md`, PRD/spec paths and ADR governance. **[MVP]**
 2. **Data contracts:** SQLAlchemy/Pydantic models, Alembic, BAFU-specific shared staging tables, `flow`/`process`/`process_flows`/`flow_provenance`/`lcia_score`, deterministic UUIDv5 keys, immutable release revisions/publications, exact-decimal serialization, Postgres integration tests. **[MVP]**
 3. **Miniature golden ETL:** Airflow DAG and PySpark XML parser processing the five attached samples; stage and harmonize duplicate cases, group mapping, referential fallback, multi-output exclusion; unit tests and reports. **[MVP]**
 4. **Workbook + reconciliation:** Load LCIA sheet, reconcile processes, apply **verified reference-unit and quantity conversions**; generate complete-original-row `lcia_workbook_issues.csv`, header/anomaly reports, and `N/A` for unverified values. **[MVP]**
-5. **Full import/publish:** Run full XML corpus when provided, validate, transfer release candidate to Cloud SQL, explicitly publish with rollback; GCS manifests and provenance. **[MVP]**
+5. **Import/publish:** Promote and explicitly publish with rollback into the local application database: the synthetic seed automatically, the private BAFU inputs as an opt-in. **[MVP]** Full XML corpus validation, transfer to Cloud SQL and GCS manifests. **[POST-MVP]**
 6. **Core app:** In-place login modal/session restoration (no landing page), tree search/checkboxes/bulk selection, selected list, grid row/cell API, virtualized Flows tab, common process headers, zero/absent semantics, signed bars and warnings. **[MVP]**
-7. **Scores and polish:** Indicator tree/selection, Scores tab, differential toggles with caching, drag-reorder, sticky/virtualized grid, browser persistence, accessibility and responsive desktop behavior. **[MVP]**
-8. **Production hardening:** Terraform apply, Cloud Run images, Cloud SQL connectivity, backups/budgets, access control, benchmarks, **full unit/integration/Playwright E2E suites**, audit-CSV signoff and data license sign-off. **[MVP]**
+7. **Scores and polish:** Indicator tree/selection, Scores tab, differential toggles with caching, drag-reorder, sticky/virtualized grid, accessibility and responsive desktop behavior. **[MVP]** Browser persistence and the full state/accessibility audit. **[POST-MVP]**
+8. **Production hardening:** Terraform apply, Cloud Run images, Cloud SQL connectivity, backups/budgets, production access control, Cloud SQL benchmarks, full release-candidate suites, audit-CSV signoff and data license sign-off. **[POST-MVP, ADR 0006]** The MVP requires the single-command local stack, real-stack E2E smoke and applicable per-PR tiers instead.
 9. **Future layers:** Multiple source adapters, curated cross-database mappings, assisted process correspondence, metadata/exchange details, user uploads, saved comparisons, exports, and calculated common-method LCIA. **[POST-MVP]**
 
-**Definition of done for MVP:** A full validated/published BAFU:2026 v1 release is available to any verified registered user; users can search/select/bulk-select processes and indicators, compare accurate harmonized flows and vetted LCIA scores side by side, inspect signed values and missingness, toggle exact differences on demand, rearrange columns, and restore the browser-local workspace. Pipeline behavior is reproducible, transparent about missing/invalid data, and no unpublished data is visible.
+**Definition of done for MVP (ADR 0006):** From a clean checkout, `./dev app-up` alone starts the local application. A published release (synthetic seed, or the opt-in imported BAFU data) is served from PostgreSQL to any emulator-verified user. Users can search/select/bulk-select processes and indicators, compare accurate harmonized flows and LCIA scores side by side, inspect signed values and missingness, toggle exact differences on demand and rearrange columns. Data persists across restarts. Pipeline behavior is reproducible and transparent about missing/invalid data, and no unpublished data is visible.
+
+**Post-MVP hosted release:** a full validated BAFU:2026 v1 release on Google Cloud, with license confirmation, audit sign-off, production Firebase and browser-local workspace restoration.
 
 ## 13. Source and platform references
 
