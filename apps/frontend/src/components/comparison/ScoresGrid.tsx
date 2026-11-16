@@ -13,7 +13,7 @@ import { SignedValueCell } from "./SignedValueCell";
 import { PENDING_ROW } from "./geometry";
 import type { CellAttributes } from "./SignedValueCell";
 import { useScoreGrid } from "./useScoreGrid";
-import { useIndicators } from "../../app/indicator-context";
+import { scopedIndicatorIds, useIndicators } from "../../app/indicator-context";
 import { selectionKey } from "../../app/selection";
 import { useDifferences } from "../../app/differences";
 
@@ -106,7 +106,16 @@ function ScoresBody({
   leadingWidth: number;
 }) {
   const { entries, headers, width, headerScroller } = layout;
-  const { ids } = useIndicators();
+  const { ids: chosen, tree } = useIndicators();
+  const ids = useMemo(
+    () =>
+      scopedIndicatorIds(
+        tree,
+        chosen,
+        new Set(entries.map((entry) => entry.release_id)),
+      ),
+    [tree, chosen, entries],
+  );
   const [range, setRange] = useState<{ rows: IndexRange; columns: IndexRange }>(
     { rows: null, columns: null },
   );

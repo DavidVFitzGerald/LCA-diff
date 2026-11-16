@@ -13,7 +13,7 @@ import { SelectedProcesses } from "./components/selected-processes/SelectedProce
 import { SelectionProvider, useSelection } from "./app/selection";
 import { AnnouncerProvider } from "./app/announcer";
 import { ScoresGrid } from "./components/comparison/ScoresGrid";
-import { useIndicators } from "./app/indicator-context";
+import { scopedIndicatorIds, useIndicators } from "./app/indicator-context";
 import { FlowsGrid } from "./components/comparison/FlowsGrid";
 import { IndicatorProvider } from "./app/indicators";
 import { DifferencesProvider } from "./app/differences";
@@ -58,11 +58,20 @@ const ScoresPanel = memo(function ScoresPanel() {
   const { entries } = useSelection();
   const indicators = useIndicators();
   if (!entries.length) return <EmptyComparison title="Compare impact scores" />;
-  if (!indicators.ids.length)
+  const scoped = scopedIndicatorIds(
+    indicators.tree,
+    indicators.ids,
+    new Set(entries.map((entry) => entry.release_id)),
+  );
+  if (!scoped.length)
     return (
       <div className="empty-comparison">
         <h2>Select an indicator</h2>
-        <p>Choose indicators in the right sidebar to compare impact scores.</p>
+        <p>
+          {indicators.ids.length
+            ? "None of the chosen indicators belongs to the database version of the selected processes. Choose its indicators in the right sidebar."
+            : "Choose indicators in the right sidebar to compare impact scores."}
+        </p>
       </div>
     );
   return (
