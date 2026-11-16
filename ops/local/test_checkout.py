@@ -10,7 +10,9 @@ from pathlib import Path
 
 
 def git(root: Path, *args: str) -> bytes:
-    return subprocess.check_output(["git", "-C", str(root), *args], stderr=subprocess.PIPE)
+    return subprocess.check_output(
+        ["git", "-c", f"safe.directory={root}", "-C", str(root), *args], stderr=subprocess.PIPE
+    )
 
 
 def main() -> None:
@@ -18,7 +20,17 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix="lca-checkout-") as temporary:
         checkout = Path(temporary) / "checkout"
         subprocess.run(
-            ["git", "-c", "core.autocrlf=true", "clone", "--no-local", str(source), str(checkout)],
+            [
+                "git",
+                "-c",
+                f"safe.directory={source}",
+                "-c",
+                "core.autocrlf=true",
+                "clone",
+                "--no-local",
+                str(source),
+                str(checkout),
+            ],
             check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
