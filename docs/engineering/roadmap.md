@@ -72,7 +72,7 @@ and maintainer merge remain B4 completion gates.
 | M2 — GitHub execution setup | Forms/PR guidance and activation merged; #4 solo protection proposal in review | M0/M1 delivered; main protection waits for approved ADR 0004 |
 | F1 — frontend foundation | Complete: #5–#10 merged; final PR #44 at `9612943`, independent QA and hosted CI passed | M2 activation delivered; protection tracked separately in #4 |
 | F2 — shell and simulated authentication | Complete: #11–#15 merged after independent QA and hosted CI (final PR #49 at `1f82774`) | F1 complete; each task's issue dependencies |
-| F3–F5 — remaining mock frontend journeys | F3 complete: #16–#19 merged after independent QA and hosted CI (final PR #62 at `d3fddb1`). F4: #20 (flow windows and row summaries) in progress; later F4–F5 tasks not started; predecessor gates retained | F2 completion and each task's issue dependencies |
+| F3–F5 — remaining mock frontend journeys | F3 complete: #16–#19 merged after independent QA and hosted CI (final PR #62 at `d3fddb1`). F4 complete: #20–#26 merged, final PR #78 at `af5317d`. F5 selector #27 merged in PR #88 at `f5769bb`; Scores #28 in implementation/verification; later F5 gates remain | F2 completion and each task's issue dependencies |
 | B1–B4 — Phase 2, backend and ingestion | B1 #57 / PR #61 merged; B2 #58 and B3 #59 delivered to main through recovery PR #82 after QA/CI; B4 #60 in implementation | M1/M2 and accepted ADR 0005, then milestone gates below |
 | I1 — real frontend integration | Not started | Phase 1 gate, B2 and validated synthetic publication from B4 |
 | R1–R2 — production readiness and release | Not started | Dependencies below |
@@ -223,6 +223,14 @@ bounded rendered cells, windowed reads, sticky alignment and responsive controls
 record environment/workload evidence rather than inventing an SLA.
 
 ### F5 — Scores, differences and workspace completion
+
+Current handoff (2026-11-16): F4 #26 and selector #27 are merged/closed;
+PR #88 delivered #27 at `f5769bb` after independent QA and hosted checks.
+PM rechecked #28 as READY; its Scores implementation/verification runs on
+`feat/f5-scores`. See [Scores verification](f5-scores-verification.md) for delivered
+commits, criterion evidence and exact container commands. #28 remains open for
+independent QA, required checks and maintainer review/merge. Differences #29/#30,
+persistence/reconciliation #31/#32, async audit #33 and Phase 1 gate #34 remain.
 
 Depends on F4 for integrated Scores-grid delivery. Maintainer-authorized exception
 (2026-11-15, #27): the independent indicator selector may overlap ongoing F4
