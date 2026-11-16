@@ -1,6 +1,6 @@
 # LCA diff implementation roadmap
 
-Status: 2026-11-16 — local-only MVP revision (proposed ADR 0006, #95). Remaining
+Status: 2026-11-16 — local-only MVP revision (accepted ADR 0006, #95). Remaining
 MVP path: L1 → L2 → L3. Milestone status means verified delivery, not merely
 written plans.
 
@@ -23,7 +23,7 @@ All three were accepted through the maintainer's merge of
 This roadmap follows the maintainer's requested order instead of §12's suggested
 sequence: workflow → roadmap → dev environment → GitHub issues → complete mock
 frontend → backend → real frontend integration → production readiness. ADR 0005
-allowed backend/frontend overlap. Proposed ADR 0006 then narrows the MVP to a
+allowed backend/frontend overlap. Accepted ADR 0006 then narrows the MVP to a
 local, single-command, end-to-end application: workflow → environment → issues →
 F1–F5 Scores and B1–B4 (delivered) → **L1 stack → L2 real adapter → L3
 differences and acceptance** → post-MVP hosted release. Scientific requirements
@@ -45,8 +45,8 @@ PM → Software Engineer → QA → review/merge workflow. Blocked is not comple
 ## Current position
 
 **Local-only MVP revision (proposed [ADR 0006](../adr/0006-local-only-mvp.md),
-[#95](https://github.com/DavidVFitzGerald/LCA-diff/issues/95); authoritative only
-after the maintainer merges it).** The maintainer removed deployment from the MVP
+[#95](https://github.com/DavidVFitzGerald/LCA-diff/issues/95); accepted through the
+maintainer's merge of PR #98 at `cf7f1d5` on 2026-11-16).** The maintainer removed deployment from the MVP
 on 2026-11-16. The MVP is reached when the app runs locally end to end from one
 command: the frontend calls the real API, data persists in PostgreSQL, and login
 uses the Firebase Auth Emulator. B1–B4 and F1–F4 plus F5 #27/#28 are delivered.
@@ -54,7 +54,7 @@ The remaining work is three sequential implementation issues, one PR each:
 
 | Step | Issue | Outcome | Depends on |
 | --- | --- | --- | --- |
-| L1 | [#96](https://github.com/DavidVFitzGerald/LCA-diff/issues/96) | `./dev app-up` / `make up` starts Postgres, migrations, synthetic seeded/published release, Auth Emulator with demo user, API and frontend; data persists | ADR 0006 merged (#95) |
+| L1 | [#96](https://github.com/DavidVFitzGerald/LCA-diff/issues/96) | `./dev app-up` / `make up` starts Postgres, migrations, synthetic seeded/published release, Auth Emulator with demo user, API and frontend; data persists | ADR 0006 merged (#95, PR #98 `cf7f1d5`) |
 | L2 | [#97](https://github.com/DavidVFitzGerald/LCA-diff/issues/97) | Real HTTP + Firebase-emulator adapters, OpenAPI-generated DTOs with drift check, real-stack Playwright smoke | L1 |
 | L3 | [#30](https://github.com/DavidVFitzGerald/LCA-diff/issues/30) (re-scoped) | Differences toggles on the real API; local MVP acceptance including one opt-in representative BAFU import | L2 |
 
@@ -103,7 +103,7 @@ workflow is documented in [B4 publication](b4-publication.md).
 | F2 — shell and simulated authentication | Complete: #11–#15 merged after independent QA and hosted CI (final PR #49 at `1f82774`) | F1 complete; each task's issue dependencies |
 | F3–F5 — remaining mock frontend journeys | F3 complete: #16–#19 merged after independent QA and hosted CI (final PR #62 at `d3fddb1`). F4 complete: #20–#25, #64 and #69 merged after independent QA and hosted CI; gate #26 (PR #78, `af5317d`) recorded in [F4 verification](f4-verification.md) after blockers #75, #77 and #79 merged. F5: #27 merged through PR #88 at `f5769bb` and #28 Scores merged through PR #92 at `d4827c5`, each after independent QA and hosted CI. Under ADR 0006 #30 became L3 and #29, #31–#34 are post-MVP | F2 completion and each task's issue dependencies |
 | B1–B4 — Phase 2, backend and ingestion | B1 #57 / PR #61 merged; B2 #58 and B3 #59 delivered to main through recovery PR #82 after QA/CI; B4 #60 / PR #86 merged at `f0e2f9c` after QA/CI | M1/M2 and accepted ADR 0005, then milestone gates below |
-| L1 — single-command local stack (#96) | Not started | ADR 0006 merged; B1–B4 delivered |
+| L1 — single-command local stack (#96) | Not started; ADR dependency satisfied | ADR 0006 merged (PR #98, `cf7f1d5`); B1–B4 delivered |
 | L2 — real adapter and Auth Emulator (#97), replaces I1 locally | Not started | L1 |
 | L3 — differences toggles and local MVP acceptance (#30) | Not started | L2 |
 | PM1 — hosted release: infrastructure/deployment (former R1) | Post-MVP | L3; maintainer scheduling |
@@ -398,7 +398,7 @@ CI). Keep mock mode independently runnable throughout.
 
 ### L1 — single-command local stack with a seeded synthetic release (#96)
 
-Depends on ADR 0006's merge; B1–B4 are delivered. Add `./dev app-up` / `make up`,
+Depends on ADR 0006 (merged in PR #98 at `cf7f1d5`); B1–B4 are delivered. Add `./dev app-up` / `make up`,
 `./dev app-down` and a confirmed `./dev app-reset`. The stack:
 - starts Postgres (named volume);
 - runs a one-shot migrate-and-seed task (never migrations on API startup) that
