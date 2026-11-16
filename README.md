@@ -216,6 +216,15 @@ daemon. Do not change socket permissions or add yourself to the Docker group.
 ./dev shell
 ```
 
+`./dev config` checks the workspace Compose configuration without a daemon.
+`./dev app-config` checks the separate application configuration, including all
+three `LCA_APP_*_PORT` values. These accept decimal integers 1–65535 (leading
+zeros are accepted and removed); invalid app ports affect only `app-*` commands.
+Process environment values take precedence over literal `.env` values (unquoted,
+single-quoted or double-quoted, with optional trailing comments). Port expressions
+such as `${PORT}` are rejected; set a literal integer or an explicit process
+environment value instead. Configuration is never sourced as shell code.
+
 Or connect through VS Code Remote SSH, open this repository on the Docker host,
 and choose **Dev Containers: Reopen in Container**. The post-create check runs
 inside the workspace. The development shell uses namespace UID 0, mapped to your
@@ -224,6 +233,21 @@ overrides are needed. See ADR 0003 for the rootless-only development boundary.
 
 Inside the container, run all development tools, package installs and checks.
 The following commands run inside `./dev shell` (or the editor's container terminal):
+
+For Python/backend work, first install every workspace member from the single
+committed lock (also required after Dev Containers' post-create smoke check):
+
+```sh
+uv sync --frozen --all-packages
+make backend-format-check backend-lint backend-typecheck backend-test-unit
+```
+
+`./dev up` starts the workspace without installing project packages. `./dev check`
+and the editor post-create check verify the tooling, but their default sync does
+not select every Python workspace member. Run the explicit frozen sync above
+before backend checks; it needs no database, emulator or private inputs.
+
+For standalone frontend work:
 
 ```sh
 npm --prefix apps/frontend ci
