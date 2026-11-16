@@ -149,6 +149,9 @@ test("Scores shows exact zero and unavailable states, shared columns and source 
     )
     .toEqual([`${NAME} Gamma`, `${NAME} Beta`, `${NAME} Alpha`]);
   await page.getByRole("tab", { name: "Scores" }).click();
+  await headers(page)
+    .filter({ hasText: `${NAME} Beta` })
+    .hover();
   await panel(page)
     .getByRole("button", { name: `Remove column ${NAME} Beta — DE` })
     .click();
@@ -166,10 +169,13 @@ test("Scores shows exact zero and unavailable states, shared columns and source 
   ).toBeVisible();
   await expect(page.getByText("Selected processes (2)")).toBeVisible();
   await ipcc.locator(".indicator-check").click();
-  for (const name of ["Gamma — CH", "Alpha — CH"])
-    await panel(page)
-      .getByRole("button", { name: `Remove column ${NAME} ${name}` })
-      .click();
+  for (const name of ["Gamma — CH", "Alpha — CH"]) {
+    const remove = panel(page).getByRole("button", {
+      name: `Remove column ${NAME} ${name}`,
+    });
+    await remove.locator("..").hover();
+    await remove.click();
+  }
   await expect(
     panel(page).getByText(
       "Select processes in the left sidebar to start your comparison.",
