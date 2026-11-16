@@ -69,7 +69,7 @@ All published ports bind to host loopback; PostgreSQL has no host port. For a re
 
 The verified demo account is recreated on every start. To test registration, create an account in the app, request a verification email and obtain its link with `./dev app-logs auth` or from `http://127.0.0.1:5180/emulator/v1/projects/demo-lca/oobCodes`. Use the frontend origin for the verification link, then choose **I've verified my email**. Emulator accounts are temporary; published PostgreSQL data persists. All committed passwords are local-only emulator/database values.
 
-### Use the whole BAFU database [1]
+### Use the whole BAFU database [1](#references)
 
 The application also supports an opt-in import of **BAFU:2026** [1]. Download the process XMLs and corrected Excel LCIA scores from [openLCA Nexus](https://nexus.openlca.org/database/BAFU). They are external inputs and are not distributed in this repository. The [ecoSpold1 schema description files can be downloaded from ecoinvent](https://support.ecoinvent.org/data-formats-overview-2); these are useful for interpreting the source format and are required by the alternative three-archive intake example.
 
@@ -214,9 +214,11 @@ At local MVP acceptance, **472 frontend tests in 37 files**, **72 mock browser t
 
 ### Unit and backend integration checks
 
-First start the separate disposable workspace database and emulator on the Docker host. These are distinct from the application data volumes:
+First select a separate disposable test project on the Docker host, even if you previously exported an import project name. Its database is distinct from both the import and application data volumes. Choose other unused ports if these are occupied:
 
 ```sh
+export COMPOSE_PROJECT_NAME=lca-diff-tests
+export FRONTEND_PORT=5192 AUTH_PORT=9192
 ./dev backend-up
 ./dev auth-up
 ./dev shell
