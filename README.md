@@ -2,6 +2,8 @@
 
 LCA diff helps Life Cycle Assessment (LCA) practitioners choose unit-process datasets for their models by comparing flows and Life Cycle Impact Assessment (LCIA) scores side by side. It makes shared flows, missing values and exact differences visible without recalculating impacts or normalizing the selected processes.
 
+This project was created for submission as the final project for the [AI Dev Tools Zoomcamp](https://github.com/DataTalksClub/ai-dev-tools-zoomcamp) course by DataTalks.Club.
+
 ## Table of contents
 
 - [Purpose](#purpose)
@@ -34,8 +36,6 @@ LCA diff makes it easier for practitioners to see how flows and scores differ be
 ![LCA diff comparing three synthetic processes, with flow bars, missing cells and a reference-unit warning](docs/images/lca-diff-demo.png)
 
 The screenshot shows the running local application using invented demo data, served through the real API and PostgreSQL. There is no public hosted instance. Follow the [Quickstart](#quickstart) to try Flows, Scores, search, bulk selection, column reordering and the independent **Show differences only** switches.
-
-This project was created for submission as the final project for the [AI Dev Tools Zoomcamp](https://github.com/DataTalksClub/ai-dev-tools-zoomcamp) course by DataTalks.Club.
 
 ## Guide for reviewers
 
