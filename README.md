@@ -1,188 +1,130 @@
 # LCA diff
 
-Read-only comparison of harmonized unit-process inventories and provider-supplied
-LCIA scores. The MVP is local-only (accepted ADR 0006). `./dev app-up` (L1, #96)
-starts the whole local application with one command. The frontend uses the real
-HTTP API, PostgreSQL data and Firebase Auth Emulator (L2, #97).
+LCA diff helps Life Cycle Assessment (LCA) practitioners choose unit-process datasets for their models by comparing exchange flows and provider-supplied Life Cycle Impact Assessment (LCIA) scores side by side. It makes shared flows, missing values and exact differences visible without recalculating impacts or normalizing the selected processes.
 
-- [Current product requirements](docs/product/LCA_diff_PRD.md)
-- [Current implementation specification](docs/engineering/LCA_diff_Implementation_Specification.md)
-- [Roadmap and milestone gates](docs/engineering/roadmap.md)
-- [Published frontend issues and dependencies](docs/engineering/frontend-backlog.md)
-- [Agent working instructions](AGENTS.md)
-- [Architecture decision records](docs/adr/README.md)
-- [Development environment details and verification](docs/engineering/development-environment.md)
+## Demo
 
-## Run the local application
+![LCA diff comparing three synthetic processes, with flow bars, missing cells and a reference-unit warning](docs/images/lca-diff-demo.png)
 
-Host prerequisites are the same as for the workspace below: a rootless Docker
-Engine with Docker Compose, and no `.env` file, private data or host runtimes.
-On the Docker host, in the repository checkout:
+The screenshot shows the running local application using invented demo data, served through the real API and PostgreSQL. There is no public hosted instance. Follow the [Quickstart](#quickstart) to try Flows, Scores, search, bulk selection, column reordering and the independent **Show differences only** switches.
 
-```sh
-./dev app-up      # or: make up
-./dev app-smoke   # optional live check, run in a container
-./dev app-e2e     # real-stack Chromium acceptance in a pinned browser container
-./dev app-down    # or: make down; keeps the data
-```
+This project was created for submission as the final project for the [AI Dev Tools Zoomcamp](https://github.com/DataTalksClub/ai-dev-tools-zoomcamp) course by DataTalks.Club.
 
-`app-up` builds the images, then starts the stack in order, using healthchecks
-and one-shot tasks:
+## Guide for reviewers
 
-1. PostgreSQL starts.
-2. Alembic migrations run as `lca_migrator`.
-3. The committed synthetic release is seeded and published through the B4
-   `promote`/`publish` commands, as `lca_import`/`lca_publisher`.
-4. The Firebase Auth Emulator starts, and the verified demo account is created.
-5. The API starts as the read-only `lca_api` role.
-6. The frontend starts.
+The submitted MVP is deliberately **local-only** ([ADR 0006](docs/adr/0006-local-only-mvp.md)). Cloud deployment and continuous delivery, full-database release validation, browser workspace restoration, a complete accessibility audit, a telemetry dashboard, user-impact alerts and an on-call repair agent are excluded from this submission. The default run needs no licensed data or cloud credentials; the real-data import is optional.
 
-The command returns once every service is healthy and every one-shot task has
-exited 0. It then prints the URLs. Airflow and Spark are not started. The first
-run builds the ETL tooling image and takes a few minutes; later starts reuse the
-image cache.
+The following self-evaluation uses the course's 24-point rubric. Scores describe the submitted artifacts, not planned features.
 
-| Service | URL on the host loopback | Override |
-| --- | --- | --- |
-| Frontend | http://127.0.0.1:5180 | `LCA_APP_FRONTEND_PORT` |
-| API | http://127.0.0.1:8010/api/v1/health and `/api/v1/ready` | `LCA_APP_API_PORT` |
-| Auth Emulator | `127.0.0.1:9110` (project `demo-lca`) | `LCA_APP_AUTH_PORT` |
+| Criterion                | Claimed score | How to verify                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------ | ------------: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Problem Description      |           2/2 | The opening description and [Problem and behavior](#problem-and-behavior) explain the user, difficulty and expected functionality.                                                                                                                                                                                                                                                       |
+| Product Specification    |           2/2 | Read the [PRD](docs/product/LCA_diff_PRD.md) and [implementation specification](docs/engineering/LCA_diff_Implementation_Specification.md). The [public task tracker](https://github.com/DavidVFitzGerald/LCA-diff/issues) contains acceptance criteria; [#30](https://github.com/DavidVFitzGerald/LCA-diff/issues/30) records agent readiness, engineering and independent QA handoffs. |
+| Agent Team Specification |           2/2 | [AGENTS.md](AGENTS.md), the [role documents](docs/team/) and [How this project was built](#how-this-project-was-built) define responsibilities and the work/review loop.                                                                                                                                                                                                                 |
+| Context Management       |           2/2 | [AGENTS.md](AGENTS.md) points to modular product, engineering, team and ADR documents, with precedence and context boundaries.                                                                                                                                                                                                                                                           |
+| Application              |           2/2 | Run `./dev app-up`, sign in and compare processes. The browser uses the real HTTP/Firebase adapters and PostgreSQL; stop/start preserves published data. See [local acceptance evidence](docs/engineering/local-mvp-verification.md).                                                                                                                                                    |
+| Testing                  |           2/2 | Unit, PostgreSQL/API integration, ETL and browser suites exist. [Testing and evaluation](#testing-and-evaluation) gives setup and a single command for unit plus backend integration checks; CI records passing runs.                                                                                                                                                                    |
+| Containerization         |           2/2 | [compose.app.yaml](compose.app.yaml) runs the frontend, API, database, emulator and initialization jobs through `./dev app-up`.                                                                                                                                                                                                                                                          |
+| Deployment               |           1/2 | Local deployment is documented and shown above. No public URL or hosted deployment is claimed. If the rubric accepts a demonstrated local deployment for full credit, this criterion may earn 2/2.                                                                                                                                                                                       |
+| CI/CD                    |           1/3 | [GitHub Actions](https://github.com/DavidVFitzGerald/LCA-diff/actions) runs tests on pull requests and pushes to `main`. There is no automatic deployment or production deployment workflow.                                                                                                                                                                                             |
+| Observability            |           1/2 | The [API middleware](apps/api/src/lca_api/app.py) emits structured request logs and basic counters. See [Logs and operational metrics](#logs-and-operational-metrics). Distributed traces and a telemetry storage/dashboard stack are absent.                                                                                                                                            |
+| Alerting on User Impact  |           0/1 | No user-impact alert rules or notification integration are implemented. Container healthchecks are not claimed as alerts.                                                                                                                                                                                                                                                                |
+| On-Call Agent            |           0/2 | No agent is triggered by an operational alert to repair the app. Development QA agents do not meet this criterion.                                                                                                                                                                                                                                                                       |
+| **Total**                |     **17/24** | **Pass threshold: 10 points.** Deployment interpretation could raise this to 18/24; if local-only deployment earns no credit, the total is 16/24.                                                                                                                                                                                                                                        |
 
-PostgreSQL has no host port. Every port binds to `127.0.0.1` only. Use SSH or VS
-Code forwarding to reach them from another machine. The defaults do not overlap
-the workspace (5173) or `./dev api-up` (8000, 9099), so both can run at the same
-time.
+## Quickstart
 
-**Demo login (local-only, emulator only):** `demo@example.com` /
-`local-demo-password-not-secret`. The account is recreated and verified on every
-start, because the emulator keeps no state. These values, and every other password
-in `compose.app.yaml`, are development-only. Never reuse them in a production
-configuration. The API still refuses emulator settings in production.
+### Run with demo data
 
-The stack builds `VITE_SERVICE_MODE=real`. The browser uses the page origin for
-both `/api/` and emulator REST requests, proxied to the private API and emulator.
-The canonical URL is `http://127.0.0.1:5180`; `http://localhost:5180` also works.
-Firebase sessions are stored per origin, so switching between these spellings
-requires a fresh login. Standalone mock mode remains available below.
-
-**Register and verify locally.** Create an account in the login dialog, then
-choose **Resend verification email**. The emulator sends no real email. Run
-`./dev app-logs auth` on the host and open the printed verification link,
-replacing its origin with the frontend URL if needed. Alternatively open
-`http://127.0.0.1:5180/emulator/v1/projects/demo-lca/oobCodes`, locate your email,
-and use its `oobLink` with the frontend origin. Return to the app and choose
-**I've verified my email**. The SDK reloads the account and refreshes its token.
-Emulator accounts other than the recreated demo account are lost on restart;
-published PostgreSQL data persists.
-
-**Data and reset.** The stack is Compose project `lca-diff-app`, with named
-volumes `lca-diff-app_app-db` (database) and `lca-diff-app_app-archive` (B4
-promoted archive). `./dev app-down` and `./dev app-up` keep both volumes and the
-published release. The seed then reuses its fixed B4 operations and writes nothing
-new. `./dev app-reset` refuses to run. `./dev app-reset --yes` deletes only this
-stack's two volumes, and the next `./dev app-up` seeds a clean release again. The
-test suites' disposable `postgres`/`postgres-target` databases belong to other
-Compose projects and cannot reach this stack's data.
-
-`./dev app-status` lists services and exit codes, and `./dev app-logs [service]`
-shows recent logs. `LCA_APP_PROJECT` selects a different project name, for an
-isolated second copy such as QA. Every `app-*` command refuses a project name
-equal to the workspace project (`COMPOSE_PROJECT_NAME` from the environment or
-repository `.env`, default `lca-diff-dev`) before invoking Compose.
-
-**Smoke check.** `./dev app-smoke` runs `ops/local/local_stack.py smoke` in the
-stack's tools container on its private network. It checks health and readiness.
-It checks `GET /api/v1/releases` three ways:
-
-- with no token, it gets 401 `AUTH_REQUIRED`;
-- with an unverified emulator user, it gets 403 `EMAIL_NOT_VERIFIED`;
-- with the demo user's emulator ID token, it gets the seeded release and active
-  revision.
-
-It also checks one exact high-precision flow amount, and that a preflight from a
-non-allowlisted origin gets no CORS allow header, while both loopback spellings
-are allowed. It prints no tokens.
-
-**Troubleshooting**
-
-- **Port in use:** `app-up` stops before starting anything and names the variable
-  to change. For example: `LCA_APP_FRONTEND_PORT=5181 ./dev app-up`. Use the same
-  variables for later commands.
-- **After changing code or locks:** `app-up` always rebuilds with `--build`. To
-  start from a clean data state, run `./dev app-reset --yes` and then
-  `./dev app-up`.
-- **A one-shot task failed:** `app-up` exits non-zero. Inspect it with
-  `./dev app-status` and `./dev app-logs seed` (or `migrate`, `auth-seed`). If the
-  database holds a revision or publication pointer that the seed did not create,
-  the seed refuses to run (`SEED_UNEXPECTED_REVISION` or
-  `SEED_UNEXPECTED_ACTIVE_REVISION`) rather than republishing.
-
-### Synthetic seed
-
-Everything in `data_pipeline/seed/` is invented and BAFU-shaped:
-
-- 25 EcoSpold-like XML processes, of which one multi-output process is excluded;
-- a 47-indicator workbook;
-- empty rule files;
-- a pre-built ready B3 artifact.
-
-The stack therefore needs neither Spark nor provider data. The release
-`synthetic-local-2026.1` publishes 24 processes under the `Energy`, `Materials`
-and `Transport` categories. It covers several reference units and amounts, a
-CO2 flow that is positive, negative, exactly zero and absent across processes,
-valid, missing and unresolved-basis IPCC 2021 GWP 100 scores, and
-high-precision decimals.
-
-To regenerate the artifact from the committed sources after an intended change,
-run the Spark B3 pipeline in an isolated ETL project, whose `postgres` serves as
-a disposable import database:
+Prerequisites: Git, Bash, a running **rootless Docker Engine** and Docker Compose on the machine running the containers. Internet access is needed to fetch images and dependencies on the first build. The supported environment is Linux with rootless Docker; the guarded commands reject a rootful daemon. VS Code Remote SSH/Dev Containers is optional. No host Python, Node.js, package manager, database, Firebase project, `.env` file or private dataset is required.
 
 ```sh
-mkdir -p private/no-input   # the ETL overlay requires an existing read-only input mount
-export COMPOSE_PROJECT_NAME=lca-diff-seed FRONTEND_PORT=5195 LCA_PRIVATE_INPUT_DIR="$PWD/private/no-input"
-./dev etl-up
-./dev etl-run uv sync --frozen --all-packages
-./dev etl-run env LCA_DATABASE_URL=postgresql+psycopg://lca_migrator:local-migration-only@postgres/lca uv run --frozen alembic upgrade head
-./dev etl-run uv run --frozen --package lca-etl python -m lca_etl.seed build --root data_pipeline/seed
+git clone https://github.com/DavidVFitzGerald/LCA-diff.git
+cd LCA-diff
+./dev app-up
 ```
 
-Use a fresh import database for this. A changed source, rule or pipeline
-implementation yields a new revision ID. Run `./dev app-reset --yes` before
-loading a regenerated seed into an existing stack, because the seed never adds a
-second revision. `make backend-test-seed`, inside `./dev publication-run`,
-checks these things:
+**`./dev app-up` is the single command that builds and starts the complete local application** (`make up` is an alias if Make is already available). Dependencies install inside pinned container images. Startup waits for PostgreSQL, migrations, synthetic data publication, emulator account creation, API and frontend health. Airflow and Spark do not run during demo startup. The first build can take several minutes.
 
-- the sources regenerate byte for byte;
-- the artifact is bound to them;
-- the load is idempotent;
-- the variety above holds;
-- exact decimals survive through the API cell endpoints.
+Open **http://127.0.0.1:5180** and sign in:
 
-### Opt-in private BAFU import
+| Setting                | Local demo value                                                         |
+| ---------------------- | ------------------------------------------------------------------------ |
+| Email                  | `demo@example.com`                                                       |
+| Password               | `local-demo-password-not-secret`                                         |
+| API health/readiness   | http://127.0.0.1:8010/api/v1/health · http://127.0.0.1:8010/api/v1/ready |
+| Firebase Auth Emulator | `127.0.0.1:9110`, project `demo-lca`                                     |
 
-This is optional and never part of `app-up`. It loads the maintainer's private
-inputs into the same stack database, with the same B4 semantics:
+Search for `steel` and choose **Select all matches**. Add `photovoltaic, rooftop` to compare its flows with the two steel processes. Switch to **Scores**, select indicators and try **Show differences only**. Selected columns can be reordered with pointer or keyboard controls. Warnings explain different reference quantities; values are not normalized between columns.
 
-1. **Import with B3.** Use the existing commands
-   ([B3 ingestion](docs/engineering/b3-ingestion.md)) in this checkout. Choose
-   their own disposable Compose project as the import database, for example
-   `COMPOSE_PROJECT_NAME=lca-diff-bafu`, so test resets cannot touch it. Then
-   review the reports. A ready run writes
-   `private/imports/<frozen-hash>/artifact/manifest.json`.
-2. **Promote and publish into the stack.** Use `./dev app-import`, which runs
-   `lca-import` in the stack's ETL tools container. It runs on the stack's own
-   network and mounts the stack's archive volume. Your `private/` directory is
-   mounted read-only at `/private`; set `LCA_APP_PRIVATE_DIR` to use another
-   checkout's directory. This host directory must already exist
-   (`create_host_path: false`); otherwise Docker reports
-   `invalid mount config for type "bind": bind source path does not exist`.
-   Create it before invoking `app-import`. Use the committed target
-   [`ops/local/target.json`](ops/local/target.json):
-   `{"name": "local-app", "environment": "local", "archive_uri": "file:///var/lib/lca-archive"}`.
-   Its credentials come only from the container variables
-   `LCA_TARGET_IMPORT_DATABASE_URL` (`lca_import`) and
-   `LCA_TARGET_PUBLISH_DATABASE_URL` (`lca_publisher`) for the `db` service. Pick
-   one new UUID per action and keep it for retries:
+```sh
+./dev app-smoke   # live API/auth/precision checks
+./dev app-e2e     # real-stack Chromium browser acceptance
+./dev app-status  # service health and initialization exit codes
+./dev app-down    # stop the application; keep published data
+./dev app-up      # restart using the existing data
+```
+
+All published ports bind to host loopback; PostgreSQL has no host port. For a remote Docker host, forward port 5180 through SSH or VS Code. The frontend proxies API and emulator requests, so forwarding that port is sufficient for normal browser use.
+
+The verified demo account is recreated on every start. To test registration, create an account in the app, request a verification email and obtain its link with `./dev app-logs auth` or from `http://127.0.0.1:5180/emulator/v1/projects/demo-lca/oobCodes`. Use the frontend origin for the verification link, then choose **I've verified my email**. Emulator accounts are temporary; published PostgreSQL data persists. All committed passwords are local-only emulator/database values.
+
+### Use the whole BAFU database [1]
+
+The application also supports an opt-in import of **BAFU:2026** [1]. Download the process XMLs and corrected Excel LCIA scores from [openLCA Nexus](https://nexus.openlca.org/database/BAFU). They are external inputs and are not distributed in this repository. The [ecoSpold1 schema description files can be downloaded from ecoinvent](https://support.ecoinvent.org/data-formats-overview-2); these are useful for interpreting the source format and are required by the alternative three-archive intake example.
+
+**Verification boundary:** the MVP was exercised with a representative private import, not a validated import of the complete database. The following uses the implemented full-input path; it is not evidence of full-corpus completeness, audit sign-off or redistribution permission. Only publish a candidate after reviewing its reports. Unverified score conversions remain `N/A`, and multi-output processes are excluded.
+
+1. Extract the downloaded XMLs and corrected workbook into the following ignored layout. XML files may be in subdirectories. Keep provider inputs and generated audit rows private.
+
+   ```text
+   data/private/bafu-2026-v1/incoming/
+     xml/                         # all process XML files
+     scores/
+       BAFU-2026 v1 LCIA Results_corrected.xlsx
+   private/
+     bafu-full.json               # private manifest created below
+   ```
+
+2. Create `private/bafu-full.json` with the content below. Paths are container paths, not host paths. Adjust the workbook filename and sheet to the downloaded release if necessary. There is intentionally **no `sample_process_limit`**; the committed [representative manifest](data_pipeline/examples/bafu-private-representative.json) instead limits the workload to five XML processes. Do not infer a publication date from a workbook correction note.
+
+   ```json
+   {
+     "format_version": 1,
+     "release": {
+       "database_code": "BAFU",
+       "release_version": "2026 v1",
+       "display_name": "BAFU:2026 v1",
+       "published_date": null,
+       "license_policy": "all_verified_users"
+     },
+     "sources": {
+       "process_xml_directory": "/inputs/xml",
+       "lcia_workbook": "/inputs/scores/BAFU-2026 v1 LCIA Results_corrected.xlsx",
+       "lcia_sheet": "BAFU_2026 v1"
+     },
+     "work_directory": "/workspaces/lca-diff/private/imports",
+     "validation_rules": "/workspaces/lca-diff/data_pipeline/rules/bafu_2026_v1.json",
+     "score_basis_rules": "/workspaces/lca-diff/data_pipeline/rules/bafu_2026_score_basis.json"
+   }
+   ```
+
+3. Start a separate import project, install the frozen Python workspace inside its ETL container and migrate its database. Use this database only for import work, not destructive test suites.
+
+   ```sh
+   export COMPOSE_PROJECT_NAME=lca-diff-bafu
+   export FRONTEND_PORT=5191 AIRFLOW_PORT=8091
+   export LCA_PRIVATE_INPUT_DIR="$PWD/data/private/bafu-2026-v1/incoming"
+   ./dev etl-up
+   ./dev etl-run uv sync --frozen --all-packages
+   ./dev etl-run env LCA_DATABASE_URL=postgresql+psycopg://lca_migrator:local-migration-only@postgres/lca uv run --frozen alembic upgrade head
+   ./dev airflow-up
+   ./dev etl-run make import MANIFEST=private/bafu-full.json
+   ```
+
+   This triggers and waits for the Airflow DAG, which runs the Spark-backed pipeline. The alternative focused execution is `./dev etl-run uv run --frozen --package lca-etl lca-import run-local --manifest private/bafu-full.json`. Reports and a ready candidate's portable artifact appear under `private/imports/<frozen-hash>/`. Review reconciliation, exclusions, missing scores and unit-basis issues before continuing. A failed or unready candidate is not publishable. See [ingestion and audit details](docs/engineering/b3-ingestion.md).
+
+4. With the local application running (`./dev app-up`), promote and explicitly publish the ready artifact into its separate database. Replace angle-bracket placeholders with the artifact's actual hash, release/revision UUIDs and a newly chosen UUID for each operation. Keep each operation UUID stable when retrying that same operation.
 
    ```sh
    ./dev app-import promote --target /app/ops/target.json --artifact /private/imports/<frozen-hash>/artifact/manifest.json --operation-id <promotion-uuid> --dry-run
@@ -190,124 +132,180 @@ inputs into the same stack database, with the same B4 semantics:
    ./dev app-import publish --target /app/ops/target.json --release <release-uuid> --revision <revision-uuid> --expected-active none --operation-id <publication-uuid>
    ```
 
-The BAFU release is separate from the synthetic one, so both stay listed. A
-`sample_process_limit` manifest yields a representative artifact, which must not
-be presented as a full release. Full-corpus validation, LCIA audit sign-off and
-licensing remain post-MVP gates (ADR 0006). For later publication, rollback and
-failure recovery, see [B4 publication](docs/engineering/b4-publication.md).
-Executing this path end to end is L3 (#30) verification.
+   `--expected-active none` applies to the first publication of that release. Later revisions must name the expected active revision; see [publication and rollback](docs/engineering/b4-publication.md). The synthetic release stays separate. Reload the app to discover the newly published release. Promotion alone does not make data visible. Existing data must pass the same readiness and publication gates regardless of input size.
 
-## Open the development workspace
+### Configuration and troubleshooting
 
-Host prerequisites: an accessible rootless Docker Engine with Docker Compose, and an
-existing VS Code Remote SSH/Dev Containers setup if using the editor workflow.
-Install no host runtimes or package managers. Ask before installing a missing
-host prerequisite. Docker commands below run on the remote Docker host, inside
-the repository checkout.
+No environment variables are required for the demo. Optional overrides are illustrated in [.env.example](.env.example); process environment values take precedence over literal `.env` values.
 
-First confirm `docker context show` selects your intended rootless daemon and
-`docker info` reports rootless security. Supported launch paths refuse a rootful
-daemon. Do not change socket permissions or add yourself to the Docker group.
+| Variable                        | Default / purpose                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------------------- |
+| `LCA_APP_PROJECT`               | `lca-diff-app`; isolates application containers and volumes                           |
+| `LCA_APP_FRONTEND_PORT`         | `5180`; frontend host port                                                            |
+| `LCA_APP_API_PORT`              | `8010`; API host port                                                                 |
+| `LCA_APP_AUTH_PORT`             | `9110`; Auth Emulator host port                                                       |
+| `COMPOSE_PROJECT_NAME`          | `lca-diff-dev`; workspace/ETL project, distinct from the app project                  |
+| `FRONTEND_PORT`, `AIRFLOW_PORT` | `5173`, `8091`; workspace frontend and optional Airflow host ports                    |
+| `LCA_PRIVATE_INPUT_DIR`         | Host directory mounted read-only as `/inputs` for opt-in ETL                          |
+| `LCA_APP_PRIVATE_DIR`           | Defaults to `./private`; existing host directory mounted as `/private` for app import |
+| `VITE_SERVICE_MODE`             | Explicitly `mock` for standalone frontend development; app image builds with `real`   |
+
+Database URLs, emulator settings and local service credentials are supplied by Compose. Standalone API settings and environment boundaries are defined in [ApiSettings](apps/api/src/lca_api/config.py); full topology and tooling details are in the [development guide](docs/engineering/development-environment.md).
+
+- **Docker refused:** check `docker context show` and `docker info`; select an accessible rootless daemon. Do not substitute a rootful daemon or change socket permissions.
+- **Port occupied:** choose an unused port, for example `LCA_APP_FRONTEND_PORT=5181 ./dev app-up`. Keep the same overrides for subsequent commands. Ports must be literal integers from 1 to 65535.
+- **Startup task failed:** inspect `./dev app-status` and `./dev app-logs migrate`, `seed` or `auth-seed`. Re-running `app-up` rebuilds images and reuses the seed without adding a new revision.
+- **Import mount missing:** create the input and `private/` directories before using ETL/import commands; bind mounts do not create them automatically.
+- **Login changed after switching URLs:** Firebase sessions are scoped to origin. Stay with either `127.0.0.1` or `localhost` and sign in again after switching.
+- **Need an empty demo database:** `./dev app-reset --yes` deletes this app project's database/archive volumes. The next `app-up` seeds them again. `app-down` retains them; reset is never needed for a normal restart.
+
+## Problem and behavior
+
+An LCA practitioner needs to choose which process best represents a material, energy supply or transport service. Similar process names can conceal different geographies, reference quantities, exchanges and impact indicators. Finding a dataset in a catalog or inspecting separate XML files and score spreadsheets does not, by itself, provide an aligned comparison of those differences.
+
+LCA diff provides searchable process and indicator trees, filtered bulk selection and virtualized comparison grids. Users see shared and unique flows, signed values, absent flows, present zero and missing/invalid scores. Exact differences are computed on demand, and warnings make incompatible reference quantities visible. Measurements cross the API as decimal strings; chart display rounding does not change stored values. The application compares published data; it is not an interactive LCA calculation engine.
+
+## How this project was built
+
+I supplied an initial description of the requirements and developed a detailed specification through a brainstorm with ChatGPT's web chatbot. I then used ChatGPT, mainly GPT-6.1-Sol, and Claude Code, mainly Opus 5.5, through their respective CLIs to implement the project on a dedicated laptop accessed remotely over SSH.
+
+All implementation work was carried out by the AI models. My role was to supervise the process and merge pull requests; I did not review the code in detail. Automated checks and independent agent QA provide the recorded verification evidence, rather than a claim of detailed human code review.
+
+The agent workflow is based on Alexey Grigorev's [AI-Native Development: Specifications, Loop and Graph Engineering](https://aishippingblog.com/p/ai-native-development-specifications):
+
+| Role                                                | Responsibility                                                                                                        |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Coordinator                                         | Sequences dependencies, assigns work, records handoffs and coordinates issue closure after approved merges            |
+| [Product Manager](docs/team/product-manager.md)     | Grooms issues, defines objective acceptance criteria and checks readiness against the specification                   |
+| [Software Engineer](docs/team/software-engineer.md) | Implements one ready issue, runs container checks, commits and hands the delivered SHA to QA                          |
+| [QA Engineer](docs/team/qa-engineer.md)             | Independently checks the delivered commit and criteria, reports PASS/FAIL/BLOCKED and returns failures to engineering |
+| Maintainer                                          | Supervises the process and authorizes merges                                                                          |
+
+The loop is **ready issue → implementation → independent QA → maintainer merge**. GitHub issues and PRs retain criteria, exact commands, results and handoffs; [#30](https://github.com/DavidVFitzGerald/LCA-diff/issues/30) is a complete example. [AGENTS.md](AGENTS.md) defines context, authority and container rules; [ADRs](docs/adr/README.md) record changes to the product and architecture contracts.
+
+Some initial prompt material is preserved in [docs/reference/](docs/reference/), including the [implementation prompts](docs/reference/LCA-diff%20initial%20prompts%20for%20implementation.md) and [README request](docs/reference/LCA-diff%20prompt%20for%20README.md). These are historical records, not current implementation authority. Use the current [PRD](docs/product/LCA_diff_PRD.md), [specification](docs/engineering/LCA_diff_Implementation_Specification.md) and accepted ADRs for requirements.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Browser[React / TypeScript browser UI] --> Frontend[Vite-built frontend and proxy]
+    Frontend --> API[FastAPI read API]
+    Frontend --> Auth[Firebase Auth Emulator]
+    Auth --> Verification[Verified identity]
+    Verification --> API
+    API --> DB[(PostgreSQL published data)]
+    Sources[Private XML + LCIA workbook] --> ETL[Airflow / PySpark ETL]
+    ETL --> Candidate[Audited candidate artifact]
+    Seed[Committed synthetic artifact] --> Publication[Promote then publish]
+    Candidate --> Publication
+    Publication --> DB
+```
+
+React, TypeScript, Vite and TanStack Query provide the UI, asynchronous reads and caching. FastAPI/Pydantic define the read API; generated TypeScript DTOs and drift checks keep the real adapter aligned with OpenAPI. PostgreSQL, SQLAlchemy and Alembic provide persistent data, immutable release revisions and migrations. Firebase verifies identities; the local MVP uses its emulator. Both deterministic mock and real adapters live behind one frontend services boundary.
+
+The optional Airflow/PySpark pipeline preserves original bytes, provenance and duplicate staging exchanges, then harmonizes exact amounts and reconciles workbook scores. Promotion loads a candidate without exposing it; explicit atomic publication changes the revision visible to the read-only API. Demo startup uses a prebuilt synthetic artifact, so it does not need provider data or Spark. Python packages share one frozen `uv.lock`; frontend dependencies use `package-lock.json`.
+
+## Testing and evaluation
+
+Tests use invented, deterministic data in public CI. The demo seed contains 25 source processes (24 published, one multi-output exclusion) and a 47-indicator workbook. Cases include positive/negative amounts, zero versus absence, high-precision decimals, missing scores and unresolved reference bases. Additional golden ETL fixtures cover duplicate aggregation, reference mapping, invalid units, audit reports and publication failures.
+
+At local MVP acceptance, **472 frontend tests in 37 files**, **72 mock browser tests across Chromium/Firefox**, and **7 real-stack journeys per browser** passed. Independent QA records clean-clone startup and persistence across restarts in [issue #30](https://github.com/DavidVFitzGerald/LCA-diff/issues/30); detailed commands, coverage and remaining gaps are in [local MVP verification](docs/engineering/local-mvp-verification.md). These establish behavior on the fixtures and representative import, not scientific validation of the full provider corpus.
+
+### Unit and backend integration checks
+
+First start the separate disposable workspace database and emulator on the Docker host. These are distinct from the application data volumes:
 
 ```sh
-./dev config
+./dev backend-up
+./dev auth-up
+./dev shell
+```
+
+Inside that container, install frozen dependencies once (and after lock changes), then run all frontend unit tests plus Python unit and targeted backend integration tests in **one command**:
+
+```sh
+npm --prefix apps/frontend ci
+uv sync --frozen --all-packages
+make test backend-test-unit backend-test-integration
+```
+
+`make test` alone runs **frontend tests only**. Backend integration fixtures recreate their disposable database schemas; do not point them at an import or application database. The API/auth test targets are `make backend-test-api backend-test-auth`. Full mock browser tests run with `make test-e2e` inside the workspace; real-stack tests run from the host with `./dev app-e2e` after `./dev app-up`.
+
+The real browser suite expects the seed-only application. After publishing additional releases, some locator/request-count assumptions no longer apply; use a separate `LCA_APP_PROJECT` and unused app ports for a clean seed-only test stack. ETL, Airflow, seed and publication suites need their separate containers: see [ingestion validation](docs/engineering/b3-ingestion.md#focused-validation), [publication verification](docs/engineering/b4-verification.md) and the [ETL workflow](.github/workflows/etl.yml) for exact setup and commands.
+
+## Local development
+
+All development, package installation, formatting, builds and tests run inside containers. On the Docker host:
+
+```sh
 ./dev up
 ./dev check
 ./dev shell
 ```
 
-`./dev config` checks the workspace Compose configuration without a daemon.
-`./dev app-config` checks the separate application configuration, including all
-three `LCA_APP_*_PORT` values. These accept decimal integers 1–65535 (leading
-zeros are accepted and removed); invalid app ports affect only `app-*` commands.
-Process environment values take precedence over literal `.env` values (unquoted,
-single-quoted or double-quoted, with optional trailing comments). Port expressions
-such as `${PORT}` are rejected; set a literal integer or an explicit process
-environment value instead. Configuration is never sourced as shell code.
-
-Or connect through VS Code Remote SSH, open this repository on the Docker host,
-and choose **Dev Containers: Reopen in Container**. The post-create check runs
-inside the workspace. The development shell uses namespace UID 0, mapped to your
-unprivileged host account; all capabilities are dropped. No host UID/GID build
-overrides are needed. See ADR 0003 for the rootless-only development boundary.
-
-Inside the container, run all development tools, package installs and checks.
-The following commands run inside `./dev shell` (or the editor's container terminal):
-
-For Python/backend work, first install every workspace member from the single
-committed lock (also required after Dev Containers' post-create smoke check):
-
-```sh
-uv sync --frozen --all-packages
-make backend-format-check backend-lint backend-typecheck backend-test-unit
-```
-
-`./dev up` starts the workspace without installing project packages. `./dev check`
-and the editor post-create check verify the tooling, but their default sync does
-not select every Python workspace member. Run the explicit frozen sync above
-before backend checks; it needs no database, emulator or private inputs.
-
-For standalone frontend work:
+Inside the workspace, start the frontend independently with deterministic mocks:
 
 ```sh
 npm --prefix apps/frontend ci
 VITE_SERVICE_MODE=mock npm --prefix apps/frontend run dev
 ```
 
-Vite listens on `0.0.0.0:5173` inside the container, published on host loopback.
-Use VS Code/SSH forwarding to reach http://localhost:5173. The page is a technical
-mount target identifying local demo mode and the placeholder authentication state.
-The placeholder resolves to unauthenticated and makes no protected dataset reads.
-Product login/account journeys follow in F2. Missing, invalid or unsupported
-service modes (including `real` until L2, formerly I1) show a safe startup error; there is no
-implicit mock fallback. A mock bundle also requires explicitly setting
-`VITE_SERVICE_MODE=mock` when running the build command below.
+Open or forward host port 5173. For separate real API/database/emulator services use `./dev api-up` on the host (default API 8000, emulator 9099); the recommended end-to-end real setup remains `./dev app-up`. The [services boundary](apps/frontend/src/services/README.md) explains adapter composition. There is no silent fallback from a failed real adapter to mocks.
 
-For reproducible, noninteractive checks inside the container:
+Inside the workspace, run `make lint typecheck`, frontend `format:check` and `contracts:check`, or `make backend-format-check backend-lint backend-typecheck` after the frozen Python install. `./dev down` stops workspace services. See the [development environment guide](docs/engineering/development-environment.md) for Dev Containers, isolated projects and detailed commands.
+
+## CI and logs
+
+### Continuous integration
+
+[Frontend](.github/workflows/frontend.yml), [Backend](.github/workflows/backend.yml) and [ETL](.github/workflows/etl.yml) workflows run on every pull request, pushes to `main` and manual dispatch. Applicable gates include frozen dependencies, formatting/lint/type checks, DTO drift, unit and integration tests, migrations, builds, ETL/publication checks and critical browser journeys. Frontend manual dispatch runs the complete available mock browser suite; PRs run critical smoke tests plus real-stack acceptance.
+
+A failed required job blocks readiness for merge; frontend browser failures retain diagnostic artifacts. Successful checks do **not** deploy the application. Hosted infrastructure and continuous delivery are post-MVP.
+
+### Logs and operational metrics
 
 ```sh
-npm --prefix apps/frontend run format:check
-npm --prefix apps/frontend run lint
-npm --prefix apps/frontend run typecheck
-npm --prefix apps/frontend run test:unit
-npm --prefix apps/frontend run build
-npm --prefix apps/frontend run test:e2e
+./dev app-logs api
+./dev app-status
 ```
 
-`make format` rewrites formatting; `make lint`, `make typecheck`, `make test-unit`
-(`make test`) and `make frontend-build` wrap the corresponding frontend commands.
-These targets refuse host execution. Dependencies and `dist/` are ignored
-container-created artifacts; the committed lockfile pins installation. Frontend
-CI runs the same locked install and checks in the digest-pinned Node container.
-The smoke command starts a temporary production preview, builds with explicit
-mock mode, and runs named Chromium and Firefox projects without an API. The
-development image installs matching browsers/OS dependencies from the frozen
-frontend lock; rebuild with `./dev build` then `./dev up` when this lock changes.
-Browser binaries remain inside the image at `/ms-playwright`. Do not install
-browsers or their OS dependencies on the host. To run one project inside the
-container, append `-- --project=chromium` or `-- --project=firefox` to `test:e2e`.
-`make test-e2e` is the equivalent guarded container target.
+The API writes structured JSON logs to container stderr. Each request receives an `X-Request-ID`, also included in its log with status and duration; error envelopes carry a request ID. This helps match a failed browser request to its API log without logging request bodies or credentials. Docker retains container output according to the daemon's logging configuration; there is no separate log database or dashboard.
 
-PRs and the manual Frontend workflow run the available full frontend suite,
-currently the unit/contract checks plus this foundation smoke. Product auth,
-selection/grid/score journeys arrive in F2–F5; real integration remains Phase 2.
-See [F1 verification](docs/engineering/f1-verification.md) for exact versions,
-coverage, commands and remaining gates.
+`GET /api/v1/metrics` requires a verified bearer token and returns in-memory request, error and slow-request counters. Counters reset when the API restarts. These are basic diagnostics, not distributed traces or a correlated metrics/traces/logs platform. No user-impact alerts or on-call automation are implemented.
 
-To stop and remove the workspace container, run `./dev down` on the Docker host.
-The source checkout is retained. Container-home caches are disposable. If Make
-already exists on the host, `make dev-up`, `make dev-shell`, `make dev-check` and
-`make dev-down` provide equivalent commands. Do not install host Make just for
-these aliases. `make dev-check` verifies the environment; frontend checks above
-verify the application scaffold. Lifecycle commands belong on the Docker host.
+## Project structure
 
-## Delivery boundaries
+```text
+AGENTS.md                   Agent rules, context and lifecycle
+apps/frontend/              React UI, services, Vitest and Playwright tests
+apps/api/                   FastAPI read API, auth and OpenAPI schema
+packages/contracts/         Generated TypeScript DTOs
+packages/python/lca_shared/ Shared Python contracts, exact decimals and DB schema
+data_pipeline/              Airflow DAG, Spark ETL, rules, fixtures and synthetic seed
+db/                         Bootstrap roles and Alembic migrations
+ops/local/                  Local app images, startup checks and seed orchestration
+compose*.yaml               Separate app, workspace, ETL and publication topologies
+.github/workflows/          Container-backed CI
+docs/product/               Current product requirements
+docs/engineering/           Specification, roadmap, operator guides and evidence
+docs/team/                  Agent responsibilities
+docs/adr/                   Architecture/product decisions
+docs/images/                README screenshot
+docs/reference/             Historical prompts; excluded from implementation context
+```
 
-The workspace (`./dev up`) and the mock-only frontend flow above need no API,
-database, Firebase, Airflow, Spark, cloud resources or licensed files. The local
-application stack (`./dev app-up`) is separate. It uses its own Compose project
-and volumes, and it starts PostgreSQL, the Auth Emulator and the API, but not
-Airflow or Spark. Backend, ETL and publication checks run in their own containers
-(see the development environment guide). `dev-check` verifies the environment;
-it is not an application test suite. No cloud deployment is part of the MVP
-(ADR 0006).
+## Limitations and next steps
+
+- **Local-only:** no production Firebase project, public hosting or CD. A hosted release needs infrastructure, production access controls and data licensing approval.
+- **Full-corpus validation remains outstanding:** a representative private import was verified. Importing every file does not establish complete reconciliation, approved score bases or full-release sign-off. Unverified scores stay `N/A`; multi-output processes are excluded.
+- **Workspace state is in memory:** reload does not restore selected processes, indicators or comparison layout. Persistent account-scoped workspaces and stale-ID reconciliation are deferred.
+- **Multiple releases:** indicators retain native release identities; equivalent-looking labels are not scientifically harmonized. The indicator tree can display duplicate method labels without a release suffix ([#108](https://github.com/DavidVFitzGerald/LCA-diff/issues/108)).
+- **Verification scope:** large comparisons are tested with synthetic mock data; laptop/full-data benchmarks and the complete state/accessibility audit remain future work. The UI targets desktop/laptop browsers.
+- **Operations:** tracing, telemetry storage/UI, user-impact alerts and an on-call repair agent are absent.
+
+The [roadmap](docs/engineering/roadmap.md) tracks the deferred work. Priorities for a later hosted release are full-data reconciliation/audit and licensing, production infrastructure/authentication, then saved workspace recovery and operational monitoring. Cross-database mappings, uploads, exports and LCIA recalculation remain future features.
+
+## References
+
+[1] Database of the Swiss Federal Administration, BAFU:2026, Federal Office for the Environment, 2026. [Data download: openLCA Nexus](https://nexus.openlca.org/database/BAFU).
