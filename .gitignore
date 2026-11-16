@@ -35,6 +35,9 @@ test-results/
 *.zip
 *.tar
 *.tar.gz
+# Invented synthetic local seed only (ADR 0006, #96); never provider workbooks.
+!data_pipeline/seed/sources/scores.xlsx
+!data_pipeline/seed/artifact/raw/scores/scores.xlsx
 *.tfstate
 *.tfstate.*
 **/.terraform/
