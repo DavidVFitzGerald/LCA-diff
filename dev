@@ -13,8 +13,41 @@ if [[ -n "${LCA_PUBLICATION_OVERRIDE:-}" ]]; then
     [[ -f "$LCA_PUBLICATION_OVERRIDE" ]] || { echo 'Publication override file does not exist.' >&2; exit 1; }
     publication_compose+=(--file "$LCA_PUBLICATION_OVERRIDE")
 fi
+# The local application stack pins its own project name (never COMPOSE_PROJECT_NAME),
+# so its volumes cannot be the disposable databases that test suites reset.
+app_project="${LCA_APP_PROJECT:-lca-diff-app}"
+if [[ ! "$app_project" =~ ^[a-z0-9][a-z0-9_-]*$ ]]; then
+    echo 'LCA_APP_PROJECT must be a lowercase Compose project name.' >&2
+    exit 2
+fi
+export LCA_APP_PROJECT="$app_project"
+app_compose=(docker compose --project-name "$app_project" --project-directory "$repo_dir" --file "$repo_dir/compose.app.yaml")
+app_port() { local value="${!1:-$2}"; [[ "$value" =~ ^[0-9]+$ ]] || { echo "$1 must be a port number." >&2; exit 2; }; echo "$value"; }
+app_frontend_port="$(app_port LCA_APP_FRONTEND_PORT 5180)"
+app_api_port="$(app_port LCA_APP_API_PORT 8010)"
+app_auth_port="$(app_port LCA_APP_AUTH_PORT 9110)"
+app_ports_free() {
+    # A running stack legitimately owns its ports; only check before a fresh start.
+    [[ -z "$("${app_compose[@]}" ps --quiet)" ]] || return 0
+    local entry
+    for entry in "LCA_APP_FRONTEND_PORT:$app_frontend_port" "LCA_APP_API_PORT:$app_api_port" "LCA_APP_AUTH_PORT:$app_auth_port"; do
+        if (exec 3<>"/dev/tcp/127.0.0.1/${entry#*:}") 2>/dev/null; then
+            echo "Host port 127.0.0.1:${entry#*:} (${entry%%:*}) is already in use. Free it or set ${entry%%:*} to another port." >&2
+            exit 1
+        fi
+    done
+}
+app_summary() {
+    cat <<SUMMARY
+Local app stack '$app_project' is healthy (local-only development credentials):
+  Frontend   http://127.0.0.1:$app_frontend_port  (L1: explicit mock mode; real adapter arrives in L2 #97)
+  API        http://127.0.0.1:$app_api_port/api/v1/health  and  /api/v1/ready
+  Auth       127.0.0.1:$app_auth_port  (Firebase Auth Emulator, project demo-lca)
+  Demo login demo@example.com / local-demo-password-not-secret  (emulator only)
+SUMMARY
+}
 case "${1:-help}" in
-    build|up|down|shell|check|logs|backend-up|backend-down|etl-up|etl-shell|etl-run|airflow-up|api-up|api-down|auth-up|publication-up|publication-run)
+    build|up|down|shell|check|logs|backend-up|backend-down|etl-up|etl-shell|etl-run|airflow-up|api-up|api-down|auth-up|publication-up|publication-run|app-up|app-down|app-reset|app-status|app-logs|app-smoke|app-import)
         bash "$repo_dir/.devcontainer/check-docker.sh" ;;
     config|help) ;;
     *) echo "Unknown command: $1" >&2; exit 2 ;;
@@ -37,8 +70,21 @@ case "${1:-help}" in
     shell) "${compose[@]}" exec workspace bash ;;
     check) "${compose[@]}" exec -T workspace bash .devcontainer/check-env.sh ;;
     logs) "${compose[@]}" logs --tail=100 workspace ;;
-    config) "${compose[@]}" config --quiet ;;
+    config) "${compose[@]}" config --quiet && "${app_compose[@]}" config --quiet ;;
+    app-up) app_ports_free; "${app_compose[@]}" up --detach --build --wait --remove-orphans; app_summary ;;
+    app-down) "${app_compose[@]}" down --remove-orphans ;;
+    app-reset)
+        if [[ "${2:-}" != --yes ]]; then
+            echo "Refusing to delete the '$app_project' database and archive volumes. Re-run: ./dev app-reset --yes" >&2
+            exit 1
+        fi
+        "${app_compose[@]}" down --volumes --remove-orphans ;;
+    app-status) shift; "${app_compose[@]}" ps --all "$@" ;;
+    app-logs) shift; "${app_compose[@]}" logs --tail=200 "$@" ;;
+    app-smoke) "${app_compose[@]}" --profile smoke run --rm --no-deps smoke ;;
+    app-import) shift; "${app_compose[@]}" --profile import run --rm --no-deps import "$@" ;;
     help)
         echo 'Usage: ./dev {build|up|shell|check|down|logs|config|backend-up|backend-down|api-up|api-down|auth-up|etl-up|etl-shell|etl-run|airflow-up|publication-up|publication-run}'
+        echo '       ./dev {app-up|app-down|app-reset [--yes]|app-status|app-logs [service]|app-smoke|app-import <lca-import args>}'
         echo 'Requires a rootless Docker daemon; run development tools inside its workspace.' ;;
 esac
