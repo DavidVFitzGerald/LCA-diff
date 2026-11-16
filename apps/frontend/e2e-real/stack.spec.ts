@@ -225,6 +225,74 @@ test("real seed: exact differences toggles per tab (L3 #30)", async ({
   await expect(scores.locator('[data-state="unavailable"]')).toHaveCount(2);
 });
 
+test("real seed UAT: name + geography filtered category, comparability warning, indicator order and column removal (L3 #30)", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await login(page);
+  const tree = page.getByRole("tree", { name: "Processes", exact: true });
+  const selected = page.getByRole("button", { name: /^Selected processes \(/ });
+  const headers = page.locator("#panel-flows .process-header");
+  const warning = page.locator("#panel-flows .comparability-warning");
+  // Swiss electricity: name and geography combine with AND; the filtered
+  // category selects only its matching descendants.
+  await page
+    .getByRole("textbox", { name: "Process Name", exact: true })
+    .fill("electricity");
+  await page.getByRole("button", { name: "Advanced search" }).click();
+  await page
+    .getByRole("textbox", { name: "Geography", exact: true })
+    .fill("ch");
+  await expect(tree.getByRole("treeitem", { name: /open ground/ })).toHaveCount(
+    0,
+  );
+  const energy = tree.getByRole("treeitem", { name: /^Energy, 3 processes$/ });
+  await energy.focus();
+  await page.keyboard.press("Space");
+  await expect(selected).toHaveText("Selected processes (3)");
+  await expect(headers).toHaveCount(3);
+  for (const name of ["run-of-river", "reservoir", "rooftop"])
+    await expect(page.locator("#panel-flows")).toContainText(name);
+  await expect(warning).toHaveCount(0);
+  await page.getByRole("button", { name: "Clear search" }).click();
+  await expect(selected).toHaveText("Selected processes (3)");
+  // A different reference amount and unit warns without changing values.
+  await select(page, "cement, Portland, packed");
+  await expect(headers).toHaveCount(4);
+  await expect(warning).toContainText("different reference amounts and units.");
+  // Additional indicators follow workbook order.
+  await page.getByRole("tab", { name: "Scores", exact: true }).click();
+  const indicators = page.getByRole("tree", { name: "Indicators" });
+  const ipcc = indicators.getByRole("treeitem", {
+    name: "IPCC 2021",
+    exact: true,
+  });
+  await ipcc.focus();
+  await page.keyboard.press("ArrowRight");
+  const gwp20 = indicators.getByRole("treeitem", { name: /^GWP 20\b/ });
+  await gwp20.focus();
+  await page.keyboard.press("Space");
+  await expect(gwp20).toHaveAttribute("aria-checked", "true");
+  const scores = page.getByRole("grid", { name: "Scores comparison" });
+  await expect(scores).toHaveAttribute("aria-rowcount", "2");
+  await expect(scores.getByRole("rowheader").nth(0)).toContainText("GWP 100");
+  await expect(scores.getByRole("rowheader").nth(1)).toContainText("GWP 20");
+  // Removing a column with its header × (shown on hover) deselects it
+  // everywhere.
+  await page
+    .locator("#panel-scores .process-header")
+    .filter({ hasText: "cement, Portland, packed" })
+    .hover();
+  await page
+    .getByRole("button", { name: /^Remove column cement, Portland, packed/ })
+    .click();
+  await expect(page.locator("#panel-scores .process-header")).toHaveCount(3);
+  await expect(selected).toHaveText("Selected processes (3)");
+  await page.getByRole("tab", { name: "Flows", exact: true }).click();
+  await expect(headers).toHaveCount(3);
+  await expect(warning).toHaveCount(0);
+});
+
 test("emulator registration, verification, restore and account disable clear data", async ({
   page,
   request,
