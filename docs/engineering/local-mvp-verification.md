@@ -2,7 +2,7 @@
 
 Engineering branch: `feat/l3-differences`, based on `main` at `baff738`.
 The final reviewed SHA and the independent QA verdict are recorded on
-[#30](https://github.com/DavidVFitzGerald/LCA-diff/issues/30) and its PR.
+[#30](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/30) and its PR.
 No PRD/spec deviation or ADR: the toggles implement specification §6.7 as
 revised by ADR 0006 (in memory, not persisted).
 
@@ -49,7 +49,7 @@ representative BAFU processes compared below had no equal flow rows either.
 ## Engineering checks
 
 All tools ran inside the guarded rootless workspace
-(`docker exec -w /workspaces/lca-diff/apps/frontend lca-diff-dev-workspace-1 bash -lc '<command>'`)
+(`docker exec -w /workspaces/LCA-diff-AI-dev-project/apps/frontend lca-diff-dev-workspace-1 bash -lc '<command>'`)
 or through `./dev`. Host commands only orchestrated Docker, Git and GitHub.
 
 | Command | Observed result |
@@ -128,7 +128,7 @@ The selected representative processes came from different categories and had
 no equal flow rows, so nothing was hidden there either. This is a
 representative artifact (`sample_process_limit`), not a full release.
 
-**Defect found and fixed: [#107](https://github.com/DavidVFitzGerald/LCA-diff/issues/107).**
+**Defect found and fixed: [#107](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/107).**
 With two published releases, the default indicator selection held both
 releases' GWP 100. Every Scores read then failed with `422 INVALID_FILTER`,
 because the API correctly scopes indicators to the revision snapshot. Scores
@@ -154,7 +154,7 @@ interactive testing.
 
 - Two published releases show each method twice in the indicator tree without a
   release label (seen after the opt-in import):
-  [#108](https://github.com/DavidVFitzGerald/LCA-diff/issues/108). Cross-release
+  [#108](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/108). Cross-release
   mapping is §10.3.
 - Browser workspace persistence (#31), stale-ID reconciliation (#32), the
   state/accessibility audit (#33), the mock acceptance gate (#34) and

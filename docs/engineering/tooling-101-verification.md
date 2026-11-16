@@ -26,7 +26,7 @@ Rootless Docker 29.9.3 / Compose v5.7.0; pinned workspace Node 24.22.3, Python
 and tests ran inside containers. No host runtime or dependency was installed.
 
 Implementation checkout:
-`/home/david/projects/LCA-diff/.task-worktrees/tooling-101`.
+`/home/david/projects/LCA-diff-AI-dev-project/.task-worktrees/tooling-101`.
 Workspace/publication project `lca-diff-101-eng`, frontend workspace port 5271;
 app project `lca-diff-101-eng-app`, ports 5272/8011/9272. The input mount was the
 existing empty `private/empty-input` created inside the workspace container.
@@ -36,7 +36,7 @@ The existing `lca-diff-l2-app` and main workspace were left running and untouche
 ## Fresh-clone backend checks (AC1)
 
 A real local clone at
-`/home/david/projects/LCA-diff/.task-worktrees/tooling-101-fresh` started at
+`/home/david/projects/LCA-diff-AI-dev-project/.task-worktrees/tooling-101-fresh` started at
 implementation commit `f1ee715`, with neither `.venv` nor `.env`. It used project
 `lca-diff-101-fresh` and workspace port 5273. Following the documented steps:
 
@@ -82,7 +82,7 @@ failed to launch a worker. The changed source succeeded and reported:
 
 | Active environment | Driver and actual worker interpreter |
 | --- | --- |
-| Default | `/workspaces/lca-diff/.venv/bin/python3` |
+| Default | `/workspaces/LCA-diff-AI-dev-project/.venv/bin/python3` |
 | Override | `/var/tmp/lca-venv/bin/python3` |
 
 The probe was run independently in both environments. Its temporary source and

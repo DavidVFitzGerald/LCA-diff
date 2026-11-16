@@ -9,7 +9,7 @@ if [[ "${LCA_DEV_CONTAINER:-}" != 1 || ! -f /.dockerenv ]]; then
     echo 'Environment checks must run inside the dev container.' >&2
     exit 1
 fi
-cd /workspaces/lca-diff
+cd /workspaces/LCA-diff-AI-dev-project
 python - <<'PY'
 import json
 import os

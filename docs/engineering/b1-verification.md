@@ -1,7 +1,7 @@
 # B1 domain and persistence verification
 
-Issue [#57](https://github.com/DavidVFitzGerald/LCA-diff/issues/57),
-PR [#61](https://github.com/DavidVFitzGerald/LCA-diff/pull/61).
+Issue [#57](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/57),
+PR [#61](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/pull/61).
 Mode: synthetic domain/PostgreSQL checks; independent QA and merge are pending.
 No source archives were extracted or imported by B1. Frontend files are unchanged.
 

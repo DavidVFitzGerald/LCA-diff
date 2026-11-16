@@ -86,8 +86,8 @@ COMPOSE_PROJECT_NAME=lca-diff-f4-gate ./dev down
 | test:e2e `@smoke`                                                 | PASS, 14 of 14                                                                                                                                                           |
 | test:e2e full                                                     | PASS, 66 of 66 (33 per project)                                                                                                                                          |
 | Firefox, column operations and F4 gate run explicitly             | PASS, 4 of 4                                                                                                                                                             |
-| Hosted `quality` on PR #78 (`pull_request`)                       | PASS: unit 405/405, `@smoke` 14/14 ([run 43762464690](https://github.com/DavidVFitzGerald/LCA-diff/actions/runs/43762464690)). The backend workflows on the PR also pass |
-| Hosted full suite (`workflow_dispatch`)                           | PASS: unit 405/405 (hold 5.1 s) and e2e 66/66 ([run 43762465426](https://github.com/DavidVFitzGerald/LCA-diff/actions/runs/43762465426))                                 |
+| Hosted `quality` on PR #78 (`pull_request`)                       | PASS: unit 405/405, `@smoke` 14/14 ([run 43762464690](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/actions/runs/43762464690)). The backend workflows on the PR also pass |
+| Hosted full suite (`workflow_dispatch`)                           | PASS: unit 405/405 (hold 5.1 s) and e2e 66/66 ([run 43762465426](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/actions/runs/43762465426))                                 |
 
 All three unit runs were consecutive, with no timeouts and no #51 flake.
 
@@ -112,7 +112,7 @@ version.
 ### History: QA FAIL round at `ba912b4` (checks at `0265639`)
 
 QA reported FAIL on AC6 and AC7 at `ba912b4`
-([comment](https://github.com/DavidVFitzGerald/LCA-diff/issues/26#issuecomment-6901151062)).
+([comment](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/26#issuecomment-6901151062)).
 
 - **The hold test.** Its internal `waitFor({ timeout: 15000 })` timed out in
   4 of 6 full unit runs. The hold took 14–15 s under parallel load.
@@ -134,7 +134,7 @@ risk is recorded above under #76.
 | Check                                                                                                                      | Result then                                                                                                                                                         | Resolution                  |
 | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
 | Local full e2e, Firefox                                                                                                    | **FAIL**, 28 of 30. `column-operations.spec.ts` (default journey) crashed with signal 11. `f2-gate.spec.ts:48` lost focus to the sidebar                            | #75: PR #84. #77: PR #83    |
-| Hosted full suite ([run 43734192952](https://github.com/DavidVFitzGerald/LCA-diff/actions/runs/43734192952), at `794e48f`) | **FAIL**, 50 of 60. The failures above, plus `flows-composition.spec.ts` layout cases in both projects ("Location" label 58 px in a 50 px column with the CI fonts) | #79: PR #80 (bundled Inter) |
+| Hosted full suite ([run 43734192952](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/actions/runs/43734192952), at `794e48f`) | **FAIL**, 50 of 60. The failures above, plus `flows-composition.spec.ts` layout cases in both projects ("Location" label 58 px in a 50 px column with the CI fonts) | #79: PR #80 (bundled Inter) |
 | Everything else                                                                                                            | PASS: static checks, three unit runs, `@smoke` 14/14, hosted `quality`                                                                                              | —                           |
 
 The first round's measurements are superseded by the ones below, which were

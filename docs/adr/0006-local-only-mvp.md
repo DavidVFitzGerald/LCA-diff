@@ -1,13 +1,13 @@
 # 0006 — Local-only MVP with a single-command end-to-end stack
 
 Status: **Accepted** through the maintainer's merge of
-[PR #98](https://github.com/DavidVFitzGerald/LCA-diff/pull/98) into `main` at
+[PR #98](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/pull/98) into `main` at
 `cf7f1d561dae2a8af79d7344c56bf03e28481157` on 2026-11-16, after hosted CI passed.
 GitHub records no separate APPROVED review, and independent QA ran after the merge
 rather than before it (recorded on #95). This records observed merge evidence, not
 self-approval.
 Date: 2026-11-16.
-Issue: [#95](https://github.com/DavidVFitzGerald/LCA-diff/issues/95).
+Issue: [#95](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/95).
 Scope: MVP product scope, delivery sequence and completion gates.
 Partially supersedes: ADR 0002 and ADR 0005 in two respects only:
 - I1 no longer waits for the complete mock-frontend Phase 1 gate.
@@ -55,9 +55,9 @@ The maintainer wants a locally working application in as few steps as possible
    exhaustive mock difference predicates (#29) become POST-MVP. Clearing protected
    in-memory data and caches on logout or account change remains MVP.
 6. **Delivery.** The remaining MVP is three implementation issues/PRs in sequence:
-   - L1 [#96](https://github.com/DavidVFitzGerald/LCA-diff/issues/96): single-command stack and seed.
-   - L2 [#97](https://github.com/DavidVFitzGerald/LCA-diff/issues/97): real adapter, generated DTOs and Auth Emulator.
-   - L3 [#30](https://github.com/DavidVFitzGerald/LCA-diff/issues/30): differences toggles and local acceptance.
+   - L1 [#96](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/96): single-command stack and seed.
+   - L2 [#97](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/97): real adapter, generated DTOs and Auth Emulator.
+   - L3 [#30](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/30): differences toggles and local acceptance.
 
    L2 replaces I1 for the local scope.
 7. **CI.** The per-PR tier drops Terraform fmt/validate (no Terraform in the MVP).

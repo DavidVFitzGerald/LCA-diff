@@ -406,7 +406,7 @@ A temporary probe ran the D1/D2 setup: `render(30)`, `selectAll`,
 - **Still open.** Why the window shifts is left to #93.
 
 Result posted on #93:
-https://github.com/DavidVFitzGerald/LCA-diff/issues/93#issuecomment-6904095131
+https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/93#issuecomment-6904095131
 
 QA's AC4 run then failed on this race (pair 3 B), and #93 was made ready
 and fixed in this PR: see the next section.

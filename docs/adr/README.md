@@ -34,7 +34,7 @@ the maintainer's explicit merge records approval; a native approval by another
 human is not claimed. That exception takes effect only after ADR 0004 is merged.
 
 ADRs 0001–0003 were accepted through the maintainer's merge of
-[PR #35](https://github.com/DavidVFitzGerald/LCA-diff/pull/35) into `main`
+[PR #35](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/pull/35) into `main`
 on 2026-11-13, commit `f809b179c5c54f47be32ec7b24a9abce36b64982`.
 The maintainer confirmed the merge; GitHub records no separate APPROVED review.
 

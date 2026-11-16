@@ -3,7 +3,7 @@
 Date: 2026-11-15. Branch: `feat/f5-indicator-tree`, PR #88. Application delivery:
 `9d0037e00e2c9444bf6af02b5ea69d195d403e43` after merging current main
 `af5317d` (subsequent evidence-only commits do not change executable files). Independent QA and merge status are recorded on
-[#27](https://github.com/DavidVFitzGerald/LCA-diff/issues/27).
+[#27](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/27).
 
 ## Scope and scheduling
 
@@ -79,7 +79,7 @@ suite and limits with two workers; hosted `quality` retains normal concurrency.
 | Optional full browser suite before F4 merge | 64/66 PASS; all 33 Chromium cases pass. Firefox pointer edge-auto-scroll exceeded 30 s; large-grid row visibility exceeded 5 s. |
 | Targeted rerun of those two Firefox cases, after main merge | PASS 2/2 in 49.3 s, no timeout/assertion changes. |
 | Complete two-worker unit run before main merge | 405/408 PASS. Three existing bare-grid anchoring/hold cases failed; this is not a passing full run. |
-| Sequential targeted rerun of those three unit cases | 2/3 PASS; the hold-error Retry assertion still fails and is tracked in [#91](https://github.com/DavidVFitzGerald/LCA-diff/issues/91). |
+| Sequential targeted rerun of those three unit cases | 2/3 PASS; the hold-error Retry assertion still fails and is tracked in [#91](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/91). |
 | Hosted checks at application predecessor `6c823c8` | All four PASS: frontend `quality` (normal full unit + smoke/build/static), `backend-quality`, `api-quality`, `etl-quality`. Final-head hosted outcomes remain recorded on PR #88 before review. |
 
 The three constrained-run failures were `flows-grid-anchoring.test.tsx`:

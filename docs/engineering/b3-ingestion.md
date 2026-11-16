@@ -15,7 +15,7 @@ mounted **read-only**, and generated data stays in the worktree's ignored
 export COMPOSE_PROJECT_NAME=lca-diff-b3
 export FRONTEND_PORT=5191
 export AIRFLOW_PORT=8091
-export LCA_PRIVATE_INPUT_DIR=/home/david/projects/LCA-diff/data/private/bafu-2026-v1/incoming
+export LCA_PRIVATE_INPUT_DIR=/home/david/projects/LCA-diff-AI-dev-project/data/private/bafu-2026-v1/incoming
 ./dev etl-up
 ./dev etl-run uv sync --frozen --all-packages
 ./dev etl-run env LCA_DATABASE_URL=postgresql+psycopg://lca_migrator:local-migration-only@postgres/lca uv run --frozen alembic upgrade head

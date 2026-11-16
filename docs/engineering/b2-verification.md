@@ -1,7 +1,7 @@
 # B2 authenticated read API verification
 
-Issue [#58](https://github.com/DavidVFitzGerald/LCA-diff/issues/58),
-PR [#70](https://github.com/DavidVFitzGerald/LCA-diff/pull/70), stacked on B1 PR #61.
+Issue [#58](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/58),
+PR [#70](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/pull/70), stacked on B1 PR #61.
 Mode: synthetic PostgreSQL data and real local Firebase Auth Emulator. Independent
 QA, final hosted checks and maintainer merge remain pending. No frontend source,
 fixtures or provisional contracts changed. No private source input was imported.

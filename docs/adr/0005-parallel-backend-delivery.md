@@ -1,11 +1,11 @@
 # 0005 — Parallel backend delivery in four work units
 
 Status: **Accepted** through the maintainer's explicit authorization to merge
-[PR #56](https://github.com/DavidVFitzGerald/LCA-diff/pull/56), merged into `main`
+[PR #56](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/pull/56), merged into `main`
 at `125b0909595a6db89b214ac3db59b0d108a44226` on 2026-11-14 after independent
 QA and hosted CI passed. This records observed merge evidence, not self-approval.
 Date: 2026-11-14.
-Issue: [#55](https://github.com/DavidVFitzGerald/LCA-diff/issues/55).
+Issue: [#55](https://github.com/DavidVFitzGerald/LCA-diff-AI-dev-project/issues/55).
 Scope: MVP scheduling, issue granularity and focused validation; no stack or
 scientific/product scope change.
 Partially supersedes: ADR 0002's requirement to finish the mock frontend before
